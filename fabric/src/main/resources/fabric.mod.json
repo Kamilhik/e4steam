@@ -7,7 +7,7 @@
   "authors": [
     "Kamilchik"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "icon": "assets/e4steam_minecraft/icon.png",
   "environment": "client",
   "entrypoints": {

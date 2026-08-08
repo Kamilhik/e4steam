@@ -18,7 +18,7 @@
 
 [![Version](https://img.shields.io/github/v/release/Kamilhik/e4steam?display_name=tag&sort=semver&style=flat-square)](https://github.com/Kamilhik/e4steam/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/Kamilhik/e4steam/build.yml?branch=main&label=build&style=flat-square)](https://github.com/Kamilhik/e4steam/actions/workflows/build.yml)
-[![License](https://img.shields.io/badge/License-MIT-2ea44f?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
 
 **🇷🇺 Русская версия находится ниже — [открыть](#русская-версия)**
 
@@ -183,4 +183,4 @@ Simple Voice Chat определяется автоматически. Plasmo Vo
 
 Created and maintained by **Kamilchik**. e4steam is an unofficial fork of
 [e4mc](https://github.com/vgskye/e4mc-minecraft-architectury), distributed under
-the [MIT License](LICENSE), and is not affiliated with Valve, Mojang, or Microsoft.
+the [Apache License 2.0](LICENSE), and is not affiliated with Valve, Mojang, or Microsoft.

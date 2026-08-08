@@ -53,12 +53,12 @@ when changing it.
 - Do not commit build output, Minecraft instances, logs, credentials, signing
   keys, or generated `steam_appid.txt` files. The root `steam_appid.txt`
   containing only `480` is the intentional development fixture.
-- Preserve the MIT license notices and update `THIRD_PARTY_NOTICES.md` when a
+- Preserve all Apache 2.0 and third-party license notices, and update `THIRD_PARTY_NOTICES.md` when a
   dependency or bundled native library changes.
 
 ## Binary distribution
 
-Source contributions are welcome under the repository's MIT License. A compiled
+Source contributions are welcome under the repository's Apache License 2.0. A compiled
 JAR bundles Valve Steamworks redistributables that are not covered by that
 license. Stable binaries may be published after the verification and release
 steps in `RELEASING.md` pass. Keep the release type set to **Release** and the

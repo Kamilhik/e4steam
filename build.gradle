@@ -213,6 +213,7 @@ tasks.register("releaseJars") {
                     throw new GradleException("${variant.label} must not package steam_appid.txt")
                 }
                 if (zip.getEntry("META-INF/LICENSE-e4steam.txt") == null
+                        || zip.getEntry("META-INF/NOTICE-e4steam.txt") == null
                         || zip.getEntry("META-INF/THIRD_PARTY_NOTICES.md") == null) {
                     throw new GradleException("${variant.label} is missing packaged legal notices")
                 }

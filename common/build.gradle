@@ -31,6 +31,10 @@ processResources {
     from(rootProject.file("THIRD_PARTY_NOTICES.md")) {
         into "META-INF"
     }
+    from(rootProject.file("NOTICE")) {
+        into "META-INF"
+        rename { "NOTICE-e4steam.txt" }
+    }
 }
 
 sourcesJar {
@@ -40,6 +44,10 @@ sourcesJar {
     }
     from(rootProject.file("THIRD_PARTY_NOTICES.md")) {
         into "META-INF"
+    }
+    from(rootProject.file("NOTICE")) {
+        into "META-INF"
+        rename { "NOTICE-e4steam.txt" }
     }
 }
 

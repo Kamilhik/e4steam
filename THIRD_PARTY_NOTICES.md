@@ -2,7 +2,7 @@
 
 ## Original e4mc project
 
-This project is a separate derivative of [vgskye/e4mc-minecraft-architectury](https://github.com/vgskye/e4mc-minecraft-architectury), originally by Skye and contributors. The inherited and modified project code is distributed under the MIT License in the repository-root `LICENSE` file.
+This project is a separate derivative of [vgskye/e4mc-minecraft-architectury](https://github.com/vgskye/e4mc-minecraft-architectury), originally by Skye and contributors. The inherited e4mc portions remain subject to their MIT License terms, reproduced below. The e4steam project and Kamilchik's modifications are distributed under the repository-root Apache License 2.0.
 
 The original project is not responsible for this Steam transport fork. This derivative uses its own `e4steam` project, mod ID, and Java namespace.
 
@@ -236,4 +236,4 @@ Source: [sisby-folk/kaleido-config](https://github.com/sisby-folk/kaleido-config
 
 ## Valve Steamworks redistributables
 
-The packaged `steam_api` native libraries are Valve Steamworks redistributables supplied by the steamworks4j artifact. They are not covered by this project's MIT License. Their use and redistribution remain subject to the applicable Steamworks SDK terms and Valve agreements. App ID 480 is used only as Valve's shared development/test example and does not grant this project ownership of Spacewar or Steam infrastructure.
+The packaged `steam_api` native libraries are Valve Steamworks redistributables supplied by the steamworks4j artifact. They are not covered by this project's Apache License 2.0. Their use and redistribution remain subject to the applicable Steamworks SDK terms and Valve agreements. App ID 480 is used only as Valve's shared development/test example and does not grant this project ownership of Spacewar or Steam infrastructure.

@@ -32,6 +32,7 @@ public class E4steamClient {
     public static void init() {
         Config.INSTANCE.id(); // Touch to initialize for McQoy
         SteamRuntime.preloadCompatibilityClasses();
+        SteamRuntime.get().startAtGameLaunchAsync();
     }
 
     public static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -183,7 +184,7 @@ public class E4steamClient {
         replacement.startAsync();
     }
 
-    /** Stops Spacewar before Minecraft connects to a regular, non-e4steam server. */
+    /** Stops active e4steam sharing before Minecraft connects to a regular server. */
     public static void stopSteamForDirectServerConnection() {
         SteamSession current = session;
         if (current != null) {
@@ -197,6 +198,15 @@ public class E4steamClient {
 
     /** Called by the Steam callback thread after a validated lobby invitation was accepted. */
     public static void acceptSteamInvite(String endpoint, String hostName) {
+        acceptSteamInvite(endpoint, hostName, true);
+    }
+
+    /** Called after a validated rich-presence address without a lobby join was accepted. */
+    public static void acceptDirectSteamInvite(String endpoint, String hostName) {
+        acceptSteamInvite(endpoint, hostName, false);
+    }
+
+    private static void acceptSteamInvite(String endpoint, String hostName, boolean lobbyBacked) {
         if (SteamAddress.tryParse(endpoint).isEmpty()) {
             showSteamJoinFailure(Mirror.translatable("text.e4steam_minecraft.joinInvalidAddress"));
             return;
@@ -206,7 +216,9 @@ public class E4steamClient {
         minecraft.execute(() -> {
             String displayName = normalizedHostName(hostName);
             if (MinecraftUiCompat.currentScreen(minecraft) instanceof ConnectScreen) {
-                SteamRuntime.get().cancelGuestJoin();
+                if (lobbyBacked) {
+                    SteamRuntime.get().cancelGuestJoin();
+                }
                 MinecraftUiCompat.addChatMessage(minecraft,
                         Mirror.translatable("text.e4steam_minecraft.joinAlreadyConnecting")
                 );
@@ -214,7 +226,12 @@ public class E4steamClient {
             }
             if (minecraft.level == null) {
                 Screen parent = currentOrMultiplayerScreen(minecraft);
-                claimSteamInviteAndConnect(minecraft, endpoint, displayName, parent, null, false);
+                if (lobbyBacked) {
+                    claimSteamInviteAndConnect(minecraft, endpoint, displayName, parent, null, false);
+                } else {
+                    SteamRuntime.get().cancelGuestJoin();
+                    connectToSteamHost(minecraft, endpoint, displayName, parent);
+                }
                 return;
             }
 
@@ -223,7 +240,9 @@ public class E4steamClient {
             Component message = Mirror.translatable("text.e4steam_minecraft.joinInviteMessage", displayName);
             MinecraftUiCompat.setScreen(minecraft, new ConfirmScreen(confirmed -> {
                 if (!confirmed) {
-                    SteamRuntime.get().cancelGuestJoin();
+                    if (lobbyBacked) {
+                        SteamRuntime.get().cancelGuestJoin();
+                    }
                     MinecraftUiCompat.setScreen(minecraft, previousScreen);
                     return;
                 }
@@ -233,18 +252,46 @@ public class E4steamClient {
                         Mirror.translatable("connect.connecting"),
                         previousScreen
                 ));
-                claimSteamInviteAndConnect(
-                        minecraft,
-                        endpoint,
-                        displayName,
-                        returnScreen,
-                        previousScreen,
-                        true
-                );
+                if (lobbyBacked) {
+                    claimSteamInviteAndConnect(
+                            minecraft,
+                            endpoint,
+                            displayName,
+                            returnScreen,
+                            previousScreen,
+                            true
+                    );
+                } else {
+                    SteamRuntime.get().cancelGuestJoin();
+                    disconnectAndConnectDirectInvite(
+                            minecraft,
+                            endpoint,
+                            displayName,
+                            returnScreen,
+                            previousScreen
+                    );
+                }
             }, title, message,
                     Mirror.translatable("text.e4steam_minecraft.joinInviteConfirm"),
                     Mirror.translatable("text.e4steam_minecraft.joinInviteStay")));
         });
+    }
+
+    private static void disconnectAndConnectDirectInvite(
+            Minecraft minecraft,
+            String endpoint,
+            String hostName,
+            Screen parent,
+            Screen rejectionScreen
+    ) {
+        try {
+            MinecraftUiCompat.disconnect(minecraft, parent);
+            connectToSteamHost(minecraft, endpoint, hostName, parent);
+        } catch (ReflectiveOperationException exception) {
+            LOGGER.warn("Could not leave the current world for a Steam invitation", exception);
+            MinecraftUiCompat.setScreen(minecraft, rejectionScreen);
+            showSteamJoinFailure(exception.getMessage());
+        }
     }
 
     /** Displays an invitation/join error without touching Minecraft UI from a Steam callback thread. */

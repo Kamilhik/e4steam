@@ -65,7 +65,7 @@ public final class SteamClientBridge {
     public static void cancelPending() {
         PendingAccept[] pending;
         synchronized (PENDING_LOCK) {
-            pending = PENDING_ACCEPTS.toArray(PendingAccept[]::new);
+            pending = PENDING_ACCEPTS.toArray(new PendingAccept[PENDING_ACCEPTS.size()]);
             PENDING_ACCEPTS.clear();
         }
         for (PendingAccept accept : pending) {
@@ -83,8 +83,8 @@ public final class SteamClientBridge {
         SteamConnectionBridge bridge = null;
         SteamRuntime.Activity activity = null;
         boolean handedOff = false;
-        try (listener) {
-            socket = listener.accept();
+        try (ServerSocket closeableListener = listener) {
+            socket = closeableListener.accept();
             socket.setTcpNoDelay(true);
             socket.setKeepAlive(true);
 

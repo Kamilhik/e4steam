@@ -1,16 +1,27 @@
 package link.e4steam.steam;
 
 import java.nio.ByteBuffer;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 final class SteamProtocol {
     static final int MAGIC = 0x45345354; // E4ST
-    static final byte VERSION = 3;
+    static final byte VERSION = 4;
     static final byte OPEN = 1;
     static final byte DATA = 2;
     static final byte FIN = 3;
     static final byte RESET = 4;
     static final byte DATAGRAM = 5;
     static final byte OPEN_ACK = 6;
+    /**
+     * Confirms that the client received OPEN_ACK and that the return path is
+     * usable before a Forge host releases its large login-registry burst.
+     * Older clients safely ignore this optional frame.
+     */
+    static final byte BRIDGE_READY = 7;
+    private static final short FLAG_COMPRESSED = 1;
+    private static final short KNOWN_FLAGS = FLAG_COMPRESSED;
+    private static final int COMPRESSED_LENGTH_SIZE = Integer.BYTES;
     static final int OPEN_ACK_PAYLOAD_SIZE = Byte.BYTES + Short.BYTES;
 
     static final int DATA_CHUNK_SIZE = 32 * 1024;
@@ -37,7 +48,11 @@ final class SteamProtocol {
         if (payload.length == 0 || payload.length > DATA_CHUNK_SIZE) {
             throw new IllegalArgumentException("Invalid Steam payload length: " + payload.length);
         }
-        ByteBuffer buffer = header(DATA, connectionId, payload.length);
+        // Keep the Minecraft byte stream byte-for-byte identical to the
+        // working beta transport. Steam already compresses/encrypts its own
+        // packets; a second framing compression caused some reverse streams
+        // to be discarded before Forge/Fabric could read them.
+        ByteBuffer buffer = header(DATA, (short) 0, connectionId, payload.length);
         buffer.put(payload);
         return buffer.array();
     }
@@ -47,6 +62,10 @@ final class SteamProtocol {
         buffer.put(endpoint.clientPortMode());
         buffer.putShort((short) endpoint.hostPort());
         return buffer.array();
+    }
+
+    static byte[] encodeBridgeReady(int connectionId) {
+        return header(BRIDGE_READY, connectionId, 0).array();
     }
 
     static byte[] encodeFin(int connectionId) {
@@ -75,7 +94,10 @@ final class SteamProtocol {
         }
 
         byte type = source.get();
-        source.getShort(); // Reserved for future protocol flags.
+        short flags = source.getShort();
+        if ((flags & ~KNOWN_FLAGS) != 0 || (flags != 0 && type != DATA)) {
+            return null;
+        }
         int connectionId = source.getInt();
         int payloadLength = source.remaining();
 
@@ -94,27 +116,91 @@ final class SteamProtocol {
         if (type == DATAGRAM && (payloadLength == 0 || payloadLength > MAX_DATAGRAM_SIZE)) {
             return null;
         }
-        if ((type == FIN || type == RESET) && payloadLength != 0) {
+        if ((type == FIN || type == RESET || type == BRIDGE_READY) && payloadLength != 0) {
             return null;
         }
-        if (type != OPEN && type != OPEN_ACK && type != DATA && type != FIN && type != RESET && type != DATAGRAM) {
+        if (type != OPEN
+                && type != OPEN_ACK
+                && type != BRIDGE_READY
+                && type != DATA
+                && type != FIN
+                && type != RESET
+                && type != DATAGRAM) {
             return null;
         }
 
-        byte[] payload = new byte[payloadLength];
-        source.get(payload);
+        byte[] payload;
+        if (type == DATA && (flags & FLAG_COMPRESSED) != 0) {
+            payload = decompress(source);
+            if (payload == null) {
+                return null;
+            }
+        } else {
+            payload = new byte[payloadLength];
+            source.get(payload);
+        }
         return new Frame(type, connectionId, payload);
     }
 
     private static ByteBuffer header(byte type, int connectionId, int payloadLength) {
+        return header(type, (short) 0, connectionId, payloadLength);
+    }
+
+    private static ByteBuffer header(byte type, short flags, int connectionId, int payloadLength) {
         return ByteBuffer.allocate(HEADER_SIZE + payloadLength)
                 .putInt(MAGIC)
                 .put(VERSION)
                 .put(type)
-                .putShort((short) 0)
+                .putShort(flags)
                 .putInt(connectionId);
     }
 
-    record Frame(byte type, int connectionId, byte[] payload) {
+    private static byte[] decompress(ByteBuffer source) {
+        if (source.remaining() <= COMPRESSED_LENGTH_SIZE) {
+            return null;
+        }
+        int uncompressedLength = source.getInt();
+        if (uncompressedLength <= 0 || uncompressedLength > DATA_CHUNK_SIZE) {
+            return null;
+        }
+        byte[] compressed = new byte[source.remaining()];
+        source.get(compressed);
+        byte[] result = new byte[uncompressedLength];
+        Inflater inflater = new Inflater();
+        try {
+            inflater.setInput(compressed);
+            int offset = 0;
+            while (!inflater.finished() && offset < result.length) {
+                int read = inflater.inflate(result, offset, result.length - offset);
+                if (read == 0) {
+                    return null;
+                }
+                offset += read;
+            }
+            if (offset != result.length || !inflater.finished() || inflater.getRemaining() != 0) {
+                return null;
+            }
+            return result;
+        } catch (DataFormatException exception) {
+            return null;
+        } finally {
+            inflater.end();
+        }
+    }
+
+    static final class Frame {
+        private final byte type;
+        private final int connectionId;
+        private final byte[] payload;
+
+        Frame(byte type, int connectionId, byte[] payload) {
+            this.type = type;
+            this.connectionId = connectionId;
+            this.payload = payload;
+        }
+
+        byte type() { return type; }
+        int connectionId() { return connectionId; }
+        byte[] payload() { return payload; }
     }
 }

@@ -19,5 +19,7 @@ class HexCodecTest {
         assertThrows(IllegalArgumentException.class, () -> HexCodec.decode("0"));
         assertThrows(IllegalArgumentException.class, () -> HexCodec.decode("zz"));
         assertThrows(IndexOutOfBoundsException.class, () -> HexCodec.encode(new byte[2], 1, 2));
+        assertThrows(IndexOutOfBoundsException.class,
+                () -> HexCodec.encode(new byte[2], Integer.MAX_VALUE, 2));
     }
 }

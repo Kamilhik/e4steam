@@ -19,4 +19,14 @@ public class Agnos {
     public static Path jarPath() {
         return null;
     }
+
+    @ExpectPlatform
+    public static boolean proactivelyAcceptSteamPeerSessions() {
+        return false;
+    }
+
+    @ExpectPlatform
+    public static boolean autoRestartBrokenSteamSessionForHandshake() {
+        return false;
+    }
 }

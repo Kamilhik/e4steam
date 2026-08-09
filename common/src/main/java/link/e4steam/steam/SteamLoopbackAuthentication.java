@@ -9,8 +9,11 @@ final class SteamLoopbackAuthentication {
     }
 
     static int loopbackPort(SocketAddress address) {
-        if (!(address instanceof InetSocketAddress inetAddress)
-                || inetAddress.isUnresolved()
+        if (!(address instanceof InetSocketAddress)) {
+            return -1;
+        }
+        InetSocketAddress inetAddress = (InetSocketAddress) address;
+        if (inetAddress.isUnresolved()
                 || inetAddress.getAddress() == null
                 || !inetAddress.getAddress().isLoopbackAddress()) {
             return -1;

@@ -14,7 +14,7 @@ public final class HexCodec {
     }
 
     public static String encode(byte[] bytes, int offset, int length) {
-        if (offset < 0 || length < 0 || offset + length > bytes.length) {
+        if (offset < 0 || length < 0 || offset > bytes.length - length) {
             throw new IndexOutOfBoundsException("Invalid hexadecimal byte range");
         }
         char[] result = new char[length * 2];

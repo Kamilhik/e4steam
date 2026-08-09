@@ -12,13 +12,33 @@ final class SteamOutboundQueue<B> {
     enum Kind {
         OPEN,
         OPEN_ACK,
+        BRIDGE_READY,
         DATA,
         DATAGRAM,
         FIN,
         RESET
     }
 
-    record Packet<B>(long remoteSteamId, int connectionId, byte[] payload, Kind kind, B bridge) {
+    static final class Packet<B> {
+        private final long remoteSteamId;
+        private final int connectionId;
+        private final byte[] payload;
+        private final Kind kind;
+        private final B bridge;
+
+        Packet(long remoteSteamId, int connectionId, byte[] payload, Kind kind, B bridge) {
+            this.remoteSteamId = remoteSteamId;
+            this.connectionId = connectionId;
+            this.payload = payload;
+            this.kind = kind;
+            this.bridge = bridge;
+        }
+
+        long remoteSteamId() { return remoteSteamId; }
+        int connectionId() { return connectionId; }
+        byte[] payload() { return payload; }
+        Kind kind() { return kind; }
+        B bridge() { return bridge; }
     }
 
     private final Object lock = new Object();
@@ -109,13 +129,21 @@ final class SteamOutboundQueue<B> {
     }
 
     private Semaphore categorySlots(Packet<B> packet) {
-        return switch (packet.kind()) {
-            case DATA -> dataSlots;
-            case DATAGRAM -> datagramSlots;
-            case OPEN, OPEN_ACK -> openSlots;
-            case RESET -> packet.bridge() == null ? standaloneResetSlots : null;
-            case FIN -> null;
-        };
+        switch (packet.kind()) {
+            case DATA:
+                return dataSlots;
+            case DATAGRAM:
+                return datagramSlots;
+            case OPEN:
+            case OPEN_ACK:
+            case BRIDGE_READY:
+                return openSlots;
+            case RESET:
+                return packet.bridge() == null ? standaloneResetSlots : null;
+            case FIN:
+            default:
+                return null;
+        }
     }
 
     private void releaseSlot(Packet<B> packet) {

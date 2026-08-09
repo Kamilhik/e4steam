@@ -67,10 +67,11 @@ the notices in `LICENSE` and `THIRD_PARTY_NOTICES.md`.
 ```powershell
 .\gradlew.bat --no-daemon clean releaseJars
 git diff --check
-$releaseJars = Get-ChildItem release\0.2.0\*.jar
+$releaseJars = Get-ChildItem release\0.2.4\*.jar
 if ($releaseJars.Count -ne 6) { throw "Expected 6 runtime JARs, found $($releaseJars.Count)" }
 $releaseJars | Get-FileHash -Algorithm SHA256
 ```
 
-For Shift+Tab, launch the Minecraft launcher through a Steam non-Steam shortcut
-and verify that the in-game invitation action opens the Steam overlay.
+Launch Minecraft normally with Steam already running and signed in. Verify
+that the invitation action opens Steam friends (or the safe desktop friends
+window on Linux) and that host/guest world loading completes.

@@ -3,6 +3,61 @@
 All notable changes to e4steam are documented here. Version numbers below
 belong to this fork and are independent of upstream e4mc releases.
 
+## 0.2.4 - 2026-08-09
+
+### English
+
+- Steam/Spacewar now starts automatically with Minecraft, stays active for the
+  game process, and can recover cleanly when Steam becomes available later.
+- Fixed Forge guest authentication and world loading races, including the
+  Forge 1.20.1 timeout/infinite terrain loading path.
+- Fixed reliable terminal packets being lost during temporary Steam network
+  backpressure. Failed RESET packets no longer leave stale bridge slots.
+- Oversized unrelated App ID 480 packets are now discarded without stopping
+  the whole Steam runtime.
+- Fixed direct Steam rich-presence invitations that do not use a lobby, and
+  allowed canceled invitations to become usable again after stale callbacks.
+- Fixed connection-capacity accounting during concurrent bridge shutdown and
+  cleanup, plus duplicate command feedback on transitional Minecraft APIs.
+- Improved Linux behavior for cached native libraries and invitation opening;
+  removed instructions that incorrectly required launching Minecraft through Steam.
+- Restored the `restoreDedicatedCommands` setting so disabling it no longer
+  changes vanilla command permissions.
+- Changed the e4steam project license from MIT to Apache License 2.0 while
+  retaining the original MIT notices for inherited e4mc code.
+- Forge clients now confirm that the Steam return path is ready before the
+  host sends the large login-registry burst. A bounded fallback keeps older
+  clients compatible instead of requiring several connection attempts.
+- Broken Steam Networking Messages sessions now restart automatically, fixing
+  repeated `.steam` address connections such as Fabric 26.2 after a failed join.
+
+### Русский
+
+- Steam/Spacewar теперь автоматически запускается вместе с Minecraft, остаётся
+  активным до выхода из игры и корректно восстанавливается, если Steam стал
+  доступен позже.
+- Исправлены гонки авторизации гостя и загрузки мира на Forge, включая тайм-аут
+  и бесконечную «Загрузку территории» на Forge 1.20.1.
+- Надёжные завершающие пакеты больше не теряются при временной перегрузке сети
+  Steam. Ошибка отправки RESET больше не оставляет занятый слот соединения.
+- Слишком большие посторонние пакеты общего App ID 480 теперь отбрасываются и
+  не останавливают весь Steam runtime.
+- Исправлены прямые приглашения через Steam Rich Presence без лобби, а
+  отменённое приглашение снова становится доступно после устаревшего callback.
+- Исправлен учёт лимита при одновременном закрытии соединений и очистке, а также
+  возможное дублирование сообщений команд в переходных версиях Minecraft.
+- Улучшена работа Linux с кэшем нативных библиотек и открытием приглашений;
+  удалены неверные советы запускать Minecraft через Steam.
+- Настройка `restoreDedicatedCommands` снова соблюдается: её отключение больше
+  не меняет стандартные права команд Minecraft.
+- Лицензия проекта e4steam изменена с MIT на Apache License 2.0; исходные
+  MIT-уведомления унаследованного кода e4mc сохранены.
+- Клиент Forge теперь подтверждает готовность обратного Steam-соединения до
+  отправки хостом большого пакета реестров. Ограниченный резервный таймер
+  сохраняет совместимость со старыми клиентами и убирает повторные попытки входа.
+- Повреждённые сессии Steam Networking Messages теперь перезапускаются
+  автоматически; это исправляет повторный вход по адресу `.steam`, включая Fabric 26.2.
+
 ## 0.2.3 - 2026-08-06
 
 ### English

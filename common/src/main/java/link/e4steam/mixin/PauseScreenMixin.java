@@ -3,7 +3,6 @@ package link.e4steam.mixin;
 import link.e4steam.E4steamClient;
 import link.e4steam.MinecraftUiCompat;
 import link.e4steam.Mirror;
-import link.e4steam.MinecraftUiCompat;
 import link.e4steam.steam.SteamSession;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.PauseScreen;

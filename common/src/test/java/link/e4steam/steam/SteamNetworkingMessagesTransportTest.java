@@ -24,8 +24,13 @@ class SteamNetworkingMessagesTransportTest {
         buffer.put(new byte[]{1, 2, 3, 4}).flip();
 
         assertTrue(transport.send(REMOTE_ID, buffer, false, 480));
-        assertEquals(9, nativeAccess.sentFlags); // ReliableNoNagle matches legacy P2PSend.Reliable.
+        assertEquals(9, nativeAccess.sentFlags); // ReliableNoNagle.
         assertEquals(REMOTE_ID, nativeAccess.sentSteamId);
+        assertArrayEquals(new byte[]{1, 2, 3, 4}, nativeAccess.sentPayload);
+
+        buffer.rewind();
+        assertEquals(1, transport.sendResult(REMOTE_ID, buffer, false, true, 480));
+        assertEquals(41, nativeAccess.sentFlags); // ReliableNoNagle + AutoRestartBrokenSession.
         assertArrayEquals(new byte[]{1, 2, 3, 4}, nativeAccess.sentPayload);
 
         buffer.position(1);
@@ -52,6 +57,20 @@ class SteamNetworkingMessagesTransportTest {
         target.get(payload);
         assertArrayEquals(new byte[]{9, 8, 7}, payload);
         assertEquals(1, nativeAccess.releaseCount);
+        transport.close();
+    }
+
+    @Test
+    void discardsAndReleasesOversizedForeignMessage() throws Exception {
+        FakeNativeAccess nativeAccess = new FakeNativeAccess();
+        nativeAccess.queueMessage(REMOTE_ID, new byte[SteamProtocol.MAX_ACCEPTED_STEAM_PACKET_SIZE + 1]);
+        SteamNetworkingMessagesTransport transport = transport(nativeAccess);
+
+        assertEquals(SteamProtocol.MAX_ACCEPTED_STEAM_PACKET_SIZE + 1, transport.availablePacketSize(480));
+        transport.discardPendingMessage();
+
+        assertEquals(1, nativeAccess.releaseCount);
+        assertEquals(0, transport.availablePacketSize(480));
         transport.close();
     }
 

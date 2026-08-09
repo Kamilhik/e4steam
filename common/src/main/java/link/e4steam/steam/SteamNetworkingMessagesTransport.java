@@ -29,6 +29,7 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
     private static final int SEND_NO_NAGLE = 1;
     private static final int SEND_NO_DELAY = 4;
     private static final int SEND_RELIABLE = 8;
+    private static final int SEND_AUTO_RESTART_BROKEN_SESSION = 32;
     private static final int SEND_UNRELIABLE_NO_DELAY = SEND_NO_NAGLE | SEND_NO_DELAY;
     private static final int SEND_RELIABLE_NO_NAGLE = SEND_RELIABLE | SEND_NO_NAGLE;
 
@@ -52,7 +53,17 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
     private static final long CONNECTION_INFO_END_DEBUG_OFFSET = 180;
     private static final int CONNECTION_INFO_END_DEBUG_SIZE = 128;
 
-    record Received(long remoteSteamId, int size) {
+    static final class Received {
+        private final long remoteSteamId;
+        private final int size;
+
+        Received(long remoteSteamId, int size) {
+            this.remoteSteamId = remoteSteamId;
+            this.size = size;
+        }
+
+        long remoteSteamId() { return remoteSteamId; }
+        int size() { return size; }
     }
 
     interface SessionListener {
@@ -133,7 +144,20 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
 
     int sendResult(long remoteSteamId, ByteBuffer payload, boolean unreliable, int channel)
             throws IOException {
+        return sendResult(remoteSteamId, payload, unreliable, false, channel);
+    }
+
+    int sendResult(
+            long remoteSteamId,
+            ByteBuffer payload,
+            boolean unreliable,
+            boolean autoRestartBrokenSession,
+            int channel
+    ) throws IOException {
         ensureOpen();
+        if (unreliable && autoRestartBrokenSession) {
+            throw new IOException("A datagram cannot restart a broken reliable Steam session");
+        }
         if (!payload.isDirect()) {
             throw new IOException("Steam Networking Messages requires a direct send buffer");
         }
@@ -144,6 +168,9 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
         }
         data = data.share(payload.position());
         int flags = unreliable ? SEND_UNRELIABLE_NO_DELAY : SEND_RELIABLE_NO_NAGLE;
+        if (autoRestartBrokenSession) {
+            flags |= SEND_AUTO_RESTART_BROKEN_SESSION;
+        }
         return nativeAccess.send(identity(remoteSteamId), data, size, flags, channel);
     }
 
@@ -196,6 +223,15 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
             }
             return new Received(readSteamId(message.share(MESSAGE_IDENTITY_OFFSET)), size);
         } finally {
+            nativeAccess.releaseMessage(message);
+        }
+    }
+
+    void discardPendingMessage() throws IOException {
+        ensureOpen();
+        Pointer message = pendingMessage;
+        pendingMessage = null;
+        if (message != null) {
             nativeAccess.releaseMessage(message);
         }
     }
@@ -281,10 +317,10 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
     }
 
     private void handleDebugOutput(int type, String message) {
-        if (message == null || message.isBlank()) {
+        if (message == null || message.trim().isEmpty()) {
             return;
         }
-        String clean = message.strip();
+        String clean = message.trim();
         if (type <= 2) {
             E4steamClient.LOGGER.warn("Steam Networking Sockets: {}", clean);
         } else {
@@ -396,7 +432,13 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
         private JnaNativeAccess(Path steamApiLibrary) throws IOException {
             Objects.requireNonNull(steamApiLibrary, "steamApiLibrary");
             try {
-                api = Native.load(steamApiLibrary.toAbsolutePath().normalize().toString(), FlatApi.class);
+                // loadLibrary exists in both Minecraft's old bundled JNA 3.x
+                // and current JNA. Native.load was added later and crashes on
+                // Forge 1.7.10/1.8.9 when the launcher provides JNA first.
+                api = (FlatApi) Native.loadLibrary(
+                        steamApiLibrary.toAbsolutePath().normalize().toString(),
+                        FlatApi.class
+                );
                 messages = api.SteamAPI_SteamNetworkingMessages_SteamAPI_v002();
                 utils = api.SteamAPI_SteamNetworkingUtils_SteamAPI_v004();
             } catch (UnsatisfiedLinkError | RuntimeException exception) {

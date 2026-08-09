@@ -37,6 +37,23 @@ class SteamBridgeRegistryTest {
     }
 
     @Test
+    void clearingRegistryReleasesExactlyItsOccupiedCapacity() {
+        SteamBridgeRegistry<String, String> registry = new SteamBridgeRegistry<>(1);
+        SteamBridgeRegistry.Key first = new SteamBridgeRegistry.Key(10, 1);
+        SteamBridgeRegistry.Key second = new SteamBridgeRegistry.Key(10, 2);
+        SteamBridgeRegistry.Key third = new SteamBridgeRegistry.Key(10, 3);
+
+        assertEquals(SteamBridgeRegistry.Registration.REGISTERED,
+                registry.register(first, "first", () -> true));
+        registry.clear();
+        assertFalse(registry.remove(first, "first"));
+        assertEquals(SteamBridgeRegistry.Registration.REGISTERED,
+                registry.register(second, "second", () -> true));
+        assertEquals(SteamBridgeRegistry.Registration.CAPACITY,
+                registry.register(third, "third", () -> true));
+    }
+
+    @Test
     void refusesRegistrationAfterRuntimeBecomesUnavailable() {
         SteamBridgeRegistry<String, String> registry = new SteamBridgeRegistry<>(1);
         assertEquals(SteamBridgeRegistry.Registration.UNAVAILABLE,

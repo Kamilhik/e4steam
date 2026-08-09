@@ -4,6 +4,7 @@ import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import link.e4steam.Agnos;
+import link.e4steam.Config;
 import link.e4steam.Mirror;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.commands.BanListCommands;
@@ -19,7 +20,9 @@ public class BanListCommandsMixin {
     private static ArgumentBuilder<CommandSourceStack, LiteralArgumentBuilder<CommandSourceStack>> allowOwner(LiteralArgumentBuilder<CommandSourceStack> instance, Predicate<CommandSourceStack> predicate) {
         return instance.requires(src -> {
             try {
-                if (!Agnos.isClient()) return predicate.test(src);
+                if (!Agnos.isClient() || !Config.INSTANCE.restoreDedicatedCommands.value()) {
+                    return predicate.test(src);
+                }
                 if (Mirror.isSingleplayerOwner(src.getServer(), src.getPlayerOrException()))
                     return true;
             } catch (CommandSyntaxException ignored) {

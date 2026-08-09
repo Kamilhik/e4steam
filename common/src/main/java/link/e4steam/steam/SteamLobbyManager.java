@@ -8,6 +8,7 @@ import com.codedisaster.steamworks.SteamMatchmaking;
 import com.codedisaster.steamworks.SteamMatchmakingCallback;
 import com.codedisaster.steamworks.SteamNativeHandle;
 import com.codedisaster.steamworks.SteamResult;
+import link.e4steam.Agnos;
 import link.e4steam.E4steamClient;
 import link.e4steam.MinecraftVersion;
 import link.e4steam.Mirror;
@@ -15,9 +16,9 @@ import link.e4steam.Mirror;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.LongConsumer;
 
@@ -33,6 +34,7 @@ final class SteamLobbyManager implements AutoCloseable {
     private static final String PROTOCOL_VERSION = Byte.toString(SteamProtocol.VERSION);
     private static final String LOBBY_CONNECT_PREFIX = "e4steam-lobby:";
     private static final long GUEST_JOIN_TIMEOUT_MILLIS = 30_000;
+    private static final long CANCELED_JOIN_TOMBSTONE_MILLIS = 60_000;
 
     private final SteamRuntime runtime;
     private final String minecraftVersion = MinecraftVersion.current();
@@ -60,7 +62,7 @@ final class SteamLobbyManager implements AutoCloseable {
     private long requestedLobbyId;
     private long requestedFriendId;
     private long requestedJoinDeadlineMillis;
-    private final Set<Long> canceledJoinLobbyIds = new HashSet<>();
+    private final Map<Long, Long> canceledJoinLobbyDeadlines = new HashMap<>();
 
     SteamLobbyManager(SteamRuntime runtime) {
         this.runtime = runtime;
@@ -80,7 +82,7 @@ final class SteamLobbyManager implements AutoCloseable {
                 if (direct.isPresent()
                         && direct.get().steamId() == friendId
                         && friends.getFriendRelationship(friend) == SteamFriends.FriendRelationship.Friend) {
-                    E4steamClient.acceptSteamInvite(connect, friends.getFriendPersonaName(friend));
+                    E4steamClient.acceptDirectSteamInvite(connect, friends.getFriendPersonaName(friend));
                     return;
                 }
                 if (!connect.startsWith(LOBBY_CONNECT_PREFIX)) {
@@ -214,6 +216,15 @@ final class SteamLobbyManager implements AutoCloseable {
         if (hostLobbyOwner != owner) {
             throw new IOException("Steam lobby is not ready");
         }
+        // On Linux the overlay is injected when Steam launches the game. In
+        // e4steam Minecraft is intentionally started by its normal launcher,
+        // so invoking the native invite dialog can crash some Steam/Linux
+        // combinations. Open the desktop Steam friends UI instead; lobby rich
+        // presence remains active and friends can use Join Game from there.
+        if (isLinux()) {
+            openLinuxSteamFriends();
+            return;
+        }
         requireOverlay();
         if (hostLobbyId == 0) {
             openFriendsOverlayCompat();
@@ -223,6 +234,10 @@ final class SteamLobbyManager implements AutoCloseable {
     }
 
     void openFriendsOverlay() throws IOException {
+        if (isLinux()) {
+            openLinuxSteamFriends();
+            return;
+        }
         requireOverlay();
         openFriendsOverlayCompat();
     }
@@ -242,11 +257,44 @@ final class SteamLobbyManager implements AutoCloseable {
     }
 
     void forEachKnownSessionPeer(LongConsumer consumer) {
+        // Some Steam client builds omit the session-request callback. Platforms
+        // that opt in accept only known social peers while a lobby/world is
+        // active; handleOpen still authenticates the secret endpoint token and
+        // applies the world's friend/invite policy before opening localhost.
+        if (!Agnos.proactivelyAcceptSteamPeerSessions()) {
+            return;
+        }
+
         if (guestLobbyId != 0 && guestHostSteamId != 0) {
             consumer.accept(guestHostSteamId);
         }
 
-        if (hostLobbyOwner == null || hostLobbyId == 0) {
+        if (hostLobbyOwner == null) {
+            return;
+        }
+
+        // Steam Networking Messages does not reliably deliver its session-request
+        // callback on every Steam client build. For a friends-only world, pre-accept
+        // Steam friends so a copied short address can deliver its OPEN frame. Steam's
+        // reported game ID is deliberately not used here: after leaving a connection,
+        // some clients report no current game even though the e4steam runtime is still
+        // alive. This grants no world access: SteamRuntime.handleOpen still checks the
+        // current address token and friendship before opening a localhost bridge.
+        if (preAcceptsFriendsForDirectAddress(hostLobbyAccessMode)) {
+            int friendCount = friends.getFriendCount(SteamFriends.FriendFlags.Immediate);
+            for (int index = 0; index < friendCount; index++) {
+                SteamID friend = friends.getFriendByIndex(index, SteamFriends.FriendFlags.Immediate);
+                if (friend == null) {
+                    continue;
+                }
+                long remoteSteamId = SteamNativeHandle.getNativeHandle(friend);
+                if (remoteSteamId != 0 && remoteSteamId != runtime.steamIdValue()) {
+                    consumer.accept(remoteSteamId);
+                }
+            }
+        }
+
+        if (hostLobbyId == 0) {
             return;
         }
         SteamID lobbyId = SteamID.createFromNativeHandle(hostLobbyId);
@@ -263,6 +311,10 @@ final class SteamLobbyManager implements AutoCloseable {
                 consumer.accept(remoteSteamId);
             }
         }
+    }
+
+    static boolean preAcceptsFriendsForDirectAddress(SteamAccessMode accessMode) {
+        return accessMode == SteamAccessMode.FRIENDS_ONLY;
     }
 
     boolean keepsRuntimeAlive() {
@@ -311,6 +363,7 @@ final class SteamLobbyManager implements AutoCloseable {
     }
 
     void cleanup(long now) {
+        canceledJoinLobbyDeadlines.entrySet().removeIf(entry -> entry.getValue() <= now);
         if (requestedLobbyId != 0 && requestedJoinDeadlineMillis <= now) {
             leaveGuestLobby();
             E4steamClient.showSteamJoinFailure(Mirror.translatable("text.e4steam_minecraft.joinLobbyTimeout"));
@@ -515,15 +568,43 @@ final class SteamLobbyManager implements AutoCloseable {
         }
     }
 
+    private static boolean isLinux() {
+        return System.getProperty("os.name", "")
+                .toLowerCase(java.util.Locale.ROOT)
+                .contains("linux");
+    }
+
+    private static void openLinuxSteamFriends() throws IOException {
+        String uri = "steam://open/friends";
+        String[][] commands = new String[][]{
+                {"xdg-open", uri},
+                {"gio", "open", uri},
+                {"steam", uri}
+        };
+        IOException lastFailure = null;
+        for (String[] command : commands) {
+            try {
+                new ProcessBuilder(command).start();
+                return;
+            } catch (IOException exception) {
+                lastFailure = exception;
+            }
+        }
+        throw new IOException("Could not open the Steam friends window on Linux", lastFailure);
+    }
+
     private void requestJoin(SteamID lobby, SteamID friend) {
         long lobbyId = SteamNativeHandle.getNativeHandle(lobby);
         if (lobbyId == 0 || (hostLobbyOwner != null && hostLobbyId == lobbyId)) {
             return;
         }
-        if (canceledJoinLobbyIds.contains(lobbyId)) {
+        long now = System.currentTimeMillis();
+        Long canceledUntil = canceledJoinLobbyDeadlines.get(lobbyId);
+        if (canceledUntil != null && canceledUntil > now) {
             E4steamClient.showSteamJoinFailure(Mirror.translatable("text.e4steam_minecraft.joinCancelPending"));
             return;
         }
+        canceledJoinLobbyDeadlines.remove(lobbyId);
         if (requestedLobbyId == lobbyId || guestLobbyId == lobbyId) {
             return;
         }
@@ -539,7 +620,7 @@ final class SteamLobbyManager implements AutoCloseable {
         }
         requestedLobbyId = lobbyId;
         requestedFriendId = SteamNativeHandle.getNativeHandle(friend);
-        requestedJoinDeadlineMillis = System.currentTimeMillis() + GUEST_JOIN_TIMEOUT_MILLIS;
+        requestedJoinDeadlineMillis = now + GUEST_JOIN_TIMEOUT_MILLIS;
         SteamAPICall call = matchmaking.joinLobby(lobby);
         if (call == null || !call.isValid()) {
             requestedLobbyId = 0;
@@ -551,7 +632,8 @@ final class SteamLobbyManager implements AutoCloseable {
 
     private void handleLobbyEnter(SteamID lobby, SteamMatchmaking.ChatRoomEnterResponse response) {
         long lobbyId = SteamNativeHandle.getNativeHandle(lobby);
-        if (canceledJoinLobbyIds.remove(lobbyId)) {
+        Long canceledUntil = canceledJoinLobbyDeadlines.remove(lobbyId);
+        if (canceledUntil != null && canceledUntil > System.currentTimeMillis()) {
             matchmaking.leaveLobby(lobby);
             return;
         }
@@ -600,7 +682,7 @@ final class SteamLobbyManager implements AutoCloseable {
         String protocol = matchmaking.getLobbyData(lobby, KEY_PROTOCOL);
         String minecraft = matchmaking.getLobbyData(lobby, KEY_MINECRAFT);
         String endpoint = matchmaking.getLobbyData(lobby, KEY_ENDPOINT);
-        if (protocol == null || protocol.isBlank() || endpoint == null || endpoint.isBlank()) {
+        if (protocol == null || protocol.trim().isEmpty() || endpoint == null || endpoint.trim().isEmpty()) {
             matchmaking.requestLobbyData(lobby);
             return;
         }
@@ -610,7 +692,7 @@ final class SteamLobbyManager implements AutoCloseable {
             return;
         }
         Optional<SteamAddress> parsed = SteamAddress.tryParse(endpoint);
-        if (parsed.isEmpty() || parsed.get().steamId() != guestHostSteamId) {
+        if (!parsed.isPresent() || parsed.get().steamId() != guestHostSteamId) {
             leaveGuestLobby();
             E4steamClient.showSteamJoinFailure(Mirror.translatable("text.e4steam_minecraft.joinInvalidAddress"));
             return;
@@ -628,7 +710,7 @@ final class SteamLobbyManager implements AutoCloseable {
     private void requireOverlay() throws IOException {
         if (!runtime.isOverlayEnabledOnWorker()) {
             throw new IOException(
-                    "Steam Overlay is unavailable. Add your Minecraft launcher to Steam and launch it from Steam first"
+                    "Steam Overlay is unavailable. Open the Steam friends window and use Join Game instead"
             );
         }
     }
@@ -691,8 +773,13 @@ final class SteamLobbyManager implements AutoCloseable {
         } else if (requested != 0) {
             // LobbyEnter does not identify the JoinLobby API call. Preserve a
             // tombstone so a late callback cannot be accepted as a later
-            // retry for the same lobby in this Steam runtime generation.
-            canceledJoinLobbyIds.add(requested);
+            // retry for the same lobby until that callback can no longer be
+            // confused with a new request. Expire it so a lost callback does
+            // not block the same friend's invitation for the whole session.
+            canceledJoinLobbyDeadlines.put(
+                    requested,
+                    System.currentTimeMillis() + CANCELED_JOIN_TOMBSTONE_MILLIS
+            );
             matchmaking.leaveLobby(SteamID.createFromNativeHandle(requested));
         }
     }
@@ -720,7 +807,7 @@ final class SteamLobbyManager implements AutoCloseable {
             clearHostLobby();
         }
         leaveGuestLobby();
-        canceledJoinLobbyIds.clear();
+        canceledJoinLobbyDeadlines.clear();
         friends.clearRichPresence();
         matchmaking.dispose();
         friends.dispose();

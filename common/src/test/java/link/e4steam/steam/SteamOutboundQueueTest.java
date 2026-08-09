@@ -52,5 +52,8 @@ class SteamOutboundQueueTest {
         assertTrue(SteamRuntime.isRetryableSendFailure(SteamResult.NoConnection));
         assertTrue(SteamRuntime.isRetryableSendFailure(SteamResult.ServiceUnavailable));
         assertFalse(SteamRuntime.isRetryableSendFailure(SteamResult.InvalidParam));
+        assertEquals(SteamResult.UnknownErrorCode_NotImplementedByAPI, SteamRuntime.steamResult(-1));
+        assertEquals(SteamResult.UnknownErrorCode_NotImplementedByAPI, SteamRuntime.steamResult(4));
+        assertEquals(SteamResult.UnknownErrorCode_NotImplementedByAPI, SteamRuntime.steamResult(10_000));
     }
 }

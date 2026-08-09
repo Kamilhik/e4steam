@@ -9,6 +9,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Bridges one ordinary local TCP connection to one logical Steam P2P stream. */
@@ -18,6 +19,7 @@ final class SteamConnectionBridge {
     private static final int MAX_QUEUED_INBOUND_CHUNKS = 256;
     private static final long OUTBOUND_BACKPRESSURE_TIMEOUT_MILLIS = 30_000;
     private static final long OUTBOUND_BACKPRESSURE_RETRY_MILLIS = 10;
+    private static final long GRACEFUL_CLOSE_TIMEOUT_MILLIS = 2_000;
 
     private final SteamRuntime runtime;
     private final long remoteSteamId;
@@ -33,6 +35,12 @@ final class SteamConnectionBridge {
     private final AtomicBoolean outboundFinSubmitted = new AtomicBoolean();
     private final AtomicBoolean inboundFinQueued = new AtomicBoolean();
     private final AtomicBoolean inboundFinished = new AtomicBoolean();
+    private final AtomicBoolean outboundDataObserved = new AtomicBoolean();
+    private final AtomicBoolean inboundDataObserved = new AtomicBoolean();
+    private final AtomicBoolean peerReady = new AtomicBoolean();
+    private final AtomicLong gracefulCloseDeadlineMillis = new AtomicLong(Long.MAX_VALUE);
+    private final AtomicLong outboundNotBeforeMillis = new AtomicLong();
+    private final AtomicLong outboundDataFallbackMillis = new AtomicLong();
 
     private volatile Thread readerThread;
     private volatile Thread writerThread;
@@ -75,6 +83,46 @@ final class SteamConnectionBridge {
 
     boolean isClosed() {
         return closed.get();
+    }
+
+    void delayOutboundUntil(long deadlineMillis) {
+        outboundNotBeforeMillis.accumulateAndGet(deadlineMillis, Math::max);
+    }
+
+    boolean isOutboundReady(long nowMillis) {
+        return nowMillis >= outboundNotBeforeMillis.get();
+    }
+
+    void waitForPeerReadyUntil(long fallbackMillis) {
+        outboundDataFallbackMillis.accumulateAndGet(fallbackMillis, Math::max);
+    }
+
+    void markPeerReady() {
+        peerReady.set(true);
+    }
+
+    boolean isOutboundDataReady(long nowMillis) {
+        return isPeerReadyOrFallbackReached(
+                outboundDataFallbackMillis.get(),
+                peerReady.get(),
+                nowMillis
+        );
+    }
+
+    static boolean isPeerReadyOrFallbackReached(
+            long fallbackMillis,
+            boolean peerReady,
+            long nowMillis
+    ) {
+        return fallbackMillis == 0 || peerReady || nowMillis >= fallbackMillis;
+    }
+
+    boolean markFirstOutboundData() {
+        return outboundDataObserved.compareAndSet(false, true);
+    }
+
+    boolean markFirstInboundData() {
+        return inboundDataObserved.compareAndSet(false, true);
     }
 
     void start() {
@@ -121,6 +169,7 @@ final class SteamConnectionBridge {
         if (closed.get() || !inboundFinQueued.compareAndSet(false, true)) {
             return;
         }
+        beginGracefulClose();
         if (!inbound.offer(InboundFin.INSTANCE)) {
             close(true);
         }
@@ -190,11 +239,12 @@ final class SteamConnectionBridge {
     private void readLoop() {
         byte[] buffer = new byte[SteamProtocol.DATA_CHUNK_SIZE];
         try {
-            var input = socket.getInputStream();
+            java.io.InputStream input = socket.getInputStream();
             while (!closed.get()) {
                 int read = input.read(buffer);
                 if (read < 0) {
                     if (outboundFinQueued.compareAndSet(false, true)) {
+                        beginGracefulClose();
                         if (!runtime.sendFin(this)) {
                             close(true);
                         }
@@ -237,10 +287,11 @@ final class SteamConnectionBridge {
 
     private void writeLoop() {
         try {
-            var output = socket.getOutputStream();
+            java.io.OutputStream output = socket.getOutputStream();
             while (!closed.get()) {
                 InboundFrame frame = inbound.take();
-                if (frame instanceof InboundData data) {
+                if (frame instanceof InboundData) {
+                    InboundData data = (InboundData) frame;
                     inboundDataSlots.release();
                     output.write(data.payload());
                     output.flush();
@@ -269,6 +320,27 @@ final class SteamConnectionBridge {
         }
     }
 
+    void closeIfGracefulCloseTimedOut(long nowMillis) {
+        long deadline = gracefulCloseDeadlineMillis.get();
+        if (!closed.get() && isGracefulCloseExpired(deadline, nowMillis)) {
+            E4steamClient.LOGGER.debug(
+                    "Forcing cleanup of stale Steam bridge {}:{} after graceful FIN timeout",
+                    Long.toUnsignedString(remoteSteamId),
+                    Integer.toUnsignedString(connectionId)
+            );
+            close(true);
+        }
+    }
+
+    private void beginGracefulClose() {
+        long deadline = System.currentTimeMillis() + GRACEFUL_CLOSE_TIMEOUT_MILLIS;
+        gracefulCloseDeadlineMillis.accumulateAndGet(deadline, Math::min);
+    }
+
+    static boolean isGracefulCloseExpired(long deadlineMillis, long nowMillis) {
+        return deadlineMillis != Long.MAX_VALUE && nowMillis >= deadlineMillis;
+    }
+
     private Thread daemonThread(Runnable action, String role) {
         Thread thread = new Thread(
                 action,
@@ -281,7 +353,14 @@ final class SteamConnectionBridge {
     private interface InboundFrame {
     }
 
-    private record InboundData(byte[] payload) implements InboundFrame {
+    private static final class InboundData implements InboundFrame {
+        private final byte[] payload;
+
+        private InboundData(byte[] payload) {
+            this.payload = payload;
+        }
+
+        private byte[] payload() { return payload; }
     }
 
     private enum InboundFin implements InboundFrame {

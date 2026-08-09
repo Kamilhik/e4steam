@@ -123,9 +123,10 @@ public final class SteamAddress {
         if (this == other) {
             return true;
         }
-        if (!(other instanceof SteamAddress that)) {
+        if (!(other instanceof SteamAddress)) {
             return false;
         }
+        SteamAddress that = (SteamAddress) other;
         return steamId == that.steamId && Arrays.equals(token, that.token);
     }
 

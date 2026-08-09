@@ -4,6 +4,7 @@ import link.e4steam.HexCodec;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,6 +26,12 @@ class SteamProtocolTest {
                 new byte[]{VoiceChatUdpEndpoint.CLIENT_PORT_SAME_AS_SERVER, 0x5f, (byte) 0x86},
                 SteamProtocol.encodeOpenAck(41, endpoint)
         );
+        assertFrame(
+                SteamProtocol.BRIDGE_READY,
+                41,
+                new byte[0],
+                SteamProtocol.encodeBridgeReady(41)
+        );
 
         byte[] data = "minecraft-stream".getBytes();
         assertFrame(SteamProtocol.DATA, -7, data, SteamProtocol.encodeData(-7, data));
@@ -41,12 +48,36 @@ class SteamProtocolTest {
         assertNull(SteamProtocol.decode(ByteBuffer.wrap(valid)));
 
         byte[] legacyTransport = SteamProtocol.encodeFin(5);
-        legacyTransport[Integer.BYTES] = 2;
+        legacyTransport[Integer.BYTES] = 3;
         assertNull(SteamProtocol.decode(ByteBuffer.wrap(legacyTransport)));
 
         byte[] zeroId = SteamProtocol.encodeFin(5);
         ByteBuffer.wrap(zeroId).putInt(SteamProtocol.HEADER_SIZE - Integer.BYTES, 0);
         assertNull(SteamProtocol.decode(ByteBuffer.wrap(zeroId)));
+    }
+
+    @Test
+    void preservesLargeForgeHandshakeDataWithoutPrivateCompression() {
+        byte[] data = new byte[SteamProtocol.DATA_CHUNK_SIZE];
+        Arrays.fill(data, (byte) 'R');
+        byte[] encoded = SteamProtocol.encodeData(71, data);
+
+        assertEquals(0, ByteBuffer.wrap(encoded).getShort(Integer.BYTES + 2));
+        assertFrame(SteamProtocol.DATA, 71, data, encoded);
+    }
+
+    @Test
+    void rejectsCorruptCompressedData() {
+        byte[] encoded = ByteBuffer.allocate(SteamProtocol.HEADER_SIZE + Integer.BYTES * 2)
+                .putInt(SteamProtocol.MAGIC)
+                .put(SteamProtocol.VERSION)
+                .put(SteamProtocol.DATA)
+                .putShort((short) 1)
+                .putInt(72)
+                .putInt(4096)
+                .putInt(0xDEADBEEF)
+                .array();
+        assertNull(SteamProtocol.decode(ByteBuffer.wrap(encoded)));
     }
 
     @Test

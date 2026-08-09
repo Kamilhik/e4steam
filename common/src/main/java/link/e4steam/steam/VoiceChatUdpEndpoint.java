@@ -93,7 +93,7 @@ final class VoiceChatUdpEndpoint {
                 return 0;
             }
             Object result = server.getClass().getMethod("getPort").invoke(server);
-            return result instanceof Number number ? number.intValue() : 0;
+            return result instanceof Number ? ((Number) result).intValue() : 0;
         } catch (ClassNotFoundException ignored) {
             return 0;
         } catch (ReflectiveOperationException | LinkageError exception) {
@@ -111,7 +111,7 @@ final class VoiceChatUdpEndpoint {
             return new PlasmoPort(false, 0);
         }
 
-        for (String fileName : List.of("server.toml", "config.toml")) {
+        for (String fileName : java.util.Arrays.asList("server.toml", "config.toml")) {
             Integer configured = readHostPort(configFolder.resolve(fileName));
             if (configured != null) {
                 return new PlasmoPort(true, configured);
@@ -127,7 +127,7 @@ final class VoiceChatUdpEndpoint {
         try {
             boolean hostSection = false;
             for (String rawLine : Files.readAllLines(path)) {
-                String line = rawLine.strip();
+                String line = rawLine.trim();
                 if (line.startsWith("[") && line.endsWith("]")) {
                     hostSection = line.equals("[host]");
                     continue;
@@ -139,7 +139,7 @@ final class VoiceChatUdpEndpoint {
                 if (equals < 0) {
                     continue;
                 }
-                String value = line.substring(equals + 1).split("#", 2)[0].strip();
+                String value = line.substring(equals + 1).split("#", 2)[0].trim();
                 int port = Integer.parseInt(value);
                 return port >= 0 && port <= 65535 ? port : null;
             }
@@ -163,6 +163,16 @@ final class VoiceChatUdpEndpoint {
         return loader == null ? VoiceChatUdpEndpoint.class.getClassLoader() : loader;
     }
 
-    private record PlasmoPort(boolean detected, int port) {
+    private static final class PlasmoPort {
+        private final boolean detected;
+        private final int port;
+
+        private PlasmoPort(boolean detected, int port) {
+            this.detected = detected;
+            this.port = port;
+        }
+
+        private boolean detected() { return detected; }
+        private int port() { return port; }
     }
 }

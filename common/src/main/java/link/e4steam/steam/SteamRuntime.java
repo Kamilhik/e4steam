@@ -18,6 +18,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -32,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Owns Steamworks for the Minecraft process. Every native networking call is
@@ -62,6 +64,8 @@ public final class SteamRuntime {
     private static final long IDLE_SESSION_MAX_DRAIN_MILLIS = 2_000;
     private static final int LOOPBACK_CONNECT_TIMEOUT_MILLIS = 100;
     private static final long LOOPBACK_FAILURE_BACKOFF_MILLIS = 2_000;
+    private static final long FORGE_BRIDGE_READY_FALLBACK_MILLIS = 2_000;
+    private static final long CLIENT_RECONNECT_GRACE_MILLIS = 3_000;
     private static final Duration START_TIMEOUT = Duration.ofSeconds(30);
     private static final Duration STEAM_TASK_TIMEOUT = Duration.ofSeconds(10);
     private static final long RUNTIME_IDLE_SHUTDOWN_MILLIS = 1_000;
@@ -82,6 +86,12 @@ public final class SteamRuntime {
     private final SteamBridgeRegistry<SteamConnectionBridge, SteamUdpBridge> bridgeRegistry =
             new SteamBridgeRegistry<>(MAX_ACTIVE_CONNECTIONS);
     private final ConcurrentHashMap<Long, Long> pendingPeers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, Long> clientReconnectDeadlines = new ConcurrentHashMap<>();
+    // Host bridges authenticate an exact localhost source port. Keep this
+    // fact independent from lobby/runtime state because Forge may perform its
+    // login check on another thread while those states are transitioning.
+    private final ConcurrentHashMap<Integer, AuthenticatedLoopbackPeer> authenticatedLoopbackPeers =
+            new ConcurrentHashMap<>();
     // long[0] = next check, long[1] = forced close. An array keeps this
     // state in SteamRuntime itself and avoids an extra lazy-loaded class on
     // Forge 1.17/1.18.
@@ -109,6 +119,8 @@ public final class SteamRuntime {
     private long nextKnownPeerAcceptAtMillis;
     private boolean permanentlyShutdown;
     private int activityCount;
+    private final AtomicBoolean launchStartRequested = new AtomicBoolean();
+    private volatile Activity launchActivity;
 
     SteamRuntime(SteamApi api, boolean installShutdownHook) {
         steamLifecycle = new SteamLifecycle(api);
@@ -120,6 +132,38 @@ public final class SteamRuntime {
 
     public static SteamRuntime get() {
         return INSTANCE;
+    }
+
+    /** Starts Spacewar with Minecraft and keeps it active for this game process. */
+    public void startAtGameLaunchAsync() {
+        if (!Agnos.isClient() || !launchStartRequested.compareAndSet(false, true)) {
+            return;
+        }
+        Thread starter = new Thread(() -> {
+            Activity activity = null;
+            try {
+                activity = acquireActivity();
+                awaitReady();
+                synchronized (lifecycleLock) {
+                    if (status != Status.RUNNING || !launchStartRequested.get()) {
+                        throw new IOException("Steam stopped during automatic startup");
+                    }
+                    launchActivity = activity;
+                }
+                E4steamClient.LOGGER.info("Steam/Spacewar started with Minecraft");
+            } catch (Throwable throwable) {
+                if (activity != null) {
+                    activity.close();
+                }
+                launchStartRequested.set(false);
+                E4steamClient.LOGGER.warn(
+                        "Steam was not available at Minecraft startup; e4steam can retry later",
+                        throwable
+                );
+            }
+        }, "e4steam-steam-launch-start");
+        starter.setDaemon(true);
+        starter.start();
     }
 
     /**
@@ -216,6 +260,12 @@ public final class SteamRuntime {
             Throwable cause = exception.getCause() == null ? exception : exception.getCause();
             throw new IOException("Steam initialization failed: " + cause.getMessage(), cause);
         }
+        // If Steam was unavailable during Minecraft startup but became
+        // available for a later command/screen operation, promote that
+        // successful recovery to the normal process-lifetime lease.
+        if (!launchStartRequested.get()) {
+            startAtGameLaunchAsync();
+        }
     }
 
     public String statusSummary() {
@@ -244,15 +294,17 @@ public final class SteamRuntime {
      */
     public long authenticatedMinecraftPeer(SocketAddress remoteAddress) {
         int remotePort = SteamLoopbackAuthentication.loopbackPort(remoteAddress);
-        if (remotePort < 0 || hostRegistration == null || status != Status.RUNNING) {
+        if (remotePort < 0) {
             return 0;
         }
-        for (SteamConnectionBridge bridge : bridgeRegistry.snapshot()) {
-            if (bridge.isHostSide() && !bridge.isClosed() && bridge.localPort() == remotePort) {
-                return bridge.remoteSteamId();
+        AuthenticatedLoopbackPeer peer = authenticatedLoopbackPeers.get(remotePort);
+        if (peer == null || peer.bridge().isClosed()) {
+            if (peer != null) {
+                authenticatedLoopbackPeers.remove(remotePort, peer);
             }
+            return 0;
         }
-        return 0;
+        return peer.remoteSteamId();
     }
 
     void startHosting(
@@ -373,10 +425,7 @@ public final class SteamRuntime {
         });
     }
 
-    /**
-     * Ends the restartable Steam generation when Minecraft is leaving the
-     * e4steam path for an ordinary multiplayer server.
-     */
+    /** Clears e4steam connections before an ordinary multiplayer connection. */
     public void stopForDirectServerConnection() {
         SteamClientBridge.cancelPending();
         synchronized (lifecycleLock) {
@@ -389,14 +438,9 @@ public final class SteamRuntime {
         pendingPeers.clear();
         idleSessionDeadlines.clear();
 
-        synchronized (lifecycleLock) {
-            WorkerGeneration current = generation;
-            if (current != null) {
-                current.stopRequested.set(true);
-                status = Status.STOPPING;
-                current.worker.interrupt();
-            }
-        }
+        // The launch activity intentionally keeps Spacewar running for the
+        // lifetime of Minecraft. If startup failed, normal idle shutdown still
+        // stops any temporary runtime generation after bridges are released.
     }
 
     public CompletableFuture<Boolean> beginGuestConnect(String endpoint) {
@@ -439,13 +483,41 @@ public final class SteamRuntime {
         SteamBridgeRegistry.Key key = new SteamBridgeRegistry.Key(remoteSteamId, connectionId);
         SteamBridgeRegistry.Registration result = registerBridge(key, bridge);
         if (result != SteamBridgeRegistry.Registration.REGISTERED) {
-            String reason = switch (result) {
-                case CAPACITY -> "Too many active Steam bridges";
-                case COLLISION -> "Steam connection identifier collision";
-                case UNAVAILABLE -> "Steam runtime stopped while opening the bridge";
-                default -> "Could not register the Steam bridge";
-            };
+            String reason;
+            switch (result) {
+                case CAPACITY:
+                    reason = "Too many active Steam bridges";
+                    break;
+                case COLLISION:
+                    reason = "Steam connection identifier collision";
+                    break;
+                case UNAVAILABLE:
+                    reason = "Steam runtime stopped while opening the bridge";
+                    break;
+                default:
+                    reason = "Could not register the Steam bridge";
+            }
             throw new IOException(reason);
+        }
+        long reconnectDeadline = clientReconnectDeadlines.getOrDefault(remoteSteamId, 0L);
+        boolean olderClientBridgeExists = bridgeRegistry.any(
+                candidate -> candidate != bridge
+                        && !candidate.isHostSide()
+                        && candidate.remoteSteamId() == remoteSteamId
+        );
+        if (olderClientBridgeExists) {
+            reconnectDeadline = Math.max(
+                    reconnectDeadline,
+                    System.currentTimeMillis() + CLIENT_RECONNECT_GRACE_MILLIS
+            );
+        }
+        clientReconnectDeadlines.remove(remoteSteamId);
+        if (reconnectDeadline > System.currentTimeMillis()) {
+            bridge.delayOutboundUntil(reconnectDeadline);
+            E4steamClient.LOGGER.info(
+                    "Delaying Steam reconnect to {} until the previous peer session is closed",
+                    Long.toUnsignedString(remoteSteamId)
+            );
         }
         submitSteamTaskIfRunning(() -> {
             SteamLobbyManager current = lobbyManager;
@@ -473,6 +545,16 @@ public final class SteamRuntime {
                 bridge.connectionId(),
                 SteamProtocol.encodeOpenAck(bridge.connectionId(), endpoint),
                 SteamOutboundQueue.Kind.OPEN_ACK,
+                bridge
+        );
+    }
+
+    private boolean sendBridgeReady(SteamConnectionBridge bridge) {
+        return enqueueControl(
+                bridge.remoteSteamId(),
+                bridge.connectionId(),
+                SteamProtocol.encodeBridgeReady(bridge.connectionId()),
+                SteamOutboundQueue.Kind.BRIDGE_READY,
                 bridge
         );
     }
@@ -594,6 +676,12 @@ public final class SteamRuntime {
     }
 
     void unregister(SteamConnectionBridge bridge) {
+        if (bridge.isHostSide()) {
+            AuthenticatedLoopbackPeer peer = authenticatedLoopbackPeers.get(bridge.localPort());
+            if (peer != null && peer.bridge() == bridge) {
+                authenticatedLoopbackPeers.remove(bridge.localPort(), peer);
+            }
+        }
         closeUdpBridge(bridge);
         purgeOutbound(bridge);
         boolean removed = false;
@@ -613,6 +701,12 @@ public final class SteamRuntime {
             }
         }
         if (removed && !bridge.isHostSide()) {
+            if (!anotherBridgeExists) {
+                clientReconnectDeadlines.put(
+                        bridge.remoteSteamId(),
+                        System.currentTimeMillis() + CLIENT_RECONNECT_GRACE_MILLIS
+                );
+            }
             boolean finalAnotherBridgeExists = anotherBridgeExists;
             submitSteamTaskIfRunning(() -> {
                 SteamLobbyManager current = lobbyManager;
@@ -732,6 +826,7 @@ public final class SteamRuntime {
                 drainOutbound(sendBuffer);
                 receivePackets(receiveBuffer);
                 cleanupPeerSessions();
+                cleanupGracefulBridgeClosures(System.currentTimeMillis());
                 SteamLobbyManager currentSocial = lobbyManager;
                 if (currentSocial != null) {
                     currentSocial.cleanup(System.currentTimeMillis());
@@ -770,6 +865,7 @@ public final class SteamRuntime {
                 unregister(bridge);
             }
             bridgeRegistry.clear();
+            authenticatedLoopbackPeers.clear();
             clearOutbound();
             pendingPeers.clear();
             idleSessionDeadlines.clear();
@@ -821,15 +917,24 @@ public final class SteamRuntime {
                     ? new IOException("Steam runtime stopped")
                     : workerFailure);
             localSteamId = 0;
+            Activity failedLaunchActivity = null;
             synchronized (lifecycleLock) {
                 if (generation == currentGeneration) {
                     generation = null;
                     workerThread = null;
                 }
+                if (workerFailure != null) {
+                    failedLaunchActivity = launchActivity;
+                    launchActivity = null;
+                    launchStartRequested.set(false);
+                }
                 if (workerFailure == null) {
                     status = Status.STOPPED;
                 }
                 lifecycleLock.notifyAll();
+            }
+            if (failedLaunchActivity != null) {
+                failedLaunchActivity.close();
             }
         }
     }
@@ -889,7 +994,9 @@ public final class SteamRuntime {
         try {
             return submitSteamTask(action);
         } catch (IOException exception) {
-            return CompletableFuture.failedFuture(exception);
+            CompletableFuture<T> failed = new CompletableFuture<>();
+            failed.completeExceptionally(exception);
+            return failed;
         }
     }
 
@@ -924,8 +1031,8 @@ public final class SteamRuntime {
             throw new IOException("Interrupted while " + operation, exception);
         } catch (ExecutionException exception) {
             Throwable cause = exception.getCause() == null ? exception : exception.getCause();
-            if (cause instanceof IOException ioException) {
-                throw ioException;
+            if (cause instanceof IOException) {
+                throw (IOException) cause;
             }
             throw new IOException("Steam failed while " + operation + ": " + cause.getMessage(), cause);
         }
@@ -995,12 +1102,20 @@ public final class SteamRuntime {
                         }
                         synchronized (peerSessionLock) {
                             SteamLobbyManager currentSocial = lobbyManager;
-                            if (!hasBridgeForRemote(remoteId)
-                                    && (currentSocial == null || !currentSocial.mayAcceptPeer(remoteId))) {
+                            boolean bridgeExists = hasBridgeForRemote(remoteId);
+                            boolean hosting = hostRegistration != null;
+                            boolean knownSocialPeer = currentSocial != null
+                                    && currentSocial.mayAcceptPeer(remoteId);
+                            // Accepting the Steam transport does not grant world access.
+                            // handleOpen still validates the current secret token, social
+                            // policy, live world and guest limit before opening localhost.
+                            if (!shouldAcceptSessionRequest(
+                                    bridgeExists, hosting, knownSocialPeer
+                            )) {
                                 current.closePeer(remoteId);
                                 return;
                             }
-                            if (!hasBridgeForRemote(remoteId) && pendingPeers.size() >= MAX_PENDING_PEERS) {
+                            if (!bridgeExists && pendingPeers.size() >= MAX_PENDING_PEERS) {
                                 current.closePeer(remoteId);
                                 return;
                             }
@@ -1008,7 +1123,7 @@ public final class SteamRuntime {
                                 current.closePeer(remoteId);
                                 return;
                             }
-                            if (!hasBridgeForRemote(remoteId)) {
+                            if (!bridgeExists) {
                                 pendingPeers.put(
                                         remoteId,
                                         System.currentTimeMillis() + PENDING_PEER_TIMEOUT_MILLIS
@@ -1019,7 +1134,7 @@ public final class SteamRuntime {
 
                     @Override
                     public void onSessionFailed(long remoteId, int endReason, String detail) {
-                        if (detail.isBlank()) {
+                        if (detail.trim().isEmpty()) {
                             E4steamClient.LOGGER.warn(
                                     "Steam Networking Messages session with {} failed (reason {})",
                                     Long.toUnsignedString(remoteId),
@@ -1039,7 +1154,7 @@ public final class SteamRuntime {
                             idleSessionDeadlines.remove(remoteId);
                             failedBridges = new ArrayList<>(bridgeRegistry.snapshot().stream()
                                     .filter(bridge -> bridge.remoteSteamId() == remoteId)
-                                    .toList());
+                                    .collect(Collectors.toList()));
                         }
                         SteamNetworkingMessagesTransport current = transport;
                         if (current != null) {
@@ -1054,10 +1169,27 @@ public final class SteamRuntime {
         lobbyManager = new SteamLobbyManager(this);
     }
 
+    static boolean shouldAcceptSessionRequest(
+            boolean bridgeExists,
+            boolean hosting,
+            boolean knownSocialPeer
+    ) {
+        return bridgeExists || hosting || knownSocialPeer;
+    }
+
+    static boolean autoRestartsBrokenSession(
+            SteamOutboundQueue.Kind kind,
+            boolean platformRequiresRestart
+    ) {
+        return platformRequiresRestart
+                && (kind == SteamOutboundQueue.Kind.OPEN
+                || kind == SteamOutboundQueue.Kind.OPEN_ACK);
+    }
+
     private void ensureAppIdFile() throws IOException {
-        Path appIdFile = Path.of(System.getProperty("user.dir"), "steam_appid.txt").toAbsolutePath().normalize();
+        Path appIdFile = Paths.get(System.getProperty("user.dir"), "steam_appid.txt").toAbsolutePath().normalize();
         if (Files.exists(appIdFile)) {
-            String value = Files.readString(appIdFile, StandardCharsets.US_ASCII).trim();
+            String value = new String(Files.readAllBytes(appIdFile), StandardCharsets.US_ASCII).trim();
             if (!Integer.toString(APP_ID).equals(value)) {
                 throw new IOException(
                         "Refusing to overwrite " + appIdFile + "; expected App ID 480 but found '" + value + "'"
@@ -1066,10 +1198,9 @@ public final class SteamRuntime {
             return;
         }
 
-        Files.writeString(
+        Files.write(
                 appIdFile,
-                Integer.toString(APP_ID) + System.lineSeparator(),
-                StandardCharsets.US_ASCII,
+                (Integer.toString(APP_ID) + System.lineSeparator()).getBytes(StandardCharsets.US_ASCII),
                 StandardOpenOption.CREATE_NEW,
                 StandardOpenOption.WRITE
         );
@@ -1125,6 +1256,28 @@ public final class SteamRuntime {
                 return;
             }
 
+            SteamConnectionBridge queuedBridge = packet.bridge();
+            if (packet.kind() != SteamOutboundQueue.Kind.RESET
+                    && queuedBridge != null
+                    && !queuedBridge.isOutboundReady(now)) {
+                if (retryOutboundPacket != packet) {
+                    retryOutboundPacket = packet;
+                    retryOutboundDeadlineMillis = now + OUTBOUND_SEND_RETRY_TIMEOUT_MILLIS;
+                }
+                retryOutboundNotBeforeMillis = now + 10;
+                return;
+            }
+            if (packet.kind() == SteamOutboundQueue.Kind.DATA
+                    && queuedBridge != null
+                    && !queuedBridge.isOutboundDataReady(now)) {
+                if (retryOutboundPacket != packet) {
+                    retryOutboundPacket = packet;
+                    retryOutboundDeadlineMillis = now + OUTBOUND_SEND_RETRY_TIMEOUT_MILLIS;
+                }
+                retryOutboundNotBeforeMillis = now + 10;
+                return;
+            }
+
             SteamBridgeRegistry.Key key = new SteamBridgeRegistry.Key(
                     packet.remoteSteamId(),
                     packet.connectionId()
@@ -1137,47 +1290,82 @@ public final class SteamRuntime {
 
             buffer.clear();
             buffer.put(packet.payload()).flip();
+            boolean restartBrokenSession = autoRestartsBrokenSession(
+                    packet.kind(),
+                    Agnos.autoRestartBrokenSteamSessionForHandshake()
+            );
             int result = current.sendResult(
                     packet.remoteSteamId(),
                     buffer,
                     packet.kind() == SteamOutboundQueue.Kind.DATAGRAM,
+                    restartBrokenSession,
                     CHANNEL
             );
             boolean accepted = result == 1;
             SteamConnectionBridge packetBridge = packet.bridge();
             if (accepted) {
                 clearRetriedPacket(packet);
-            }
-            if (packet.kind() == SteamOutboundQueue.Kind.RESET && packetBridge != null) {
-                packetBridge.markResetSubmitted();
-            } else if (accepted && packet.kind() == SteamOutboundQueue.Kind.FIN && packetBridge != null) {
-                packetBridge.markFinSubmitted();
-            } else if (!accepted && packetBridge != null && packet.kind() != SteamOutboundQueue.Kind.DATAGRAM) {
-                SteamResult failure = SteamResult.byValue(result);
-                if (isRetryableSendFailure(failure)) {
-                    if (retryOutboundPacket != packet) {
-                        retryOutboundPacket = packet;
-                        retryOutboundDeadlineMillis = now + OUTBOUND_SEND_RETRY_TIMEOUT_MILLIS;
-                        E4steamClient.LOGGER.debug(
-                                "Steam applied outbound backpressure for {}; preserving and retrying {}",
-                                Long.toUnsignedString(packet.remoteSteamId()),
-                                packet.kind()
-                        );
-                    }
-                    if (now < retryOutboundDeadlineMillis) {
-                        retryOutboundNotBeforeMillis = now + OUTBOUND_SEND_RETRY_DELAY_MILLIS;
-                        return;
-                    }
-                    clearRetriedPacket(packet);
+                if (restartBrokenSession) {
+                    E4steamClient.LOGGER.info(
+                            "Submitted Forge Steam {} frame for bridge {}:{}",
+                            packet.kind(),
+                            Long.toUnsignedString(packet.remoteSteamId()),
+                            Integer.toUnsignedString(packet.connectionId())
+                    );
                 }
-                E4steamClient.LOGGER.warn(
-                        "Steam Networking Messages send to {} failed for {}: {} ({})",
-                        Long.toUnsignedString(packet.remoteSteamId()),
-                        packet.kind(),
-                        failure,
-                        result
-                );
-                packetBridge.close(false);
+                if (packet.kind() == SteamOutboundQueue.Kind.DATA
+                        && packetBridge != null
+                        && packetBridge.markFirstOutboundData()) {
+                    E4steamClient.LOGGER.info(
+                            "Sent first Minecraft DATA frame ({} bytes) to Steam user {}",
+                            packet.payload().length,
+                            Long.toUnsignedString(packet.remoteSteamId())
+                    );
+                }
+                if (packet.kind() == SteamOutboundQueue.Kind.RESET && packetBridge != null) {
+                    packetBridge.markResetSubmitted();
+                } else if (packet.kind() == SteamOutboundQueue.Kind.FIN && packetBridge != null) {
+                    packetBridge.markFinSubmitted();
+                }
+                continue;
+            }
+
+            if (packet.kind() == SteamOutboundQueue.Kind.DATAGRAM) {
+                continue;
+            }
+
+            SteamResult failure = steamResult(result);
+            if (isRetryableSendFailure(failure)) {
+                if (retryOutboundPacket != packet) {
+                    retryOutboundPacket = packet;
+                    retryOutboundDeadlineMillis = now + OUTBOUND_SEND_RETRY_TIMEOUT_MILLIS;
+                    E4steamClient.LOGGER.debug(
+                            "Steam applied outbound backpressure for {}; preserving and retrying {}",
+                            Long.toUnsignedString(packet.remoteSteamId()),
+                            packet.kind()
+                    );
+                }
+                if (now < retryOutboundDeadlineMillis) {
+                    retryOutboundNotBeforeMillis = now + OUTBOUND_SEND_RETRY_DELAY_MILLIS;
+                    return;
+                }
+                clearRetriedPacket(packet);
+            }
+            E4steamClient.LOGGER.warn(
+                    "Steam Networking Messages send to {} failed for {}: {} ({})",
+                    Long.toUnsignedString(packet.remoteSteamId()),
+                    packet.kind(),
+                    failure,
+                    result
+            );
+            if (packetBridge != null) {
+                if (packet.kind() == SteamOutboundQueue.Kind.RESET) {
+                    // RESET is queued only after close() has already marked
+                    // the bridge closed, so close(false) would be a no-op.
+                    packetBridge.markResetSubmitted();
+                } else {
+                    packetBridge.close(false);
+                }
             }
         }
     }
@@ -1243,6 +1431,14 @@ public final class SteamRuntime {
                 || result == SteamResult.ServiceUnavailable;
     }
 
+    static SteamResult steamResult(int resultCode) {
+        if (resultCode < 0) {
+            return SteamResult.UnknownErrorCode_NotImplementedByAPI;
+        }
+        SteamResult result = SteamResult.byValue(resultCode);
+        return result == null ? SteamResult.UnknownErrorCode_NotImplementedByAPI : result;
+    }
+
     private boolean isPacketCurrent(
             SteamOutboundQueue.Packet<SteamConnectionBridge> packet,
             SteamConnectionBridge currentBridge
@@ -1266,8 +1462,16 @@ public final class SteamRuntime {
                 return;
             }
 
-            if (size <= 0 || size > SteamProtocol.MAX_ACCEPTED_STEAM_PACKET_SIZE) {
+            if (size < 0) {
                 throw new IOException("Steam reported an invalid P2P packet size: " + size);
+            }
+            if (size > SteamProtocol.MAX_ACCEPTED_STEAM_PACKET_SIZE) {
+                current.discardPendingMessage();
+                E4steamClient.LOGGER.debug(
+                        "Discarded an oversized foreign Steam packet ({} bytes)",
+                        size
+                );
+                continue;
             }
 
             buffer.clear();
@@ -1295,35 +1499,70 @@ public final class SteamRuntime {
 
     private void dispatchFrame(long remoteSteamId, SteamProtocol.Frame frame) {
         SteamBridgeRegistry.Key key = new SteamBridgeRegistry.Key(remoteSteamId, frame.connectionId());
+        boolean forgeHandshakeDiagnostics = Agnos.autoRestartBrokenSteamSessionForHandshake();
+        if (forgeHandshakeDiagnostics
+                && (frame.type() == SteamProtocol.OPEN || frame.type() == SteamProtocol.OPEN_ACK)) {
+            E4steamClient.LOGGER.info(
+                    "Received Forge Steam {} frame for bridge {}:{}",
+                    frame.type() == SteamProtocol.OPEN ? "OPEN" : "OPEN_ACK",
+                    Long.toUnsignedString(remoteSteamId),
+                    Integer.toUnsignedString(frame.connectionId())
+            );
+        }
         switch (frame.type()) {
-            case SteamProtocol.OPEN -> handleOpen(remoteSteamId, key, frame.payload());
-            case SteamProtocol.OPEN_ACK -> handleOpenAck(key, frame.payload());
-            case SteamProtocol.DATA -> {
+            case SteamProtocol.OPEN:
+                handleOpen(remoteSteamId, key, frame.payload());
+                break;
+            case SteamProtocol.OPEN_ACK:
+                handleOpenAck(key, frame.payload());
+                break;
+            case SteamProtocol.BRIDGE_READY:
+                handleBridgeReady(key);
+                break;
+            case SteamProtocol.DATA: {
                 SteamConnectionBridge bridge = bridgeRegistry.get(key);
                 if (bridge != null) {
+                    if (bridge.markFirstInboundData()) {
+                        E4steamClient.LOGGER.info(
+                                "Received first Minecraft DATA frame ({} bytes) from Steam user {}",
+                                frame.payload().length,
+                                Long.toUnsignedString(remoteSteamId)
+                        );
+                    }
                     bridge.acceptSteamData(frame.payload());
+                } else if (forgeHandshakeDiagnostics) {
+                    E4steamClient.LOGGER.warn(
+                            "Ignored Forge DATA for unknown Steam bridge {}:{} ({} bytes)",
+                            Long.toUnsignedString(remoteSteamId),
+                            Integer.toUnsignedString(frame.connectionId()),
+                            frame.payload().length
+                    );
                 }
+                break;
             }
-            case SteamProtocol.FIN -> {
+            case SteamProtocol.FIN: {
                 SteamConnectionBridge bridge = bridgeRegistry.get(key);
                 if (bridge != null) {
                     bridge.acceptRemoteFin();
                 }
+                break;
             }
-            case SteamProtocol.RESET -> {
+            case SteamProtocol.RESET: {
                 SteamConnectionBridge bridge = bridgeRegistry.get(key);
                 if (bridge != null) {
                     bridge.resetFromRemote();
                 }
+                break;
             }
-            case SteamProtocol.DATAGRAM -> {
+            case SteamProtocol.DATAGRAM: {
                 SteamUdpBridge bridge = bridgeRegistry.getUdp(key);
                 if (bridge != null) {
                     bridge.acceptSteamDatagram(frame.payload());
                 }
+                break;
             }
-            default -> {
-            }
+            default:
+                break;
         }
     }
 
@@ -1342,6 +1581,30 @@ public final class SteamRuntime {
             );
         } catch (IllegalArgumentException exception) {
             bridge.close(true);
+            return;
+        }
+        if (Agnos.autoRestartBrokenSteamSessionForHandshake()
+                && !sendBridgeReady(bridge)) {
+            E4steamClient.LOGGER.debug(
+                    "Could not queue Forge bridge-ready confirmation for {}:{}; host fallback will be used",
+                    Long.toUnsignedString(key.remoteSteamId()),
+                    Integer.toUnsignedString(key.connectionId())
+            );
+        }
+    }
+
+    private void handleBridgeReady(SteamBridgeRegistry.Key key) {
+        SteamConnectionBridge bridge = bridgeRegistry.get(key);
+        if (bridge == null || !bridge.isHostSide() || bridge.isClosed()) {
+            return;
+        }
+        bridge.markPeerReady();
+        if (Agnos.autoRestartBrokenSteamSessionForHandshake()) {
+            E4steamClient.LOGGER.info(
+                    "Forge Steam bridge is ready for Minecraft data {}:{}",
+                    Long.toUnsignedString(key.remoteSteamId()),
+                    Integer.toUnsignedString(key.connectionId())
+            );
         }
     }
 
@@ -1410,12 +1673,35 @@ public final class SteamRuntime {
                 }
                 return;
             }
+            AuthenticatedLoopbackPeer authenticatedPeer = new AuthenticatedLoopbackPeer(
+                    remoteSteamId,
+                    bridge
+            );
+            AuthenticatedLoopbackPeer previousPeer = authenticatedLoopbackPeers.compute(
+                    bridge.localPort(),
+                    (port, existing) -> existing == null || existing.bridge().isClosed()
+                            ? authenticatedPeer
+                            : existing
+            );
+            if (previousPeer != null && previousPeer.bridge() != bridge) {
+                bridge.close(true);
+                E4steamClient.LOGGER.warn(
+                        "Refused Steam bridge because localhost port {} is already authenticated",
+                        bridge.localPort()
+                );
+                return;
+            }
             handedOff = true;
             if (hostRegistration != registration) {
                 bridge.close(true);
                 return;
             }
             startHostUdpBridge(bridge, registration.udpEndpoint());
+            if (Agnos.autoRestartBrokenSteamSessionForHandshake()) {
+                bridge.waitForPeerReadyUntil(
+                        System.currentTimeMillis() + FORGE_BRIDGE_READY_FALLBACK_MILLIS
+                );
+            }
             if (!sendOpenAck(bridge, registration.udpEndpoint())) {
                 bridge.close(true);
                 return;
@@ -1530,6 +1816,12 @@ public final class SteamRuntime {
         });
     }
 
+    private void cleanupGracefulBridgeClosures(long nowMillis) {
+        for (SteamConnectionBridge bridge : bridgeRegistry.snapshot()) {
+            bridge.closeIfGracefulCloseTimedOut(nowMillis);
+        }
+    }
+
     private long[] newIdleSessionDeadline() {
         long now = System.currentTimeMillis();
         return new long[]{
@@ -1562,13 +1854,45 @@ public final class SteamRuntime {
         STOPPED
     }
 
-    private record HostRegistration(
-            SteamSession owner,
-            int localPort,
-            VoiceChatUdpEndpoint udpEndpoint,
-            byte[] token,
-            SteamAccessMode accessMode
-    ) {
+    private static final class HostRegistration {
+        private final SteamSession owner;
+        private final int localPort;
+        private final VoiceChatUdpEndpoint udpEndpoint;
+        private final byte[] token;
+        private final SteamAccessMode accessMode;
+
+        private HostRegistration(
+                SteamSession owner,
+                int localPort,
+                VoiceChatUdpEndpoint udpEndpoint,
+                byte[] token,
+                SteamAccessMode accessMode
+        ) {
+            this.owner = owner;
+            this.localPort = localPort;
+            this.udpEndpoint = udpEndpoint;
+            this.token = token;
+            this.accessMode = accessMode;
+        }
+
+        private SteamSession owner() { return owner; }
+        private int localPort() { return localPort; }
+        private VoiceChatUdpEndpoint udpEndpoint() { return udpEndpoint; }
+        private byte[] token() { return token; }
+        private SteamAccessMode accessMode() { return accessMode; }
+    }
+
+    private static final class AuthenticatedLoopbackPeer {
+        private final long remoteSteamId;
+        private final SteamConnectionBridge bridge;
+
+        private AuthenticatedLoopbackPeer(long remoteSteamId, SteamConnectionBridge bridge) {
+            this.remoteSteamId = remoteSteamId;
+            this.bridge = bridge;
+        }
+
+        private long remoteSteamId() { return remoteSteamId; }
+        private SteamConnectionBridge bridge() { return bridge; }
     }
 
     /** A restart-safe lease that keeps Spacewar/Steamworks active while needed. */

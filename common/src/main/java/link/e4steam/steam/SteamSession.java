@@ -78,15 +78,19 @@ public final class SteamSession {
 
     public CompletableFuture<Void> openInviteOverlayAsync() {
         if (state != State.STARTED) {
-            return CompletableFuture.failedFuture(
-                    new IllegalStateException("The Steam world is not ready for invitations")
-            );
+            return failedFuture(new IllegalStateException("The Steam world is not ready for invitations"));
         }
         try {
             return SteamRuntime.get().openHostInviteOverlay(this);
         } catch (Throwable throwable) {
-            return CompletableFuture.failedFuture(throwable);
+            return failedFuture(throwable);
         }
+    }
+
+    private static <T> CompletableFuture<T> failedFuture(Throwable throwable) {
+        CompletableFuture<T> failed = new CompletableFuture<>();
+        failed.completeExceptionally(throwable);
+        return failed;
     }
 
     private void start() {
@@ -213,7 +217,7 @@ public final class SteamSession {
         try {
             String detail = throwable.getMessage();
             Component message = Mirror.translatable("text.e4steam_minecraft.error");
-            if (detail != null && !detail.isBlank()) {
+            if (detail != null && !detail.trim().isEmpty()) {
                 message = Mirror.append(message, Mirror.literal(": " + detail));
             }
             Component retryButton = Mirror.withStyle(

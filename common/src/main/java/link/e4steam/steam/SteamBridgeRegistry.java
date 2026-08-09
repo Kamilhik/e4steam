@@ -17,12 +17,37 @@ final class SteamBridgeRegistry<B, U> {
         UNAVAILABLE
     }
 
-    record Key(long remoteSteamId, int connectionId) {
+    static final class Key {
+        private final long remoteSteamId;
+        private final int connectionId;
+
+        Key(long remoteSteamId, int connectionId) {
+            this.remoteSteamId = remoteSteamId;
+            this.connectionId = connectionId;
+        }
+
+        long remoteSteamId() { return remoteSteamId; }
+        int connectionId() { return connectionId; }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) return true;
+            if (!(other instanceof Key)) return false;
+            Key that = (Key) other;
+            return remoteSteamId == that.remoteSteamId && connectionId == that.connectionId;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Long.hashCode(remoteSteamId);
+            return 31 * result + connectionId;
+        }
     }
 
     private final ConcurrentHashMap<Key, B> bridges = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Key, U> udpBridges = new ConcurrentHashMap<>();
     private final Semaphore bridgeSlots;
+    private final Object registrationLock = new Object();
 
     SteamBridgeRegistry(int capacity) {
         bridgeSlots = new Semaphore(capacity);
@@ -37,32 +62,36 @@ final class SteamBridgeRegistry<B, U> {
     }
 
     Registration register(Key key, B bridge, BooleanSupplier available) {
-        if (!available.getAsBoolean()) {
-            return Registration.UNAVAILABLE;
+        synchronized (registrationLock) {
+            if (!available.getAsBoolean()) {
+                return Registration.UNAVAILABLE;
+            }
+            if (bridges.containsKey(key)) {
+                return Registration.COLLISION;
+            }
+            if (!bridgeSlots.tryAcquire()) {
+                return Registration.CAPACITY;
+            }
+            if (bridges.putIfAbsent(key, bridge) != null) {
+                bridgeSlots.release();
+                return Registration.COLLISION;
+            }
+            if (!available.getAsBoolean() && bridges.remove(key, bridge)) {
+                bridgeSlots.release();
+                return Registration.UNAVAILABLE;
+            }
+            return Registration.REGISTERED;
         }
-        if (bridges.containsKey(key)) {
-            return Registration.COLLISION;
-        }
-        if (!bridgeSlots.tryAcquire()) {
-            return Registration.CAPACITY;
-        }
-        if (bridges.putIfAbsent(key, bridge) != null) {
-            bridgeSlots.release();
-            return Registration.COLLISION;
-        }
-        if (!available.getAsBoolean() && bridges.remove(key, bridge)) {
-            bridgeSlots.release();
-            return Registration.UNAVAILABLE;
-        }
-        return Registration.REGISTERED;
     }
 
     boolean remove(Key key, B bridge) {
-        if (!bridges.remove(key, bridge)) {
-            return false;
+        synchronized (registrationLock) {
+            if (!bridges.remove(key, bridge)) {
+                return false;
+            }
+            bridgeSlots.release();
+            return true;
         }
-        bridgeSlots.release();
-        return true;
     }
 
     B get(Key key) {
@@ -90,12 +119,14 @@ final class SteamBridgeRegistry<B, U> {
     }
 
     void clear() {
-        int removed = bridges.size();
-        bridges.clear();
-        if (removed > 0) {
-            bridgeSlots.release(removed);
+        synchronized (registrationLock) {
+            int removed = bridges.size();
+            bridges.clear();
+            if (removed > 0) {
+                bridgeSlots.release(removed);
+            }
+            udpBridges.clear();
         }
-        udpBridges.clear();
     }
 
     U getUdp(Key key) {

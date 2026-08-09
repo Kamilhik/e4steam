@@ -222,10 +222,12 @@ public class Mirror {
             try {
                 Method method = clazz.getMethod(methodName, Component.class, boolean.class);
                 method.invoke(source, message, true);
+                return;
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {}
             try {
                 Method method = clazz.getMethod(methodName, Supplier.class, boolean.class);
                 method.invoke(source, (Supplier<Component>) () -> message, true);
+                return;
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {}
         }
     }

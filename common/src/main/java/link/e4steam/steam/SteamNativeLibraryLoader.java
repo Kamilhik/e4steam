@@ -5,14 +5,18 @@ import link.e4steam.HexCodec;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Collections;
 
 /**
  * Extracts steamworks4j's native libraries without relying on LWJGL's system
@@ -35,7 +39,7 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
         byte[] steamApi = readBundledLibrary(names.steamApi());
         byte[] steamworks4j = readBundledLibrary(names.steamworks4j());
         String fingerprint = fingerprint(names, steamApi, steamworks4j);
-        Path cache = Path.of(
+        Path cache = Paths.get(
                 System.getProperty("java.io.tmpdir"),
                 CACHE_DIRECTORY,
                 names.platformDirectory() + "-" + fingerprint
@@ -44,10 +48,10 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
         Files.createDirectories(cache);
         Path steamApiPath = materialize(cache, names.steamApi(), steamApi);
         Path steamworks4jPath = materialize(cache, names.steamworks4j(), steamworks4j);
-        libraries = Map.of(
-                "steam_api", steamApiPath,
-                "steamworks4j", steamworks4jPath
-        );
+        Map<String, Path> resolvedLibraries = new HashMap<>();
+        resolvedLibraries.put("steam_api", steamApiPath);
+        resolvedLibraries.put("steamworks4j", steamworks4jPath);
+        libraries = Collections.unmodifiableMap(resolvedLibraries);
     }
 
     @Override
@@ -79,7 +83,7 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
             return "unknown native loading error";
         }
         String message = cause.getMessage();
-        String detail = message == null || message.isBlank()
+        String detail = message == null || message.trim().isEmpty()
                 ? cause.getClass().getSimpleName()
                 : cause.getClass().getSimpleName() + ": " + message;
         return (failedLibrary == null ? "native library" : failedLibrary) + " (" + detail + ")";
@@ -114,12 +118,24 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
             if (stream == null) {
                 throw new IOException("Bundled Steam native library is missing: " + resourceName);
             }
-            byte[] content = stream.readAllBytes();
+            byte[] content = readAllBytes(stream);
             if (content.length == 0) {
                 throw new IOException("Bundled Steam native library is empty: " + resourceName);
             }
             return content;
         }
+    }
+
+    private static byte[] readAllBytes(InputStream stream) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int read;
+        while ((read = stream.read(buffer)) >= 0) {
+            if (read > 0) {
+                output.write(buffer, 0, read);
+            }
+        }
+        return output.toByteArray();
     }
 
     private static Path materialize(Path directory, String fileName, byte[] expected) throws IOException {
@@ -129,6 +145,7 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
         }
         if (Files.exists(target)) {
             verifyContent(target, expected);
+            ensureLoadablePermissions(target);
             return target;
         }
 
@@ -154,10 +171,24 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
         }
 
         verifyContent(target, expected);
-        if (!System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win")) {
-            target.toFile().setExecutable(true, true);
-        }
+        ensureLoadablePermissions(target);
         return target;
+    }
+
+    private static void ensureLoadablePermissions(Path target) throws IOException {
+        if (System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win")) {
+            return;
+        }
+        java.io.File file = target.toFile();
+        if (!file.canRead() && !file.setReadable(true, true)) {
+            throw new IOException("Could not make the bundled Steam library readable: " + target);
+        }
+        // Some Linux launchers preserve a non-executable cached file. Shared
+        // objects usually only need read permission, so this is best-effort
+        // and must not reject filesystems where chmod is unavailable.
+        if (!file.canExecute()) {
+            file.setExecutable(true, true);
+        }
     }
 
     private static void verifyContent(Path path, byte[] expected) throws IOException {
@@ -180,6 +211,19 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
         }
     }
 
-    record NativeNames(String platformDirectory, String steamApi, String steamworks4j) {
+    static final class NativeNames {
+        private final String platformDirectory;
+        private final String steamApi;
+        private final String steamworks4j;
+
+        NativeNames(String platformDirectory, String steamApi, String steamworks4j) {
+            this.platformDirectory = platformDirectory;
+            this.steamApi = steamApi;
+            this.steamworks4j = steamworks4j;
+        }
+
+        String platformDirectory() { return platformDirectory; }
+        String steamApi() { return steamApi; }
+        String steamworks4j() { return steamworks4j; }
     }
 }

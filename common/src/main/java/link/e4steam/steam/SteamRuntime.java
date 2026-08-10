@@ -56,6 +56,12 @@ public final class SteamRuntime {
     private static final int MAX_PACKETS_PER_TICK = 32;
     private static final long OUTBOUND_SEND_RETRY_DELAY_MILLIS = 25;
     private static final long OUTBOUND_SEND_RETRY_TIMEOUT_MILLIS = 30_000;
+    private static final int MAX_RESET_RETRIES = 64;
+    private static final int MAX_RESET_RETRY_ATTEMPTS = 10;
+    private static final long MAX_RESET_RETRY_AGE_MILLIS = 30_000;
+    private static final long RESET_RETRY_BASE_DELAY_MILLIS = 25;
+    private static final long RESET_RETRY_MAX_DELAY_MILLIS = 2_000;
+    private static final int MAX_RESET_RETRIES_PER_TICK = 8;
     private static final int MAX_ACTIVE_CONNECTIONS = 64;
     private static final int MAX_PENDING_PEERS = 64;
     private static final long PENDING_PEER_TIMEOUT_MILLIS = 10_000;
@@ -83,6 +89,14 @@ public final class SteamRuntime {
             MAX_OUTBOUND_OPEN_PACKETS,
             MAX_OUTBOUND_STANDALONE_RESETS
     );
+    private final SteamResetRetryQueue<SteamConnectionBridge> resetRetries =
+            new SteamResetRetryQueue<>(
+                    MAX_RESET_RETRIES,
+                    MAX_RESET_RETRY_ATTEMPTS,
+                    MAX_RESET_RETRY_AGE_MILLIS,
+                    RESET_RETRY_BASE_DELAY_MILLIS,
+                    RESET_RETRY_MAX_DELAY_MILLIS
+            );
     private final SteamBridgeRegistry<SteamConnectionBridge, SteamUdpBridge> bridgeRegistry =
             new SteamBridgeRegistry<>(MAX_ACTIVE_CONNECTIONS);
     private final ConcurrentHashMap<Long, Long> pendingPeers = new ConcurrentHashMap<>();
@@ -119,6 +133,7 @@ public final class SteamRuntime {
     private long nextKnownPeerAcceptAtMillis;
     private boolean permanentlyShutdown;
     private int activityCount;
+    private long nextWorkerGenerationId;
     private final AtomicBoolean launchStartRequested = new AtomicBoolean();
     private volatile Activity launchActivity;
 
@@ -785,7 +800,7 @@ public final class SteamRuntime {
             failureCause = null;
             localSteamId = 0;
             status = Status.STARTING;
-            WorkerGeneration created = new WorkerGeneration();
+            WorkerGeneration created = new WorkerGeneration(++nextWorkerGenerationId);
             Thread worker = new Thread(() -> runWorker(created), "e4steam-steam-runtime");
             worker.setDaemon(true);
             created.worker = worker;
@@ -823,7 +838,7 @@ public final class SteamRuntime {
                 steamLifecycle.runCallbacks();
                 drainSteamTasks();
                 acceptKnownPeerSessions(System.currentTimeMillis());
-                drainOutbound(sendBuffer);
+                drainOutbound(sendBuffer, currentGeneration.id);
                 receivePackets(receiveBuffer);
                 cleanupPeerSessions();
                 cleanupGracefulBridgeClosures(System.currentTimeMillis());
@@ -952,6 +967,7 @@ public final class SteamRuntime {
                     || hostRegistration != null
                     || !bridgeRegistry.isEmpty()
                     || !outbound.isEmpty()
+                    || !resetRetries.isEmpty()
                     || !idleSessionDeadlines.isEmpty()
                     || !steamTasks.isEmpty()
                     || (currentSocial != null && currentSocial.keepsRuntimeAlive());
@@ -1241,9 +1257,15 @@ public final class SteamRuntime {
         return outbound.offerControl(remoteSteamId, connectionId, packet, kind, bridge);
     }
 
-    private void drainOutbound(ByteBuffer buffer) throws Exception {
+    private void drainOutbound(ByteBuffer buffer, long workerGeneration) throws Exception {
         SteamNetworkingMessagesTransport current = Objects.requireNonNull(transport);
-        for (int sent = 0; sent < MAX_PACKETS_PER_TICK; sent++) {
+        int resetWork = drainResetRetries(
+                current,
+                buffer,
+                workerGeneration,
+                MAX_RESET_RETRIES_PER_TICK
+        );
+        for (int sent = resetWork; sent < MAX_PACKETS_PER_TICK; sent++) {
             long now = System.currentTimeMillis();
             SteamOutboundQueue.Packet<SteamConnectionBridge> packet = retryOutboundPacket;
             if (packet != null && now < retryOutboundNotBeforeMillis) {
@@ -1336,6 +1358,29 @@ public final class SteamRuntime {
 
             SteamResult failure = steamResult(result);
             if (isRetryableSendFailure(failure)) {
+                if (packet.kind() == SteamOutboundQueue.Kind.RESET) {
+                    SteamResetRetryQueue.Offer<SteamConnectionBridge> admitted =
+                            resetRetries.offerAfterTemporaryFailure(
+                                    packet.remoteSteamId(),
+                                    packet.connectionId(),
+                                    packet.payload(),
+                                    packetBridge,
+                                    workerGeneration,
+                                    now
+                            );
+                    clearRetriedPacket(packet);
+                    if (admitted.status() != SteamResetRetryQueue.OfferStatus.FULL) {
+                        continue;
+                    }
+                    E4steamClient.LOGGER.warn(
+                            "RESET retry capacity exhausted for Steam user {}; closing the stale bridge",
+                            Long.toUnsignedString(packet.remoteSteamId())
+                    );
+                    if (packetBridge != null) {
+                        packetBridge.markResetSubmitted();
+                    }
+                    continue;
+                }
                 if (retryOutboundPacket != packet) {
                     retryOutboundPacket = packet;
                     retryOutboundDeadlineMillis = now + OUTBOUND_SEND_RETRY_TIMEOUT_MILLIS;
@@ -1367,6 +1412,91 @@ public final class SteamRuntime {
                     packetBridge.close(false);
                 }
             }
+        }
+    }
+
+    private int drainResetRetries(
+            SteamNetworkingMessagesTransport current,
+            ByteBuffer buffer,
+            long workerGeneration,
+            int limit
+    ) throws Exception {
+        int handled = 0;
+        while (handled < limit) {
+            long now = System.currentTimeMillis();
+            SteamResetRetryQueue.Entry<SteamConnectionBridge> entry =
+                    resetRetries.poll(workerGeneration, now);
+            if (entry == null) {
+                return handled;
+            }
+            handled++;
+
+            if (entry.state() != SteamResetRetryQueue.State.AWAITING_SEND) {
+                finishResetRetry(entry, entry.state(), null, 0);
+                continue;
+            }
+
+            SteamBridgeRegistry.Key key = new SteamBridgeRegistry.Key(
+                    entry.remoteSteamId(),
+                    entry.connectionId()
+            );
+            SteamConnectionBridge currentBridge = bridgeRegistry.get(key);
+            boolean currentConnection = entry.bridge() == null
+                    ? currentBridge == null
+                    : currentBridge == entry.bridge();
+            if (!currentConnection) {
+                SteamResetRetryQueue.State state = resetRetries.cancelStaleConnection(entry);
+                finishResetRetry(entry, state, null, 0);
+                continue;
+            }
+
+            buffer.clear();
+            entry.putPayload(buffer);
+            buffer.flip();
+            int result = current.sendResult(
+                    entry.remoteSteamId(),
+                    buffer,
+                    false,
+                    false,
+                    CHANNEL
+            );
+            SteamResult failure = result == 1 ? null : steamResult(result);
+            SteamResetRetryQueue.SendOutcome outcome = result == 1
+                    ? SteamResetRetryQueue.SendOutcome.SUCCESS
+                    : isRetryableSendFailure(failure)
+                    ? SteamResetRetryQueue.SendOutcome.TEMPORARY_FAILURE
+                    : SteamResetRetryQueue.SendOutcome.PERMANENT_FAILURE;
+            SteamResetRetryQueue.State state = resetRetries.complete(entry, outcome, now);
+            if (state != SteamResetRetryQueue.State.RETRY_SCHEDULED) {
+                finishResetRetry(entry, state, failure, result);
+            }
+        }
+        return handled;
+    }
+
+    private void finishResetRetry(
+            SteamResetRetryQueue.Entry<SteamConnectionBridge> entry,
+            SteamResetRetryQueue.State state,
+            SteamResult failure,
+            int resultCode
+    ) {
+        if (state == SteamResetRetryQueue.State.EXHAUSTED) {
+            E4steamClient.LOGGER.warn(
+                    "RESET retry budget exhausted for Steam user {} after {} attempts",
+                    Long.toUnsignedString(entry.remoteSteamId()),
+                    entry.attempts()
+            );
+        } else if (state == SteamResetRetryQueue.State.PERMANENT_FAILURE) {
+            E4steamClient.LOGGER.warn(
+                    "Steam permanently rejected RESET for user {}: {} ({})",
+                    Long.toUnsignedString(entry.remoteSteamId()),
+                    failure,
+                    resultCode
+            );
+        }
+        SteamConnectionBridge bridge = entry.bridge();
+        if (bridge != null) {
+            bridge.markResetSubmitted();
         }
     }
 
@@ -1406,10 +1536,19 @@ public final class SteamRuntime {
         retryOutboundPacket = null;
         retryOutboundNotBeforeMillis = 0;
         retryOutboundDeadlineMillis = 0;
+        ArrayList<SteamResetRetryQueue.Entry<SteamConnectionBridge>> cancelled =
+                new ArrayList<>(resetRetries.cancelAll());
+        for (SteamResetRetryQueue.Entry<SteamConnectionBridge> entry : cancelled) {
+            SteamConnectionBridge bridge = entry.bridge();
+            if (bridge != null) {
+                bridge.markResetSubmitted();
+            }
+        }
     }
 
     private void purgeOutbound(SteamConnectionBridge bridge) {
         outbound.purge(bridge);
+        resetRetries.purge(bridge);
         SteamOutboundQueue.Packet<SteamConnectionBridge> retry = retryOutboundPacket;
         if (retry != null && retry.bridge() == bridge) {
             clearRetriedPacket(retry);
@@ -1913,10 +2052,15 @@ public final class SteamRuntime {
     }
 
     private static final class WorkerGeneration {
+        private final long id;
         private final CompletableFuture<Void> ready = new CompletableFuture<>();
         private final AtomicBoolean stopRequested = new AtomicBoolean();
         private volatile Thread worker;
         private long idleSinceMillis;
+
+        private WorkerGeneration(long id) {
+            this.id = id;
+        }
     }
 
     private static final class SteamTask<T> {

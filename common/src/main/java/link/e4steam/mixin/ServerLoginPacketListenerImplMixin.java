@@ -1,5 +1,7 @@
 package link.e4steam.mixin;
 
+import com.mojang.authlib.GameProfile;
+import link.e4steam.steam.SteamMinecraftIdentity;
 import link.e4steam.steam.SteamRuntime;
 import net.minecraft.network.Connection;
 import net.minecraft.server.MinecraftServer;
@@ -10,6 +12,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 /** Uses the authenticated Steam identity instead of Mojang auth for Steam bridge guests only. */
@@ -30,6 +33,29 @@ public abstract class ServerLoginPacketListenerImplMixin {
         long authenticatedSteamId = SteamRuntime.get()
                 .authenticatedMinecraftPeer(connection.getRemoteAddress());
         return authenticatedSteamId == 0 && server.usesAuthentication();
+    }
+
+    /**
+     * Replaces the client-supplied offline identity only after the exact
+     * loopback socket has been authenticated by its Steam bridge.
+     */
+    @ModifyVariable(
+            method = "startClientVerification",
+            at = @At("HEAD"),
+            argsOnly = true,
+            ordinal = 0,
+            require = 0
+    )
+    private GameProfile e4steam$bindProfileToSteamIdentity(GameProfile original) {
+        long authenticatedSteamId = SteamRuntime.get()
+                .authenticatedMinecraftPeer(connection.getRemoteAddress());
+        if (authenticatedSteamId == 0) {
+            return original;
+        }
+        return new GameProfile(
+                SteamMinecraftIdentity.uuid(authenticatedSteamId),
+                SteamMinecraftIdentity.safeName(authenticatedSteamId)
+        );
     }
 
     /** Forge can send a large registry snapshot before accepting the player. */

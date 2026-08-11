@@ -76,8 +76,7 @@ signed in.
 | Minecraft | Permitted retro loader target | Current status |
 | --- | --- | --- |
 | 1.6.4–1.16.5 | Forge | Not implemented / unsupported |
-| 1.14.x only | Separate Fabric artifact | Not implemented / unsupported |
-| 1.15–1.16.5 Fabric | None | Intentionally unsupported |
+| 1.14.4–1.16.5 | Separate Fabric artifacts for the 1.14.x, 1.15.x and 1.16.x families | Not implemented / unsupported |
 | Legacy Fabric / Ornithe / Rift / retro Quilt | None | Intentionally unsupported |
 
 ## Windows host/guest multiplayer matrix

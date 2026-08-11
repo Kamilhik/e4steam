@@ -28,6 +28,8 @@ belong to this fork and are independent of upstream e4mc releases.
   binary-surface baseline.
 - Added a read-only, SHA-pinned Windows/Linux CI foundation. It does not publish
   releases and does not claim macOS, dedicated-server or retro runtime support.
+- Defined the corrected future retro loader matrix: Forge 1.6.4–1.16.5 and
+  separate ordinary Fabric targets covering 1.14.4–1.16.5.
 
 ### Русский
 
@@ -50,6 +52,8 @@ belong to this fork and are independent of upstream e4mc releases.
   Javadocs, аудит чистоты/classfile API JAR и baseline бинарной поверхности.
 - Добавлен read-only CI для Windows/Linux с actions, закреплёнными по SHA. CI
   ничего не публикует и не объявляет поддержку macOS, dedicated или retro.
+- Исправлена будущая retro-матрица: Forge 1.6.4–1.16.5 и отдельные обычные
+  Fabric-сборки для диапазона 1.14.4–1.16.5.
 
 ## 0.2.4 - 2026-08-09
 

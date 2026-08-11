@@ -120,6 +120,7 @@ tasks.register("releaseJars") {
                         publicName: "e4steam-fabric-quilt-mc1.17-1.18.2-v${version}.jar",
                         file: file("legacy/fabric/build/libs/e4steam-fabric-${version}-mc1.17-1.18.2.jar"),
                         major: 60,
+                        loginMixin: "LegacyServerLoginPacketListenerImplMixin",
                         metadata: ["fabric.mod.json": [
                                 '"id": "e4steam"',
                                 '"icon": "assets/e4steam_minecraft/icon.png"',
@@ -132,6 +133,7 @@ tasks.register("releaseJars") {
                         publicName: "e4steam-forge-mc1.17.1-1.18.1-v${version}.jar",
                         file: file("legacy/forge/build/libs/e4steam-forge-${version}-legacy17.jar"),
                         major: 60,
+                        loginMixin: "LegacyServerLoginPacketListenerImplMixin",
                         metadata: ["META-INF/mods.toml": [
                                 'modId = "e4steam"',
                                 'logoFile = "assets/e4steam_minecraft/icon.png"',
@@ -143,6 +145,7 @@ tasks.register("releaseJars") {
                         publicName: "e4steam-fabric-quilt-mc1.19-1.21.11-v${version}.jar",
                         file: file("fabric/build/libs/e4steam-fabric-${version}.jar"),
                         major: 61,
+                        loginMixin: "ServerLoginPacketListenerImplMixin",
                         metadata: ["fabric.mod.json": [
                                 '"id": "e4steam"',
                                 '"icon": "assets/e4steam_minecraft/icon.png"',
@@ -155,6 +158,7 @@ tasks.register("releaseJars") {
                         publicName: "e4steam-fabric-quilt-mc26.1-26.2-v${version}.jar",
                         file: file("fabric/build/libs/e4steam-fabric-${version}-modern.jar"),
                         major: 61,
+                        loginMixin: "ServerLoginPacketListenerImplMixin",
                         metadata: ["fabric.mod.json": [
                                 '"id": "e4steam"',
                                 '"icon": "assets/e4steam_minecraft/icon.png"',
@@ -167,6 +171,7 @@ tasks.register("releaseJars") {
                         publicName: "e4steam-forge-mc1.18.2-1.20.2-v${version}.jar",
                         file: file("forge/build/libs/e4steam-forge-${version}.jar"),
                         major: 61,
+                        loginMixin: "ServerLoginPacketListenerImplMixin",
                         metadata: ["META-INF/mods.toml": [
                                 'modId = "e4steam"',
                                 'logoFile = "assets/e4steam_minecraft/icon.png"',
@@ -178,6 +183,7 @@ tasks.register("releaseJars") {
                         publicName: "e4steam-neoforge-mc1.20.2-26.2-v${version}.jar",
                         file: file("neoforge/build/libs/e4steam-neoforge-${version}.jar"),
                         major: 61,
+                        loginMixin: "ServerLoginPacketListenerImplMixin",
                         metadata: [
                                 "META-INF/mods.toml": [
                                         'modId = "e4steam"',
@@ -236,7 +242,7 @@ tasks.register("releaseJars") {
                     throw new GradleException("${variant.label} is missing e4steam.mixins.json")
                 }
                 String mixinsConfig = zip.getInputStream(mixinsEntry).getText("UTF-8")
-                if (!mixinsConfig.contains("ServerLoginPacketListenerImplMixin")) {
+                if (!mixinsConfig.contains('"' + variant.loginMixin + '"')) {
                     throw new GradleException(
                             "${variant.label} does not enable authenticated offline-launcher login"
                     )
@@ -273,7 +279,8 @@ tasks.register("releaseJars") {
                             "${variant.label} still contains the deprecated ISteamNetworking transport"
                     )
                 }
-                if (zip.getEntry("link/e4steam/mixin/ServerLoginPacketListenerImplMixin.class") == null) {
+                String loginMixinEntry = "link/e4steam/mixin/${variant.loginMixin}.class"
+                if (zip.getEntry(loginMixinEntry) == null) {
                     throw new GradleException(
                             "${variant.label} is missing authenticated offline-launcher support"
                     )

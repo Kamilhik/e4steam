@@ -7,6 +7,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -39,6 +41,7 @@ import java.util.Set;
 final class SteamNativeLibraryLoader implements SteamLibraryLoader {
     private static final String CACHE_DIRECTORY = ".e4steam-steam-natives";
     private static final int MAX_NATIVE_LIBRARY_BYTES = 64 * 1024 * 1024;
+    private static final Object MATERIALIZATION_LOCK = new Object();
     private static final Set<String> ALLOWED_LIBRARY_NAMES = Collections.unmodifiableSet(
             new HashSet<>(Arrays.asList(
                     "steam_api64.dll",
@@ -238,13 +241,62 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
             throw new IOException("Native library filename escaped the cache directory");
         }
         byte[] expectedHash = sha256(expected);
+
+        // FileChannel locks overlap rather than block inside one JVM, so use a
+        // small process-local guard before taking the cross-process lock.
+        synchronized (MATERIALIZATION_LOCK) {
+            return materializeWithProcessLock(
+                    normalizedDirectory,
+                    target,
+                    fileName,
+                    expected,
+                    expectedHash,
+                    owner
+            );
+        }
+    }
+
+    private static VerifiedLibrary materializeWithProcessLock(
+            Path directory,
+            Path target,
+            String fileName,
+            byte[] expected,
+            byte[] expectedHash,
+            UserPrincipal owner
+    ) throws IOException {
+        Path lockPath = directory.resolve(fileName + ".lock").normalize();
+        if (!lockPath.getParent().equals(directory)) {
+            throw new IOException("Native cache lock escaped its owner-controlled directory");
+        }
+        Set<OpenOption> lockOptions = new HashSet<>();
+        lockOptions.add(StandardOpenOption.CREATE);
+        lockOptions.add(StandardOpenOption.WRITE);
+        lockOptions.add(LinkOption.NOFOLLOW_LINKS);
+        try (FileChannel lockChannel = FileChannel.open(lockPath, lockOptions);
+             FileLock ignored = lockChannel.lock()) {
+            validateRegularOwnedFile(lockPath, owner);
+            enforcePrivateFilePermissions(lockPath);
+            return materializeLocked(target, expected, expectedHash, owner);
+        }
+    }
+
+    private static VerifiedLibrary materializeLocked(
+            Path target,
+            byte[] expected,
+            byte[] expectedHash,
+            UserPrincipal owner
+    ) throws IOException {
         if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
             validateNativeFile(target, expected.length, expectedHash, owner);
             enforcePrivateFilePermissions(target);
             return new VerifiedLibrary(target, expected.length, expectedHash, owner);
         }
 
-        Path temporary = Files.createTempFile(normalizedDirectory, fileName + ".", ".tmp");
+        Path temporary = Files.createTempFile(
+                target.getParent(),
+                target.getFileName().toString() + ".",
+                ".tmp"
+        );
         try {
             validateRegularOwnedFile(temporary, owner);
             writeNoFollow(temporary, expected);

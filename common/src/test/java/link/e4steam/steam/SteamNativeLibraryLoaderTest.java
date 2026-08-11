@@ -141,6 +141,32 @@ class SteamNativeLibraryLoaderTest {
     }
 
     @Test
+    void rejectsSymlinkMaterializationLockWhenSupported() throws Exception {
+        Path cache = SteamNativeLibraryLoader.createPrivateCacheDirectory(
+                temporaryDirectory,
+                "lock-cache"
+        );
+        Path externalLock = Files.write(
+                temporaryDirectory.resolve("external.lock"),
+                new byte[]{1}
+        );
+        try {
+            Files.createSymbolicLink(cache.resolve("steam_api64.dll.lock"), externalLock);
+        } catch (UnsupportedOperationException | IOException | SecurityException exception) {
+            assumeTrue(false, "Symbolic links are unavailable for this test account");
+        }
+
+        assertThrows(
+                IOException.class,
+                () -> SteamNativeLibraryLoader.materialize(
+                        cache,
+                        "steam_api64.dll",
+                        new byte[]{1, 2, 3}
+                )
+        );
+    }
+
+    @Test
     void rejectsSymlinkSwapAfterExtractionWhenSupported() throws Exception {
         Path cache = SteamNativeLibraryLoader.createPrivateCacheDirectory(
                 temporaryDirectory,

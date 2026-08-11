@@ -15,7 +15,7 @@
     "MultiplayerOptionsScreenMixin",
     "PardonCommandMixin",
     "PauseScreenMixin",
-    "ServerLoginPacketListenerImplMixin",
+    "LegacyServerLoginPacketListenerImplMixin",
     "ServerConnectionListenerMixin",
     "ShareToLanScreenMixin",
     "WhitelistCommandMixin",

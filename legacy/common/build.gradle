@@ -4,7 +4,13 @@ architectury {
 
 sourceSets {
     main {
-        java.srcDir("../../common/src/main/java")
+        java {
+            srcDir("../../common/src/main/java")
+            // 1.17-1.18.2 completes offline profiles in
+            // handleAcceptedLogin(), before startClientVerification existed.
+            exclude "link/e4steam/mixin/ServerLoginPacketListenerImplMixin.java"
+            srcDir("src/main/java")
+        }
         resources.setSrcDirs(["src/main/resources"])
     }
     test {

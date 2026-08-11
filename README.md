@@ -17,7 +17,7 @@
 <a href="https://youtu.be/KJ1W_eJ2VK4" title="Watch the demonstration"><img src="https://img.shields.io/badge/-%20-FF0000?style=for-the-badge&logo=youtube&logoColor=white" height="42" alt="YouTube"></a>
 
 [![Version](https://img.shields.io/github/v/release/Kamilhik/e4steam?display_name=tag&sort=semver&style=flat-square)](https://github.com/Kamilhik/e4steam/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/Kamilhik/e4steam/build.yml?branch=main&label=build&style=flat-square)](https://github.com/Kamilhik/e4steam/actions/workflows/build.yml)
+[![Build](https://img.shields.io/github/actions/workflow/status/Kamilhik/e4steam/ci.yml?branch=main&label=build&style=flat-square)](https://github.com/Kamilhik/e4steam/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
 
 **🇷🇺 Русская версия находится ниже — [открыть](#русская-версия)**
@@ -30,15 +30,38 @@
 > are not supported. e4steam permanently uses the shared Steam test App ID 480
 > (Spacewar), so unrelated App ID 480 traffic is possible and is filtered.
 
+> [!WARNING]
+> **0.3.0 is under development and is not a release yet.** Its first Draft PR
+> adds security fixes and a Java 8 addon API foundation. Addon discovery,
+> dedicated servers, macOS runtime support and retro artifacts are not enabled
+> by this foundation and must not be advertised as available.
+
 e4steam opens a Minecraft singleplayer world to Steam friends without port
 forwarding or a public IP. Both players need the mod and a signed-in Steam
 client. Minecraft TCP traffic and supported voice-chat UDP traffic travel over
 Steam P2P or Valve relays.
 
-Offline Minecraft launcher profiles are supported for Steam connections. The
-host authenticates each guest through the authorized Steam bridge, while
-Minecraft creates the guest profile using its normal offline-mode rules. Steam
-itself must still be running and signed in on every computer.
+Offline Minecraft launcher profiles are supported for Steam connections. In
+0.3.0 development builds, the host derives each Steam guest's stable Minecraft
+UUID and safe profile name from the authenticated SteamID rather than trusting
+the name supplied by the client. Steam itself must still be running and signed
+in on every computer.
+
+## 0.3.0 addon API foundation
+
+The repository now contains a separate loader-independent Java 8 API artifact,
+an addon testkit and a neutral compile-checked example. The first API baseline
+contains safe runtime snapshots, addon metadata/lifecycle types, capabilities,
+typed observational events, bounded scheduling contracts, typed errors and
+parent-child resource ownership. See [docs/ADDON_API.md](docs/ADDON_API.md).
+The staged follow-up work is tracked in
+[docs/0.3.0_ROADMAP.md](docs/0.3.0_ROADMAP.md).
+
+This API is not a sandbox: an installed addon is ordinary code in the same JVM
+and must come from a trusted source. Core does not expose Steam passwords,
+auth tickets, invite tokens, native handles or raw protocol hooks. Public
+Worlds, Modpack Sync and Offline Skins remain separate future addons and are
+not included in e4steam core.
 
 ## Which file should I download?
 
@@ -113,15 +136,38 @@ shares Minecraft's port. Another UDP mod can use the `voiceChatPort` setting.
 > и macOS не поддерживаются. Мод навсегда использует общий тестовый Steam App ID
 > 480 (Spacewar), поэтому посторонний трафик App ID 480 возможен и фильтруется.
 
+> [!WARNING]
+> **0.3.0 находится в разработке и ещё не является релизом.** Первый Draft PR
+> добавляет исправления безопасности и фундамент Java 8 Addon API. Обнаружение
+> аддонов, dedicated-серверы, macOS runtime и retro-сборки этим фундаментом не
+> включаются и не должны называться готовыми функциями.
+
 e4steam позволяет открыть одиночный мир Minecraft друзьям из Steam без проброса
 портов и белого IP. Мод и запущенный Steam нужны у всех игроков. TCP-трафик
 Minecraft и UDP-трафик поддерживаемых голосовых модов передаются через Steam P2P
 или ретрансляторы Valve.
 
 Офлайн-профили Minecraft-лаунчеров поддерживаются для подключений через Steam.
-Хост проверяет гостя по авторизованному Steam bridge, а Minecraft создаёт
-обычный офлайн UUID по своим штатным правилам. Сам Steam всё равно должен быть
-запущен, и на каждом компьютере должен быть выполнен вход в аккаунт Steam.
+В тестовых сборках 0.3.0 хост создаёт стабильный Minecraft UUID и безопасное
+имя гостя из подтверждённого SteamID, а не доверяет имени, присланному клиентом.
+Сам Steam всё равно должен быть запущен, и на каждом компьютере должен быть
+выполнен вход в аккаунт Steam.
+
+## Фундамент Addon API 0.3.0
+
+В репозитории появился отдельный независимый от загрузчика Java 8 API JAR,
+testkit и нейтральный пример аддона с проверкой компиляции. Первый baseline API
+содержит безопасные снимки runtime, типы метаданных и lifecycle аддонов,
+capabilities, наблюдательные typed events, контракты ограниченного scheduler,
+typed errors и владение ресурсами. Подробности: [docs/ADDON_API.md](docs/ADDON_API.md).
+Этапы дальнейшей реализации перечислены в
+[docs/0.3.0_ROADMAP.md](docs/0.3.0_ROADMAP.md).
+
+API не является песочницей: установленный аддон — обычный код в той же JVM,
+поэтому ставить можно только доверенные моды. Core не выдаёт пароли Steam,
+auth tickets, invite tokens, native handles и raw protocol hooks. Public Worlds,
+Modpack Sync и Offline Skins остаются отдельными будущими аддонами и не входят
+в e4steam core.
 
 ## Какой файл скачивать
 

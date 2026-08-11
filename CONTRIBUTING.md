@@ -20,12 +20,14 @@ Install JDK 21, clone the repository, and run:
 
 ```powershell
 .\gradlew.bat clean releaseJars
+.\gradlew.bat apiChecks
 ```
 
 On Linux:
 
 ```bash
 ./gradlew clean releaseJars
+./gradlew apiChecks
 ```
 
 The produced bytecode and supported game versions are defined by the checked-in
@@ -38,6 +40,7 @@ Before submitting a pull request, also run:
 ```powershell
 git diff --check
 .\gradlew.bat --no-daemon releaseJars
+.\gradlew.bat --no-daemon apiChecks
 ```
 
 The aggregate task covers the two Minecraft 1.17 legacy artifacts, the standard
@@ -50,6 +53,11 @@ when changing it.
 - Add or update tests for protocol, address-parsing, and lifecycle changes.
 - Update `CHANGELOG.md` and compatibility documentation for user-visible
   behavior.
+- Keep `:api` Java 8 and free from Minecraft, loader, JNA, Steamworks and
+  internal implementation types. Use a new typed service instead of silently
+  breaking the canonical API surface baseline.
+- Treat addons as trusted code in the same JVM, not as sandboxed plugins. Never
+  expose passwords, tickets, invite tokens, native handles or raw packet hooks.
 - Do not commit build output, Minecraft instances, logs, credentials, signing
   keys, or generated `steam_appid.txt` files. The root `steam_appid.txt`
   containing only `480` is the intentional development fixture.

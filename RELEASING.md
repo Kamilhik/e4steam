@@ -1,8 +1,9 @@
 # Release checklist
 
-e4steam 0.2.0 is the current stable release. Public builds use Steam App ID
-480 and are published as client-only release files for Windows x64 and
-experimental Linux x64 support.
+e4steam 0.2.4 is the current stable release. The 0.3.0 branch is unreleased and
+must not be published while its Draft PR is under review. Public builds use
+Steam App ID 480 and are published as client-only release files for Windows
+x64 and experimental Linux x64 support.
 
 ## Before publishing
 
@@ -10,10 +11,12 @@ experimental Linux x64 support.
 2. Update `COMPATIBILITY.md` with launch and host/guest results. Do not turn an
    untested combination into a verified one.
 3. Run the complete verification command below on Windows.
-4. Push the release commit and wait for both Linux and Windows GitHub Actions
+4. Run `apiChecks`; changing the public API requires an intentional API version
+   and `api/api-surface.sha256` baseline decision.
+5. Push the release commit and wait for both Linux and Windows GitHub Actions
    jobs to pass.
-5. Create the annotated `v<version>` tag from that verified commit.
-6. Publish the six runtime JARs as stable releases.
+6. Create the annotated `v<version>` tag from that verified commit.
+7. Publish the six runtime JARs as stable releases.
 
 ## Supported files
 
@@ -66,8 +69,9 @@ the notices in `LICENSE` and `THIRD_PARTY_NOTICES.md`.
 
 ```powershell
 .\gradlew.bat --no-daemon clean releaseJars
+.\gradlew.bat --no-daemon apiChecks
 git diff --check
-$releaseJars = Get-ChildItem release\0.2.4\*.jar
+$releaseJars = Get-ChildItem release\<version>\*.jar
 if ($releaseJars.Count -ne 6) { throw "Expected 6 runtime JARs, found $($releaseJars.Count)" }
 $releaseJars | Get-FileHash -Algorithm SHA256
 ```

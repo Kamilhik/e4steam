@@ -6,6 +6,27 @@ two-player Steam session.
 
 Legend: ✅ verified · ⏳ not yet manually verified · — unsupported.
 
+## 0.3.0 development verification
+
+The 0.3.0 Draft PR currently has automated source/unit coverage only. It has
+not completed a manual two-client Minecraft smoke matrix and is not a release.
+
+| Area | Windows | Linux | Manual Steam host/guest |
+| --- | --- | --- | --- |
+| Java 8 API/testkit/example compile and tests | ✅ local Windows, including an actual Java 8 compiler | CI pending | — |
+| Core and API unit tests | ✅ 180 reported: 172 executed, 8 assumption skips, 0 failures/errors | CI pending | — |
+| Native cache security suite | ✅ core checks; symlink/hardlink and live-Steam cases partly skipped locally | CI pending | — |
+| Existing six modern runtime artifacts | ✅ local clean build and content audit | CI pending | ⏳ |
+
+The Windows filesystem/account used for this run could not create symbolic
+links, did not expose Unix hard-link count, and had no live Steam binding in
+the test process. Those four assumptions were skipped once in modern tests and
+once in the duplicated Java 16 legacy suite. Linux CI is expected to exercise
+the filesystem-specific cases; a real two-client Steam smoke is still manual.
+
+macOS client runtime, dedicated server mode and Minecraft 1.6.4–1.16.5 retro
+artifacts remain unimplemented in this foundation and therefore unsupported.
+
 ## 0.2.1 control run
 
 On 2026-08-03, the final 0.2.1 sources were checked on one representative
@@ -41,10 +62,20 @@ Fabric/Quilt artifact.
 Steam guest connections support Minecraft offline-mode launcher profiles. The
 Mojang session check is skipped only for the exact loopback socket belonging
 to an authenticated and authorized Steam bridge. Ordinary LAN sockets keep
-Minecraft's normal authentication behavior. Minecraft creates the guest's
-profile with its standard offline-mode rules; e4steam does not replace the
-profile during the login/configuration transition. Steam must remain online
-and signed in.
+Minecraft's normal authentication behavior. In 0.3.0 development builds,
+e4steam replaces only that authenticated bridge guest's offline profile with a
+stable versioned UUID and safe name derived from SteamID. Ordinary LAN and
+online-authenticated sockets remain unchanged. Steam must remain online and
+signed in.
+
+## Planned retro policy (not built by this Draft PR)
+
+| Minecraft | Permitted retro loader target | Current status |
+| --- | --- | --- |
+| 1.6.4–1.16.5 | Forge | Not implemented / unsupported |
+| 1.14.x only | Separate Fabric artifact | Not implemented / unsupported |
+| 1.15–1.16.5 Fabric | None | Intentionally unsupported |
+| Legacy Fabric / Ornithe / Rift / retro Quilt | None | Intentionally unsupported |
 
 ## Windows host/guest multiplayer matrix
 

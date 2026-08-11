@@ -4,11 +4,33 @@
 
 | Version | Supported |
 | --- | --- |
-| 0.2.x stable | ✅ Yes |
+| Latest 0.2.x stable | ✅ Yes |
+| 0.3.0 development branch | Testing only; not a published supported release |
 | Older 0.x and alpha builds | ❌ No |
 
 Security fixes are provided for the latest stable 0.2.x release. Dedicated
 servers, macOS, and 32-bit operating systems are not supported.
+
+## Threat model for 0.3.0 development
+
+- A Steam transport session is not world authorization. The current invite
+  secret, social policy, live world and guest limit remain mandatory gates.
+- An offline Minecraft name supplied by a Steam guest is untrusted. The stable
+  guest UUID and safe name are derived from the already authenticated SteamID.
+- RESET retries are bounded and tied to one Steam worker generation; stale
+  terminal packets cannot cross a reconnect into a new generation.
+- Native libraries are loaded only from an allowlisted owner-controlled cache
+  after no-follow type, owner, size and SHA-256 validation. Same-account code
+  remains inside the trust boundary; Java cannot sandbox another installed mod.
+
+## Installed addon trust
+
+The addon API is a least-privilege contract and diagnostic boundary, not a JVM
+sandbox. A malicious installed mod can use ordinary Java APIs outside e4steam.
+Install addons only from trusted sources. Core never provides addons with a
+Steam password, auth ticket, invite token, cookie, API key, native handle or
+raw packet/native callback object. SteamID, persona name and avatar are
+personal data and require an explicit capability in future profile services.
 
 ## Reporting a vulnerability
 

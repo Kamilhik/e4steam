@@ -6,6 +6,7 @@
 
 - [ ] `git diff --check`
 - [ ] Relevant Gradle tests/builds pass
+- [ ] `apiChecks` passes when the public API or its testkit changes
 - [ ] Tested in Minecraft where runtime behavior changed
 - [ ] Documentation/changelog updated where needed
 - [ ] No logs, join addresses, credentials, build output, or generated App ID
@@ -15,6 +16,12 @@
 
 <!-- List the Minecraft versions and loaders actually tested. -->
 
+## API and security boundaries
+
+<!-- State whether the public API surface changed, which bounds were added,
+and which advertised capabilities remain disabled or unimplemented. -->
+
 ## Third-party code
 
-<!-- Name any copied or bundled code/assets and its license, or write "None". -->
+<!-- Name exact upstream repositories/commits, copied files or ideas and their
+licenses, or write "None". A reference-only audit is not copied code. -->

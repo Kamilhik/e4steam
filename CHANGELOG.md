@@ -3,6 +3,52 @@
 All notable changes to e4steam are documented here. Version numbers below
 belong to this fork and are independent of upstream e4mc releases.
 
+## 0.3.0 - Unreleased
+
+### English
+
+- Bound authenticated Steam guests to a stable, versioned Minecraft UUID and
+  safe profile name derived from SteamID. A guest can no longer gain the
+  integrated-server owner bypass by supplying the host's Minecraft name.
+- Added a dedicated 1.17-1.18.2 login adapter so the same identity binding is
+  applied before those versions create their legacy offline profile.
+- Replaced the single RESET retry slot with a bounded, deduplicated and
+  worker-generation-safe retry state machine using capped exponential backoff
+  with jitter, maximum attempts and maximum age.
+- Moved native extraction to an owner-controlled cache and added no-follow
+  path/type/owner/hash checks, hard-link checks where available, bounded reads,
+  atomic publication and redacted load failures.
+- Added the first loader-independent Java 8 addon API baseline (`0.1.0`) with
+  typed errors, addon metadata/lifecycle types, capabilities, safe runtime
+  snapshots, observational events, bounded scheduler contracts and resource
+  ownership.
+- Added a Java 8 API testkit, privacy/contract tests, a neutral compile-checked
+  example addon, Javadocs, API JAR purity/classfile audits and a canonical
+  binary-surface baseline.
+- Added a read-only, SHA-pinned Windows/Linux CI foundation. It does not publish
+  releases and does not claim macOS, dedicated-server or retro runtime support.
+
+### Русский
+
+- Профиль подтверждённого Steam-гостя теперь получает стабильный версионный
+  Minecraft UUID и безопасное имя из SteamID. Гость больше не может получить
+  права владельца встроенного сервера, указав Minecraft-имя хоста.
+- Для 1.17-1.18.2 добавлен отдельный login-адаптер: Steam identity применяется
+  до того, как эти версии создадут legacy offline profile.
+- Один общий слот повторной отправки RESET заменён ограниченным,
+  дедуплицируемым и привязанным к поколению Steam worker автоматом с
+  экспоненциальной задержкой, jitter, лимитом попыток и возраста.
+- Нативные библиотеки извлекаются в контролируемый владельцем кэш; добавлены
+  no-follow проверки пути, типа, владельца, SHA-256 и hardlink (где доступно),
+  ограниченное чтение, атомарная публикация и редактирование ошибок загрузки.
+- Добавлен первый независимый от loader Java 8 Addon API baseline (`0.1.0`):
+  typed errors, metadata/lifecycle аддонов, capabilities, безопасные runtime
+  snapshots, наблюдательные events, bounded scheduler и владение ресурсами.
+- Добавлены Java 8 testkit, privacy/contract tests, нейтральный пример аддона,
+  Javadocs, аудит чистоты/classfile API JAR и baseline бинарной поверхности.
+- Добавлен read-only CI для Windows/Linux с actions, закреплёнными по SHA. CI
+  ничего не публикует и не объявляет поддержку macOS, dedicated или retro.
+
 ## 0.2.4 - 2026-08-09
 
 ### English

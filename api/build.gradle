@@ -1,0 +1,158 @@
+plugins {
+    id "java-library"
+}
+
+version = rootProject.api_version
+base.archivesName = "e4steam-api"
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+    options.compilerArgs += ["-Xlint:all", "-Xlint:-options", "-Werror"]
+}
+
+dependencies {
+    testImplementation platform("org.junit:junit-bom:5.10.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+javadoc {
+    options.encoding = "UTF-8"
+    options.charSet = "UTF-8"
+    options.addStringOption("Xdoclint:all,-missing", "-quiet")
+}
+
+tasks.register("apiJarAudit") {
+    group = "verification"
+    description = "Verify Java 8 bytecode and the loader-independent API boundary."
+    dependsOn jar
+    doLast {
+        File artifact = jar.archiveFile.get().asFile
+        def forbiddenConstants = [
+                "net/minecraft/",
+                "net/fabricmc/",
+                "net/minecraftforge/",
+                "net/neoforged/",
+                "org/quiltmc/",
+                "com/sun/jna/",
+                "com/codedisaster/steamworks/",
+                "link/e4steam/internal/",
+                "link/e4steam/steam/"
+        ]
+        def zip = new java.util.zip.ZipFile(artifact)
+        try {
+            zip.entries().each { entry ->
+                if (!entry.name.endsWith(".class")) {
+                    return
+                }
+                if (!entry.name.startsWith("link/e4steam/api/")) {
+                    throw new GradleException("API JAR exposes a class outside link.e4steam.api: ${entry.name}")
+                }
+                byte[] bytes = zip.getInputStream(entry).readAllBytes()
+                def stream = new DataInputStream(new ByteArrayInputStream(bytes))
+                try {
+                    if (Integer.toUnsignedLong(stream.readInt()) != 3405691582L) {
+                        throw new GradleException("Invalid class in API JAR: ${entry.name}")
+                    }
+                    stream.readUnsignedShort()
+                    int major = stream.readUnsignedShort()
+                    if (major != 52) {
+                        throw new GradleException("${entry.name} uses classfile major ${major}; expected Java 8 (52)")
+                    }
+                } finally {
+                    stream.close()
+                }
+                String constants = new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+                forbiddenConstants.each { forbidden ->
+                    if (constants.contains(forbidden)) {
+                        throw new GradleException("${entry.name} references forbidden API dependency ${forbidden}")
+                    }
+                }
+            }
+        } finally {
+            zip.close()
+        }
+    }
+}
+
+def computeApiSurfaceHash = {
+    File artifact = jar.archiveFile.get().asFile
+    def classNames = []
+    def zip = new java.util.zip.ZipFile(artifact)
+    try {
+        zip.entries().each { entry ->
+            if (entry.name.startsWith("link/e4steam/api/") && entry.name.endsWith(".class")) {
+                classNames.add(entry.name.substring(0, entry.name.length() - 6).replace('/', '.'))
+            }
+        }
+    } finally {
+        zip.close()
+    }
+    def signatures = []
+    def loader = new URLClassLoader([artifact.toURI().toURL()] as URL[], (ClassLoader) null)
+    try {
+        classNames.sort().each { name ->
+            Class<?> type = Class.forName(name, false, loader)
+            if (!java.lang.reflect.Modifier.isPublic(type.modifiers)) return
+            signatures.add("TYPE " + type.toGenericString())
+            type.declaredConstructors.findAll {
+                !it.synthetic && (java.lang.reflect.Modifier.isPublic(it.modifiers)
+                        || java.lang.reflect.Modifier.isProtected(it.modifiers))
+            }.each { signatures.add("CTOR " + it.toGenericString()) }
+            type.declaredMethods.findAll {
+                !it.synthetic && !it.bridge && (java.lang.reflect.Modifier.isPublic(it.modifiers)
+                        || java.lang.reflect.Modifier.isProtected(it.modifiers))
+            }.each { signatures.add("METHOD " + it.toGenericString()) }
+            type.declaredFields.findAll {
+                !it.synthetic && (java.lang.reflect.Modifier.isPublic(it.modifiers)
+                        || java.lang.reflect.Modifier.isProtected(it.modifiers))
+            }.each { signatures.add("FIELD " + it.toGenericString()) }
+        }
+    } finally {
+        loader.close()
+    }
+    signatures.sort()
+    def digest = java.security.MessageDigest.getInstance("SHA-256")
+    signatures.each {
+        digest.update(it.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+        digest.update((byte) 10)
+    }
+    return digest.digest().collect { String.format("%02x", it & 0xff) }.join()
+}
+
+tasks.register("printApiSurfaceHash") {
+    group = "help"
+    description = "Print the canonical public API surface hash for an intentional baseline update."
+    dependsOn jar
+    doLast {
+        println(computeApiSurfaceHash())
+    }
+}
+
+tasks.register("apiBinaryCompatibilityCheck") {
+    group = "verification"
+    description = "Reject accidental public API surface changes against the 0.1.0 baseline."
+    dependsOn jar
+    doLast {
+        File baseline = file("api-surface.sha256")
+        if (!baseline.isFile()) {
+            throw new GradleException("Missing first public API surface baseline")
+        }
+        String expected = baseline.readLines("UTF-8")
+                .find { !it.trim().isEmpty() && !it.trim().startsWith("#") }
+                ?.trim()
+        String actual = computeApiSurfaceHash()
+        if (expected != actual) {
+            throw new GradleException(
+                    "Public API changed: expected ${expected}, actual ${actual}. "
+                            + "Use a compatible service extension or intentionally bump the API baseline."
+            )
+        }
+    }
+}
+
+check.dependsOn(apiJarAudit, apiBinaryCompatibilityCheck, javadoc)

@@ -8,8 +8,11 @@ architectury {
     minecraft = rootProject.minecraft_version
 }
 
-subprojects {
+def minecraftProjectNames = ["common", "fabric", "forge", "neoforge"] as Set
+
+configure(subprojects.findAll { minecraftProjectNames.contains(it.name) }) {
     apply plugin: "dev.architectury.loom"
+    apply plugin: "architectury-plugin"
 
     loom {
         silentMojangMappingsLicense()
@@ -26,7 +29,6 @@ subprojects {
 
 allprojects {
     apply plugin: "java"
-    apply plugin: "architectury-plugin"
     base {
         archivesName = rootProject.archives_base_name + "-" + project.name
     }
@@ -55,6 +57,18 @@ allprojects {
     java {
         withSourcesJar()
     }
+}
+
+tasks.register("apiChecks") {
+    group = "verification"
+    description = "Compile and audit the Java 8 addon API, testkit, and example addon."
+    dependsOn(
+            ":api:check",
+            ":api:apiJarAudit",
+            ":api:javadoc",
+            ":api-testkit:check",
+            ":example-addon:check"
+    )
 }
 
 ext.getLatestChangelog = {

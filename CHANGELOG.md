@@ -17,7 +17,8 @@ belong to this fork and are independent of upstream e4mc releases.
   with jitter, maximum attempts and maximum age.
 - Moved native extraction to an owner-controlled cache and added no-follow
   path/type/owner/hash checks, hard-link checks where available, bounded reads,
-  atomic publication and redacted load failures.
+  atomic publication, process-safe publication locks and redacted load
+  failures.
 - Added the first loader-independent Java 8 addon API baseline (`0.1.0`) with
   typed errors, addon metadata/lifecycle types, capabilities, safe runtime
   snapshots, observational events, bounded scheduler contracts and resource
@@ -40,7 +41,8 @@ belong to this fork and are independent of upstream e4mc releases.
   экспоненциальной задержкой, jitter, лимитом попыток и возраста.
 - Нативные библиотеки извлекаются в контролируемый владельцем кэш; добавлены
   no-follow проверки пути, типа, владельца, SHA-256 и hardlink (где доступно),
-  ограниченное чтение, атомарная публикация и редактирование ошибок загрузки.
+  ограниченное чтение, атомарная публикация, безопасная блокировка между
+  процессами и редактирование ошибок загрузки.
 - Добавлен первый независимый от loader Java 8 Addon API baseline (`0.1.0`):
   typed errors, metadata/lifecycle аддонов, capabilities, безопасные runtime
   snapshots, наблюдательные events, bounded scheduler и владение ресурсами.

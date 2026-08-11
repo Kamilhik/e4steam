@@ -13,16 +13,19 @@ not completed a manual two-client Minecraft smoke matrix and is not a release.
 
 | Area | Windows | Linux | Manual Steam host/guest |
 | --- | --- | --- | --- |
-| Java 8 API/testkit/example compile and tests | ✅ local Windows, including an actual Java 8 compiler | CI pending | — |
-| Core and API unit tests | ✅ 180 reported: 172 executed, 8 assumption skips, 0 failures/errors | CI pending | — |
-| Native cache security suite | ✅ core checks; symlink/hardlink and live-Steam cases partly skipped locally | CI pending | — |
-| Existing six modern runtime artifacts | ✅ local clean build and content audit | CI pending | ⏳ |
+| Java 8 API/testkit/example compile and tests | ✅ local Windows, including an actual Java 8 compiler, plus GitHub CI | ✅ GitHub CI | — |
+| Core and API unit tests | ✅ 182 reported: 172 executed, 10 assumption skips, 0 failures/errors; GitHub CI | ✅ GitHub CI | — |
+| Native cache security suite | ✅ core checks; filesystem/live-Steam cases partly skipped locally | ✅ GitHub CI, including Unix filesystem cases | — |
+| Existing six modern runtime artifacts | ✅ local clean build and content audit | ✅ GitHub CI build and content audit | ⏳ |
 
 The Windows filesystem/account used for this run could not create symbolic
 links, did not expose Unix hard-link count, and had no live Steam binding in
-the test process. Those four assumptions were skipped once in modern tests and
-once in the duplicated Java 16 legacy suite. Linux CI is expected to exercise
-the filesystem-specific cases; a real two-client Steam smoke is still manual.
+the test process. Five assumptions were skipped once in modern tests and once
+in the duplicated Java 16 legacy suite. Linux CI exercised the Unix
+filesystem-specific cases; only the two live-Steam bindings remained skipped.
+The pinned-action Windows/Linux workflow and all six artifact audits passed in
+[GitHub Actions run 31473152961](https://github.com/Kamilhik/e4steam/actions/runs/31473152961).
+A real two-client Steam smoke is still manual.
 
 macOS client runtime, dedicated server mode and Minecraft 1.6.4–1.16.5 retro
 artifacts remain unimplemented in this foundation and therefore unsupported.

@@ -1,17 +1,19 @@
 # API threading
 
-Named contexts are `MINECRAFT_CLIENT`, `INTEGRATED_SERVER`,
+Named execution contexts are `MINECRAFT_CLIENT`, `INTEGRATED_SERVER`,
 `DEDICATED_SERVER`, `E4STEAM_CONTROL`, `ADDON_WORKER` and `TIMER`.
 
-- No addon callback may run on a JNA/native callback thread.
-- No callback may run while a core lock is held.
-- Blocking work is forbidden on Minecraft main/server threads.
-- Queues, task counts, delays and callback time budgets are bounded.
-- Callback exceptions are converted to sanitized addon failures and must not
-  stop the Steam worker.
-- Closing a task or parent scope is idempotent; late callbacks are ignored or
-  completed as typed cancellation.
+- Addon callbacks do not execute on JNA/Steam native callback threads or while
+  a core lock is held.
+- Blocking work is forbidden on Minecraft client/server contexts.
+- Queued tasks, delays, lifecycle callbacks and event delivery are bounded.
+- Callback exceptions become sanitized addon failures and do not terminate the
+  Steam worker.
+- Each asynchronous operation is owned by an addon/session generation. Closing
+  a task or parent scope is idempotent; stale callbacks are ignored or receive
+  typed cancellation.
+- High-frequency observational events may be coalesced; decision policies have
+  explicit timeouts and fail closed.
 
-`SchedulerService` defines the public contract and `DeterministicScheduler`
-provides virtual-time tests. Production Minecraft/loader executors are a
-follow-up and are not active in this foundation PR.
+Production execution is implemented by `CoreSchedulerService` and scoped
+wrappers. `DeterministicScheduler` in the testkit supplies virtual-time tests.

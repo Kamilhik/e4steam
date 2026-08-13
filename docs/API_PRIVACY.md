@@ -1,19 +1,26 @@
 # API privacy
 
-e4steam core performs no addon-usage telemetry and has no analytics endpoint.
-Doctor/export flows are allowlist-based and do not upload reports themselves.
+e4steam has no addon telemetry or analytics endpoint. Doctor and diagnostic
+services operate locally, use allowlists and never upload a report themselves.
 
 Always forbidden in public DTOs, events, errors, logs and diagnostics:
-passwords, tickets, tokens, cookies, keys, GSLT, complete credential-bearing
-join addresses, native handles, raw packet/callback objects and arbitrary user
-files. Public DTO `toString()` methods intentionally omit payload values and
-detailed failure text where it could contain a secret.
+
+- passwords, auth tickets, GSLT, tokens, cookies and private/API keys;
+- complete credential-bearing join addresses and invite secrets;
+- native handles, raw callbacks/packets and arbitrary user files;
+- unredacted home paths or sensitive provider failure text.
 
 SteamID64, persona name, avatar, presence and friend relationship are not
-credentials, but they are personal data. A future identity/profile service
-must require a documented capability, return immutable minimal DTOs, avoid
-default diagnostics, avoid external upload and retain values only as long as
-the feature needs them.
+credentials, but are personal data. Safe Minecraft identity is separately
+gated by `identity.minecraft.read`; a minimal immutable Steam profile requires
+`identity.steam.profile.read`/`steam.profile.read`. These fields are omitted
+from default diagnostics, are not sent externally and should be retained only
+as long as the addon feature requires.
 
-The API cannot technically prevent a malicious JVM mod from using its own HTTP
-client or reading files. Trust in installed mods remains mandatory.
+Opaque peer IDs are the default cross-addon identity. Public DTOs defensively
+copy collections/bytes and sensitive models have redacted `toString()` output.
+Privacy contract and canary tests search API-facing output for forbidden
+secret material.
+
+The API cannot prevent a malicious JVM mod from opening its own network
+connection or reading files. Trust in installed mods remains mandatory.

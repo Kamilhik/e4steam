@@ -1,20 +1,30 @@
 # Addon security
 
-Capabilities provide least privilege and clear diagnostics, not JVM isolation.
-A malicious installed mod can call Java APIs directly; only trusted addons
-should be installed.
+Capabilities provide least privilege and auditable diagnostics, not JVM
+isolation. A malicious installed mod can call ordinary Java APIs, so users must
+install addons only from trusted sources.
 
-Core must never expose Steam/Microsoft passwords, Steam auth tickets, invite
-tokens, cookies, OAuth/API keys, GSLT, native handles, raw handshake secrets,
-packet dumps or mutable native buffers. SteamID, persona name and avatar are
-personal data and may be returned only by a specific profile-read capability.
+## Mandatory admission order
 
-Mandatory core admission checks always run before optional addon policy:
-transport authentication, generation/liveness, invite secret, access mode,
-social/allowlist policy and capacity. Events are observational and cannot
-cancel a security rejection. An addon policy may reject an already valid peer;
-it can never turn a core rejection into acceptance.
+1. current Steam runtime and session generation;
+2. transport validation and authenticated Steam identity;
+3. core wire/version and session binding;
+4. replay, rate, capacity, ban and owner checks;
+5. required addon-channel negotiation;
+6. optional addon policy.
 
-Public Worlds, Modpack Sync, Offline Skins and world-settings UI are separate
-future addons. Core contains only neutral contracts and does not activate these
-features without an installed addon and explicit user action.
+Addon policy receives a sanitized minimal context after core gates. It may add
+a denial but cannot turn a core denial into acceptance. Timeout or exception
+fails closed. Network handlers are not called before authentication and channel
+negotiation.
+
+Core never exposes passwords, Steam/Microsoft auth tickets, GSLT, invite or
+join secrets, cookies, OAuth/API keys, native handles, raw handshake data,
+packet dumps or mutable native buffers. SteamID/persona/avatar are personal
+data and require explicit profile-read capability; they are absent from normal
+diagnostics.
+
+All descriptors, metadata, frames, queues, callbacks, config/storage values,
+manifests, images and diagnostics have central bounds. Core remains free of a
+public browser, automatic mod installation, external skin lookup and settings
+manager unless separate trusted addons are installed.

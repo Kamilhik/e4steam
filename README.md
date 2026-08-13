@@ -31,10 +31,12 @@
 > (Spacewar), so unrelated App ID 480 traffic is possible and is filtered.
 
 > [!WARNING]
-> **0.3.0 is under development and is not a release yet.** Its first Draft PR
-> adds security fixes and a Java 8 addon API foundation. Addon discovery,
-> dedicated servers, macOS runtime support and retro artifacts are not enabled
-> by this foundation and must not be advertised as available.
+> **0.3.0 is under development and is not a release yet.** The development
+> branch contains Addon API 1.0, loader-native addon discovery, macOS natives,
+> a fail-closed dedicated-server foundation and exact retro artifacts. These
+> parts are built and unit-tested, but macOS Steam, dedicated two-client and
+> retro Minecraft smoke tests have not been completed. They are experimental
+> or build-only, not supported release features.
 
 e4steam opens a Minecraft singleplayer world to Steam friends without port
 forwarding or a public IP. Both players need the mod and a signed-in Steam
@@ -47,21 +49,23 @@ UUID and safe profile name from the authenticated SteamID rather than trusting
 the name supplied by the client. Steam itself must still be running and signed
 in on every computer.
 
-## 0.3.0 addon API foundation
+## 0.3.0 platform development
 
 The repository now contains a separate loader-independent Java 8 API artifact,
-an addon testkit and a neutral compile-checked example. The first API baseline
-contains safe runtime snapshots, addon metadata/lifecycle types, capabilities,
-typed observational events, bounded scheduling contracts, typed errors and
-parent-child resource ownership. See [docs/ADDON_API.md](docs/ADDON_API.md).
-The staged follow-up work is tracked in
-[docs/0.3.0_ROADMAP.md](docs/0.3.0_ROADMAP.md).
+an addon testkit and a neutral compile-checked example. API 1.0 includes scoped
+identity, session, dedicated, access, lobby, negotiated network, UDP, UI,
+command, config, storage, world-settings, modpack, skin, diagnostics,
+localization and logging contracts. Addons are discovered only through the
+installed mod loader or Java service metadata; core never scans or downloads
+arbitrary JAR files. See [docs/ADDON_API.md](docs/ADDON_API.md) and the current
+[0.3.0 implementation status](docs/0.3.0_ROADMAP.md).
 
 This API is not a sandbox: an installed addon is ordinary code in the same JVM
 and must come from a trusted source. Core does not expose Steam passwords,
-auth tickets, invite tokens, native handles or raw protocol hooks. Public
-Worlds, Modpack Sync and Offline Skins remain separate future addons and are
-not included in e4steam core.
+auth tickets, invite tokens, GSLT, native handles or raw protocol hooks.
+Public Worlds, Modpack Sync, Offline Skins and World Settings remain separate
+future addons. Their bounded API contracts exist, but none of those
+user-facing features is included in core.
 
 ## Which file should I download?
 
@@ -111,8 +115,10 @@ shares Minecraft's port. Another UDP mod can use the `voiceChatPort` setting.
 ## Known limitations
 
 - App ID 480 is a shared test namespace and is not exclusive to e4steam.
-- Integrated singleplayer worlds only; dedicated servers are unsupported.
-- Windows x64 is primary; Linux x64 is experimental; macOS and 32-bit systems are unsupported.
+- The current 0.2.4 release supports integrated singleplayer worlds only.
+- Windows x64 is primary; Linux x64 is experimental. The 0.3.0 macOS and
+  dedicated implementations still require manual Steam smoke testing.
+- 32-bit operating systems are unsupported.
 - Both players need Steam, e4steam, matching Minecraft versions, and compatible loaders.
 - Some declared version/loader combinations are experimental until manually smoke-tested.
 - The shared world uses Minecraft's standard limit of 8 players including the host.
@@ -137,10 +143,12 @@ shares Minecraft's port. Another UDP mod can use the `voiceChatPort` setting.
 > 480 (Spacewar), поэтому посторонний трафик App ID 480 возможен и фильтруется.
 
 > [!WARNING]
-> **0.3.0 находится в разработке и ещё не является релизом.** Первый Draft PR
-> добавляет исправления безопасности и фундамент Java 8 Addon API. Обнаружение
-> аддонов, dedicated-серверы, macOS runtime и retro-сборки этим фундаментом не
-> включаются и не должны называться готовыми функциями.
+> **0.3.0 находится в разработке и ещё не является релизом.** В рабочей ветке
+> реализованы Addon API 1.0, обнаружение аддонов через загрузчики, библиотеки
+> macOS, защищённый фундамент dedicated-сервера и отдельные retro-сборки. Они
+> собираются и покрыты автоматическими тестами, но ручные Steam-проверки macOS,
+> dedicated с двумя клиентами и старых Minecraft ещё не завершены. Поэтому их
+> статус — experimental или build-only, а не готовая поддержка.
 
 e4steam позволяет открыть одиночный мир Minecraft друзьям из Steam без проброса
 портов и белого IP. Мод и запущенный Steam нужны у всех игроков. TCP-трафик
@@ -153,21 +161,22 @@ Minecraft и UDP-трафик поддерживаемых голосовых м
 Сам Steam всё равно должен быть запущен, и на каждом компьютере должен быть
 выполнен вход в аккаунт Steam.
 
-## Фундамент Addon API 0.3.0
+## Разработка платформы 0.3.0
 
 В репозитории появился отдельный независимый от загрузчика Java 8 API JAR,
-testkit и нейтральный пример аддона с проверкой компиляции. Первый baseline API
-содержит безопасные снимки runtime, типы метаданных и lifecycle аддонов,
-capabilities, наблюдательные typed events, контракты ограниченного scheduler,
-typed errors и владение ресурсами. Подробности: [docs/ADDON_API.md](docs/ADDON_API.md).
-Этапы дальнейшей реализации перечислены в
-[docs/0.3.0_ROADMAP.md](docs/0.3.0_ROADMAP.md).
+testkit и нейтральный пример аддона с проверкой компиляции. API 1.0 содержит
+scoped-контракты identity, sessions, dedicated, access, lobby, согласованных
+сетевых каналов, UDP, UI, команд, config, storage, world settings, modpack,
+skins, diagnostics, localization и logging. Аддоны обнаруживаются только
+обычным загрузчиком модов или Java service metadata — core не ищет и не
+скачивает произвольные JAR. Подробности: [Addon API](docs/ADDON_API.md) и
+[статус реализации 0.3.0](docs/0.3.0_ROADMAP.md).
 
 API не является песочницей: установленный аддон — обычный код в той же JVM,
 поэтому ставить можно только доверенные моды. Core не выдаёт пароли Steam,
-auth tickets, invite tokens, native handles и raw protocol hooks. Public Worlds,
-Modpack Sync и Offline Skins остаются отдельными будущими аддонами и не входят
-в e4steam core.
+auth tickets, invite tokens, GSLT, native handles и raw protocol hooks. Для
+Public Worlds, Modpack Sync, Offline Skins и World Settings реализованы только
+ограниченные API-контракты; самих пользовательских функций в e4steam core нет.
 
 ## Какой файл скачивать
 
@@ -217,8 +226,10 @@ Simple Voice Chat определяется автоматически. Plasmo Vo
 ## Известные ограничения
 
 - App ID 480 — общий тестовый идентификатор, не принадлежащий e4steam.
-- Работают только одиночные миры; выделенные серверы не поддерживаются.
-- Windows x64 — основная платформа, Linux x64 экспериментальный; macOS и 32-bit не поддерживаются.
+- Текущий релиз 0.2.4 работает только с открытыми одиночными мирами.
+- Windows x64 — основная платформа, Linux x64 экспериментальный. Реализации
+  macOS и dedicated из 0.3.0 ещё требуют ручных Steam-проверок.
+- 32-битные системы не поддерживаются.
 - Всем нужны Steam, e4steam, одинаковая версия Minecraft и совместимые загрузчики.
 - Непроверенные сочетания версий и загрузчиков считаются экспериментальными.
 - Открытый мир использует стандартный лимит Minecraft: 8 игроков вместе с хостом.

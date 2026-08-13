@@ -1,15 +1,23 @@
 # Diagnostics and privacy
 
-Current `/e4steam doctor` output is local and should be reviewed before
-sharing. The future addon diagnostics service is not implemented by the API
-foundation.
+`/e4steam doctor` produces a short chat summary and a bounded technical report
+in the local Minecraft log. The report streams the mod hash instead of reading
+the whole JAR, excludes raw Steam identity, redacts credential-bearing `.steam`
+addresses, SteamID64 patterns, named secrets and the user home path, limits
+exception depth/frames and caps the report at 64 KiB.
 
-Diagnostic exports must use an allowlist, finite time/size budget and a preview.
-They exclude raw logs by default, SteamID/persona/avatar by default, passwords,
-tickets, tokens, cookies, full join addresses, native handles, packet dumps and
-arbitrary user files. Home/user paths are redacted. Personal identifiers may
-appear only behind a separate explicit switch and label.
+Addon API 1.0 also implements an allowlist-based `DiagnosticsService`.
+Contributors require `diagnostics.contribute`, run off caller/native threads,
+have a two-second timeout, are exception-isolated and are bounded by section,
+field and total preview size. Core redaction still applies regardless of addon
+behavior.
 
-Addon contributions require a capability, are exception-isolated and pass
-through core redaction regardless of addon behavior. Doctor never uploads a
-report itself.
+Default reports exclude SteamID, persona, avatar, lobby IDs, passwords,
+tickets, tokens, cookies, GSLT, full join addresses, native handles, packet
+dumps, arbitrary files and raw logs. `PrivacyOptions` can explicitly request
+non-secret Steam/lobby identifiers where a host UI permits it; credentials are
+structurally impossible to opt into.
+
+Doctor and API previews never upload data. Review even a redacted local report
+before sharing it because Minecraft/other mods may log their own information
+outside e4steam's control.

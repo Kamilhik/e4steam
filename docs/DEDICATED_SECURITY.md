@@ -1,17 +1,31 @@
-# Dedicated security requirements
+# Dedicated security
 
-This document is a design gate, not a supported-feature claim.
+The 0.3.0 implementation is fail-closed around these invariants:
 
-- Readiness is false until native backend, Steam logon, transport, Minecraft
-  listener and ingress guard are all active.
-- Direct remote or loopback vanilla TCP without an internal authenticated Steam
-  context is rejected before gameplay handlers.
-- Tickets are bounded, single-generation, replay-protected and closed on
-  disconnect; raw bytes never enter public DTOs or diagnostics.
-- Stable Steam-derived UUIDs back bans, allowlists and operators. No connected
-  player owns dedicated server authority.
-- Mandatory core rejection cannot be reversed by an addon policy.
-- GSLT, tickets, secrets and passwords are never printed or serialized.
+- `server-ip` must resolve to loopback; RCON and vanilla query must be disabled.
+- Readiness is false until Steam transport, Minecraft readiness and the ingress
+  guard are active.
+- Every Minecraft loopback login maps to a current authenticated Steam peer;
+  arbitrary remote or loopback TCP has no admission context and is rejected.
+- Auth tickets are at most 4096 bytes, generation-bound, timeout-bounded,
+  replay/duplicate-protected and zeroed immediately after use. One transport
+  owner ends each backend auth session exactly once on denial, timeout,
+  disconnect or shutdown; abandoned bounded-queue tasks erase credentials.
+- Core protocol, generation, rate, capacity, ban, whitelist and owner checks
+  precede addon negotiation/policy. Addons cannot reverse a denial.
+- UUIDs derive from authenticated Steam identity, not persona/display name.
+  No connected player owns dedicated server authority.
+- Public listing is disabled. A separate Public Worlds addon can only propose
+  publication and still cannot bypass core gates.
+- Config, access stores, queues, pending auth and diagnostics are bounded.
+  Symlinks/unsafe files and unknown security fields fail startup.
 
-These controls and two-client tests do not exist yet, so dedicated mode remains
-disabled and unsupported.
+Passwords, GSLT, tickets, tokens, descriptor internals and native handles are
+not logged or exposed to addons. The current App ID 480 backend intentionally
+supports anonymous GameServer login only; GSLT configuration is rejected
+instead of being accepted insecurely.
+
+Automated admission, ingress, lifecycle, config, identity and headless
+class-leakage tests exist. A real server plus two clients, reconnect, direct
+TCP bypass and failure-under-load smoke suite remains required before a
+supported release claim.

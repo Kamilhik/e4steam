@@ -1,23 +1,24 @@
 # API compatibility
 
-Four independent versions exist:
+e4steam versions four independent surfaces:
 
-- e4steam mod version: development `0.3.0`;
-- Java addon API version: `0.1.0`;
+- mod version: development `0.3.0`;
+- Java addon API: `1.0.0`;
 - core wire protocol: `4`;
-- future addon-channel protocol: selected per channel.
+- addon channel protocols: declared independently by each channel.
 
-`ApiVersion` follows Semantic Versioning and `ApiVersionRange` uses an inclusive
-minimum/exclusive maximum. Incompatible addons must be rejected before their
-entry point runs. Unknown optional capabilities are ignored; unknown required
-capabilities cause a controlled rejection.
+`ApiVersion` follows semantic versioning. `ApiVersionRange` has an inclusive
+minimum and exclusive maximum. Incompatible addons are rejected before their
+entry point runs. Unknown optional capabilities may be omitted; an unavailable
+required capability disables the addon with a typed sanitized error.
 
-The first canonical public surface hash is stored in
-`api/api-surface.sha256`. `apiBinaryCompatibilityCheck` rejects accidental
-surface changes. Because `0.1.0` is the first baseline and has not been released
-yet, there is no older published API JAR to compare. Future compatible features
-should normally use a new `ServiceKey` and service interface instead of adding
-an abstract method to `E4steamApi`.
+`api/api-surface.sha256` stores the canonical reflection surface.
+`apiBinaryCompatibilityCheck` rejects accidental public changes and the API
+JAR audit rejects implementation, Minecraft, loader, JNA and Steamworks types.
+Compatible growth should normally add a service/type with a new `ServiceKey`,
+not add an abstract member to an existing interface. Breaking changes require
+a new API major version and migration notes.
 
-Experimental contracts live under `link.e4steam.api.experimental` and make no
-binary promise until promoted.
+The `1.0.0` surface is the first complete baseline on an unreleased branch;
+there is no previously published stable API artifact. Types under
+`link.e4steam.api.experimental` deliberately make no compatibility promise.

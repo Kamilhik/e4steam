@@ -21,6 +21,8 @@ Install JDK 21, clone the repository, and run:
 ```powershell
 .\gradlew.bat clean releaseJars
 .\gradlew.bat apiChecks
+.\gradlew.bat headlessEntrypointAudit
+.\gradlew.bat -p retro auditRetroArtifacts
 ```
 
 On Linux:
@@ -28,6 +30,8 @@ On Linux:
 ```bash
 ./gradlew clean releaseJars
 ./gradlew apiChecks
+./gradlew headlessEntrypointAudit
+./gradlew -p retro auditRetroArtifacts
 ```
 
 The produced bytecode and supported game versions are defined by the checked-in
@@ -41,11 +45,13 @@ Before submitting a pull request, also run:
 git diff --check
 .\gradlew.bat --no-daemon releaseJars
 .\gradlew.bat --no-daemon apiChecks
+.\gradlew.bat --no-daemon -p retro auditRetroArtifacts
 ```
 
-The aggregate task covers the two Minecraft 1.17 legacy artifacts, the standard
-and modern Fabric variants, Forge, and NeoForge. Do not silently omit a variant
-when changing it.
+The root aggregate covers the two Minecraft 1.17 legacy artifacts, standard and
+modern Fabric variants, Forge and NeoForge. The separate `retro` build covers
+11 exact Forge and 3 exact Fabric Java 8 artifacts. Do not silently omit a
+variant or infer runtime support from compilation.
 
 ## Pull requests
 
@@ -61,13 +67,15 @@ when changing it.
 - Do not commit build output, Minecraft instances, logs, credentials, signing
   keys, or generated `steam_appid.txt` files. The root `steam_appid.txt`
   containing only `480` is the intentional development fixture.
-- Preserve all Apache 2.0 and third-party license notices, and update `THIRD_PARTY_NOTICES.md` when a
-  dependency or bundled native library changes.
+- Preserve all Apache 2.0 and third-party license notices, and update
+  `THIRD_PARTY_NOTICES.md` when a dependency, native library or adapted
+  upstream file changes.
 
 ## Binary distribution
 
 Source contributions are welcome under the repository's Apache License 2.0. A compiled
 JAR bundles Valve Steamworks redistributables that are not covered by that
-license. Stable binaries may be published after the verification and release
-steps in `RELEASING.md` pass. Keep the release type set to **Release** and the
-environment set to **Client required / Server unsupported**.
+license. Stable binaries may be published only after the applicable automated
+and manual verification steps in `RELEASING.md` pass. Unverified macOS,
+dedicated or retro artifacts must not be labeled supported or silently
+included in a stable release.

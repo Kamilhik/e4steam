@@ -1,14 +1,31 @@
-# Addon networking status
+# Addon networking
 
-The current `0.1.0` foundation does not expose an addon network channel or raw
-Steam transport. This is intentional: a partial negotiation/security layer is
-not enabled by default.
+Addon networking is implemented for the unreleased 0.3.0 branch through
+`NetworkService` and an internal authenticated `AddonNetworkCoordinator`.
+Addons never receive raw Steam/JNA handles or core protocol frames.
 
-A later service must provide namespaced channels, independent channel versions,
-required/optional negotiation, authentication-before-handler, bounded frames,
-rates and queues, decompression limits, per-addon fairness, generation binding
-and sanitized errors. Addon traffic may never starve Minecraft/control traffic.
+## Channel lifecycle
 
-Raw JNA callbacks, Steam handles, core packet types and mutable native buffers
-will not be public API. Until the versioned service and its fuzz/abuse tests are
-merged, addons must not depend on internal transport packages.
+1. An addon registers a namespaced channel before registrations freeze.
+2. Its descriptor declares independent versions, required/optional status,
+   direction, delivery semantics and maximum message size.
+3. Peers exchange bounded manifests only after core authentication.
+4. Required incompatibility rejects activation; optional incompatibility
+   disables that channel only.
+5. A handler can run only for the current authenticated session generation and
+   a successfully negotiated channel.
+
+Protocol `4` carries addon manifest, agreement, fragment and message frames.
+Large messages use bounded fragmentation/reassembly. Decoding validates
+lengths before allocation and rejects malformed, replayed, early or
+stale-generation frames.
+
+Per-peer, addon and channel budgets bound frame size, aggregate reassembly,
+rates, queued bytes and callback work. Queue scheduling reserves priority for
+core/Minecraft traffic so addon traffic cannot starve the game transport.
+Virtual UDP uses the same authentication, generation and quota boundary.
+
+Unit/contract tests cover required and optional negotiation, malformed and
+oversized input, replay/stale generations, fragmentation, queue pressure,
+fairness and handler isolation. A real two-client addon-channel Steam smoke
+test is still required before 0.3.0 release.

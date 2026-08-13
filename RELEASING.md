@@ -1,81 +1,91 @@
 # Release checklist
 
 e4steam 0.2.4 is the current stable release. The 0.3.0 branch is unreleased and
-must not be published while its Draft PR is under review. Public builds use
-Steam App ID 480 and are published as client-only release files for Windows
-x64 and experimental Linux x64 support.
+must not be tagged or published while its Draft PR and manual matrices remain
+open. App ID 480 is permanent for this project.
 
-## Before publishing
+## Required order
 
-1. Update `CHANGELOG.md` in English first and Russian second.
-2. Update `COMPATIBILITY.md` with launch and host/guest results. Do not turn an
-   untested combination into a verified one.
-3. Run the complete verification command below on Windows.
-4. Run `apiChecks`; changing the public API requires an intentional API version
-   and `api/api-surface.sha256` baseline decision.
-5. Push the release commit and wait for both Linux and Windows GitHub Actions
-   jobs to pass.
-6. Create the annotated `v<version>` tag from that verified commit.
-7. Publish the six runtime JARs as stable releases.
+1. Finish the English and Russian `CHANGELOG.md` section before creating a tag.
+2. Record exact automated and manual evidence in `COMPATIBILITY.md`; never turn
+   a compile/main-menu result into a multiplayer or platform support claim.
+3. Run the modern, Java 8 API and exact retro verification commands below.
+4. Inspect every intended runtime JAR, its metadata, classfile level, notices,
+   natives and SHA-256. Do not publish dev/sources/unstubbed/root artifacts.
+5. Wait for Windows, Linux, macOS Intel, macOS arm64 and retro CI jobs to pass.
+6. Complete the applicable two-instance Steam matrices using the exact candidate
+   hashes. macOS, dedicated and every retro artifact remain non-releaseable if
+   their required smoke evidence is absent.
+7. Commit the final docs/results, then create annotated `v<version>` from that
+   verified commit. Publishing/merging still requires explicit owner approval.
 
-## Supported files
+## Modern runtime artifacts
 
-| File | Loader metadata | Game versions | Required dependency |
-| --- | --- | --- | --- |
-| `e4steam-fabric-<version>-mc1.17-1.18.2.jar` | Fabric and Quilt | 1.17–1.18.2 | Fabric API |
-| `e4steam-forge-<version>-legacy17.jar` | Forge | 1.17.1–1.18.1 | None |
-| `e4steam-fabric-<version>.jar` | Fabric and Quilt | 1.19–1.21.11 | Fabric API |
-| `e4steam-fabric-<version>-modern.jar` | Fabric and Quilt | 26.1–26.2 | Fabric API |
-| `e4steam-forge-<version>.jar` | Forge | 1.18.2–1.20.2 | None |
-| `e4steam-neoforge-<version>.jar` | NeoForge | 1.20.2–26.2 | None |
+| Artifact | Loader/version scope | Java |
+| --- | --- | --- |
+| `e4steam-fabric-quilt-mc1.17-1.18.2-v<version>.jar` | Fabric/Quilt 1.17–1.18.2 | 16 |
+| `e4steam-forge-mc1.17.1-1.18.1-v<version>.jar` | Forge 1.17.1–1.18.1 | 16 |
+| `e4steam-fabric-quilt-mc1.19-1.21.11-v<version>.jar` | Fabric/Quilt 1.19–1.21.11 | 17+ |
+| `e4steam-fabric-quilt-mc26.1-26.2-v<version>.jar` | Fabric/Quilt 26.1–26.2 | target metadata |
+| `e4steam-forge-mc1.18.2-1.20.2-v<version>.jar` | Forge 1.18.2–1.20.2 | 17 |
+| `e4steam-neoforge-mc1.20.2-26.2-v<version>.jar` | NeoForge 1.20.2–26.2 | 17+ |
 
-Use release channel **Release**, environment **Client required / Server
-unsupported**. Do not upload `dev-shadow`, `sources`, `unstubbed`, or
-root-project JARs. Forge 1.17.0 has no supported loader target, so the legacy
-Forge range begins at 1.17.1.
+The same JAR contains pinned Windows x64, Linux x64 and universal macOS
+x86_64/arm64 Steamworks client/GameServer libraries. Do not create OS-specific
+duplicates. Fabric/Quilt still requires the matching Fabric API.
 
-Do not create OS-specific duplicates. Every runtime JAR contains both the
-Windows x64 (`steam_api64.dll`, `steamworks4j64.dll`) and Linux x64
-(`libsteam_api.so`, `libsteamworks4j.so`) native libraries and selects the
-correct pair at runtime.
+The six JARs contain headless entrypoints, but dedicated server publication is
+allowed only after its loader/OS GameServer matrix passes. Listing metadata
+must distinguish client support from experimental dedicated support rather
+than making a blanket server claim.
 
-## Compatibility verification
+## Retro candidates
 
-Client launch testing and multiplayer testing are different gates:
+`./gradlew -p retro auditRetroArtifacts` builds 14 exact Java 8 candidates: 11
+Forge versions (1.6.4 through 1.16.5 at the listed baselines) and Fabric 1.14.4,
+1.15.2 and 1.16.5. Each file must keep exact Minecraft+loader in its name.
+There is no generic retro, Legacy Fabric, Ornithe, Rift or Quilt file.
 
-- client launch: Minecraft reaches the main menu with e4steam and required
-  dependencies loaded;
-- multiplayer: a host opens a world, a second Steam account joins, TCP traffic
-  works, the invitation path works, and configured UDP voice traffic is tested.
+Retro candidates are build-only until every exact artifact completes launch,
+LAN host, Steam join, movement/chunk, disconnect/reconnect, teardown and
+physical-server classloading checks. Do not upload only because the build is
+green.
 
-For a new release, retest the lower and upper boundary of every changed
-artifact. Record the Minecraft version, loader, Java version, operating system,
-host and guest result, invitation result, TCP result, UDP result, and date in
-`COMPATIBILITY.md`. Multiplayer confirmation remains a manual two-client test;
-unit tests and a successful main-menu launch do not replace it.
-
-## Listing disclosures
-
-The project page must state that e4steam is an unofficial derivative of e4mc,
-that both players need the mod and a signed-in Steam client, that traffic uses
-Steam P2P or Valve relays, that native Steamworks redistributables are bundled,
-and that App ID 480 is a shared test namespace used permanently by this fork.
-
-The public display name is **e4steam**. Identify **Kamilchik** as the project
-author and current maintainer, retain the e4mc fork attribution, and preserve
-the notices in `LICENSE` and `THIRD_PARTY_NOTICES.md`.
-
-## Verification
+## Verification commands
 
 ```powershell
-.\gradlew.bat --no-daemon clean releaseJars
-.\gradlew.bat --no-daemon apiChecks
+.\gradlew.bat --no-daemon clean apiChecks test headlessEntrypointAudit releaseJars
+.\gradlew.bat --no-daemon -p retro clean auditRetroArtifacts
 git diff --check
-$releaseJars = Get-ChildItem release\<version>\*.jar
-if ($releaseJars.Count -ne 6) { throw "Expected 6 runtime JARs, found $($releaseJars.Count)" }
-$releaseJars | Get-FileHash -Algorithm SHA256
 ```
 
-Launch Minecraft normally with Steam already running and signed in. Verify
-that the invitation action opens Steam friends (or the safe desktop friends
-window on Linux) and that host/guest world loading completes.
+Also run the bundled Minecraft-mod JAR inspector, review the dependency/license
+inventory in `docs/DEPENDENCY_LICENSE_REPORT.md` and scan intended artifacts
+for credentials/private certificates.
+Record output and any assumptions/skips. CI does not publish on pull requests.
+
+## Manual candidate checks
+
+- modern integrated: client launch, world open, friends/invite and address join,
+  TCP, configured UDP, addon required/optional negotiation, disconnect/reconnect;
+- macOS: repeat on native Intel and native arm64 JVMs (Rosetta is a separate
+  fallback result, not arm64 proof);
+- dedicated: anonymous GameServer startup, readiness, descriptor, two clients,
+  stable identity, bans/whitelist, direct TCP rejection, replay/stale session,
+  reconnect, capacity and graceful drain on each claimed OS/loader;
+- retro: the exact per-artifact checks described above.
+
+Record Minecraft, loader, Java, OS/arch, Steam accounts/roles without exposing
+their IDs, artifact SHA-256, date and outcome. Never publish auth tickets,
+tokens, GSLT, join secrets or unredacted logs.
+
+## Listing and legal disclosures
+
+State that e4steam is an unofficial e4mc derivative, both integrated-world
+players require the mod and signed-in Steam, traffic uses Steam P2P/Valve
+relays, App ID 480 is a shared test namespace, and Steamworks redistributables
+are bundled under their own terms. Identify Kamilchik as author/maintainer and
+preserve `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` and e4mc-retro attribution.
+
+Public Worlds, automatic modpack installation, Offline Skins and World Settings
+UI must never be advertised as core features merely because API contracts exist.

@@ -8,6 +8,16 @@ The original project is not responsible for this Steam transport fork. This deri
 
 The e4steam fork is authored and maintained by Kamilchik.
 
+## e4mc-retro compatibility reference
+
+Retro loader/build integration and four Minecraft LAN-listener mixin seams are
+adapted from [xhyrom/e4mc-retro](https://github.com/xhyrom/e4mc-retro), which is
+distributed under the Apache License, Version 2.0. The current e4steam runtime
+uses its own Steam transport; no Cloudflare, Quiclime, cloudflared or broker
+backend was copied. Exact upstream branches, commit SHAs and adapted files are
+recorded in `docs/RETRO_PORTING.md`. The applicable Apache 2.0 text is the
+repository-root `LICENSE`.
+
 ## steamworks4j 1.10.0
 
 Copyright (c) 2014–2025 Daniel Ludwig

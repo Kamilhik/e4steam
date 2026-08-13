@@ -8,8 +8,10 @@
 | 0.3.0 development branch | Testing only; not a published supported release |
 | Older 0.x and alpha builds | ❌ No |
 
-Security fixes are provided for the latest stable 0.2.x release. Dedicated
-servers, macOS, and 32-bit operating systems are not supported.
+Security fixes are provided for the latest stable 0.2.x release. The 0.3.0
+branch contains experimental macOS/dedicated implementations and build-only
+retro artifacts; none is a published supported release. 32-bit operating
+systems are unsupported.
 
 ## Threat model for 0.3.0 development
 
@@ -22,6 +24,15 @@ servers, macOS, and 32-bit operating systems are not supported.
 - Native libraries are loaded only from an allowlisted owner-controlled cache
   after no-follow type, owner, size and SHA-256 validation. Same-account code
   remains inside the trust boundary; Java cannot sandbox another installed mod.
+- Addon channels are generation-bound and negotiated only after core
+  authentication. Required incompatibility fails before game/addon traffic;
+  quotas and fair queues protect core/Minecraft capacity.
+- Dedicated mode requires loopback-only Minecraft bind, authenticated
+  GameServer tickets and current single-use ingress registration. Direct TCP,
+  stale generations and replayed authentication fail before gameplay code.
+- Doctor and addon diagnostics exclude Steam identity by default and redact
+  credential-bearing addresses, named secrets and user paths with finite
+  output limits.
 
 ## Installed addon trust
 
@@ -30,7 +41,7 @@ sandbox. A malicious installed mod can use ordinary Java APIs outside e4steam.
 Install addons only from trusted sources. Core never provides addons with a
 Steam password, auth ticket, invite token, cookie, API key, native handle or
 raw packet/native callback object. SteamID, persona name and avatar are
-personal data and require an explicit capability in future profile services.
+personal data and require an explicit profile-read capability.
 
 ## Reporting a vulnerability
 

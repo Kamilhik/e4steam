@@ -7,53 +7,124 @@ belong to this fork and are independent of upstream e4mc releases.
 
 ### English
 
-- Bound authenticated Steam guests to a stable, versioned Minecraft UUID and
-  safe profile name derived from SteamID. A guest can no longer gain the
-  integrated-server owner bypass by supplying the host's Minecraft name.
-- Added a dedicated 1.17-1.18.2 login adapter so the same identity binding is
-  applied before those versions create their legacy offline profile.
-- Replaced the single RESET retry slot with a bounded, deduplicated and
-  worker-generation-safe retry state machine using capped exponential backoff
-  with jitter, maximum attempts and maximum age.
-- Moved native extraction to an owner-controlled cache and added no-follow
-  path/type/owner/hash checks, hard-link checks where available, bounded reads,
-  atomic publication, process-safe publication locks and redacted load
-  failures.
-- Added the first loader-independent Java 8 addon API baseline (`0.1.0`) with
-  typed errors, addon metadata/lifecycle types, capabilities, safe runtime
-  snapshots, observational events, bounded scheduler contracts and resource
-  ownership.
-- Added a Java 8 API testkit, privacy/contract tests, a neutral compile-checked
-  example addon, Javadocs, API JAR purity/classfile audits and a canonical
-  binary-surface baseline.
-- Added a read-only, SHA-pinned Windows/Linux CI foundation. It does not publish
-  releases and does not claim macOS, dedicated-server or retro runtime support.
-- Defined the corrected future retro loader matrix: Forge 1.6.4–1.16.5 and
-  separate ordinary Fabric targets covering 1.14.4–1.16.5.
+- Bound each authenticated Steam guest to a stable versioned Minecraft UUID
+  and safe name derived from Steam identity. Persona-name changes no longer
+  change ownership, and a guest cannot obtain the integrated-server owner
+  bypass by supplying the host's Minecraft name. Added the matching legacy
+  login adapter for Minecraft 1.17–1.18.2.
+- Replaced the single RESET retry slot with a bounded, deduplicated,
+  worker-generation-safe state machine using capped exponential backoff,
+  jitter, maximum attempts/age and deterministic shutdown cleanup.
+- Hardened Steam native extraction with an owner-controlled cache, no-follow
+  type/owner/link checks, pinned size/SHA-256, bounded reads, atomic publication,
+  process locks, absolute-path loading and redacted failures.
+- Added loader-independent Java 8 Addon API `1.0.0`, typed services, Javadocs,
+  a deterministic testkit, a compile-tested example, API JAR purity/classfile
+  audits and a canonical binary-surface check.
+- Implemented loader-native addon discovery and deterministic lifecycle with
+  API/dependency/cycle validation, scoped capabilities, callback isolation,
+  registration freeze and reverse-order resource cleanup. Core never scans or
+  downloads arbitrary addon JARs.
+- Implemented scoped runtime, events, scheduling, identity, session, access,
+  lobby, UI, command, config, private storage, localization, logging and
+  privacy-safe diagnostics adapters.
+- Added authenticated namespaced addon networking with required/optional
+  version negotiation, fragmentation/reassembly, replay and stale-generation
+  rejection, bounded rates/queues and fair priority that protects Minecraft and
+  control traffic. Added the bounded virtual UDP service.
+- Added neutral World Settings, Modpack and Skin provider/staging contracts.
+  Public Worlds, automatic mod installation, external skins and settings UI
+  remain absent from core and require separate addons.
+- Added universal macOS Intel/Apple Silicon Steam client/GameServer libraries,
+  strict OS/architecture normalization, Mach-O slice/hash validation and Intel
+  plus arm64 CI audits. Real macOS Steam multiplayer is not yet smoke-tested,
+  so the platform remains experimental.
+- Added an opt-in headless `DEDICATED_GAME_SERVER` backend using anonymous Steam
+  GameServer login, Steam auth-ticket validation, a generation-bound loopback
+  ingress guard, stable identities, private/whitelist/unlisted policy, bans,
+  console commands and graceful draining. Public advertising remains disabled.
+- Added strict bounded `config/e4steam-dedicated.toml` parsing that rejects
+  unknown/secret fields, unsafe bind/auth/publication settings and symlink or
+  changing files. The App ID 480 backend intentionally has no GSLT input.
+- Split modern and retro physical server entrypoints from client bootstrap and
+  added transitive headless class-graph/JAR audits for Minecraft client, AWT,
+  overlay and client Steam runtime leakage.
+- Added exact Java 8 build-only retro artifacts for Forge 1.6.4, 1.7.10, 1.8.9,
+  1.9.4, 1.10.2, 1.11.2, 1.12.2, 1.13.2, 1.14.4, 1.15.2 and 1.16.5, plus
+  Fabric 1.14.4, 1.15.2 and 1.16.5. No generic retro, Legacy Fabric, Ornithe,
+  Rift, Quilt or non-Steam tunnel backend is included.
+- Hardened Doctor output: it streams the mod hash, excludes raw Steam identity,
+  redacts join addresses/secrets/user paths and bounds exception/report output.
+- Tightened dedicated authentication ownership: every Steam auth session now
+  has one cleanup owner, queued and timed-out admissions close deterministically,
+  and copied tickets/nonces are zeroed immediately after use or cancellation.
+- Reduced every retro JAR to the exact nine supported 64-bit Steam natives,
+  excluding 32-bit and encrypted-ticket variants. Added a checked dependency/
+  license inventory and a non-publishing Gradle/CI license audit.
+- Expanded non-publishing SHA-pinned CI to Windows, Linux, macOS Intel, macOS
+  arm64 and the exact retro artifact matrix. Manual macOS, dedicated two-client
+  and per-retro Minecraft/Steam smoke tests remain release blockers.
 
 ### Русский
 
-- Профиль подтверждённого Steam-гостя теперь получает стабильный версионный
-  Minecraft UUID и безопасное имя из SteamID. Гость больше не может получить
-  права владельца встроенного сервера, указав Minecraft-имя хоста.
-- Для 1.17-1.18.2 добавлен отдельный login-адаптер: Steam identity применяется
-  до того, как эти версии создадут legacy offline profile.
-- Один общий слот повторной отправки RESET заменён ограниченным,
-  дедуплицируемым и привязанным к поколению Steam worker автоматом с
-  экспоненциальной задержкой, jitter, лимитом попыток и возраста.
-- Нативные библиотеки извлекаются в контролируемый владельцем кэш; добавлены
-  no-follow проверки пути, типа, владельца, SHA-256 и hardlink (где доступно),
-  ограниченное чтение, атомарная публикация, безопасная блокировка между
-  процессами и редактирование ошибок загрузки.
-- Добавлен первый независимый от loader Java 8 Addon API baseline (`0.1.0`):
-  typed errors, metadata/lifecycle аддонов, capabilities, безопасные runtime
-  snapshots, наблюдательные events, bounded scheduler и владение ресурсами.
-- Добавлены Java 8 testkit, privacy/contract tests, нейтральный пример аддона,
-  Javadocs, аудит чистоты/classfile API JAR и baseline бинарной поверхности.
-- Добавлен read-only CI для Windows/Linux с actions, закреплёнными по SHA. CI
-  ничего не публикует и не объявляет поддержку macOS, dedicated или retro.
-- Исправлена будущая retro-матрица: Forge 1.6.4–1.16.5 и отдельные обычные
-  Fabric-сборки для диапазона 1.14.4–1.16.5.
+- Каждый подтверждённый Steam-гость теперь получает стабильный версионный
+  Minecraft UUID и безопасное имя из Steam identity. Смена persona name не
+  меняет владение, а гость не может получить права хоста, отправив его
+  Minecraft-имя. Для Minecraft 1.17–1.18.2 добавлен отдельный login-адаптер.
+- Один слот повторной отправки RESET заменён ограниченным, дедуплицируемым и
+  привязанным к поколению Steam worker автоматом с capped exponential backoff,
+  jitter, лимитами попыток/возраста и детерминированной очисткой при остановке.
+- Кэш Steam-библиотек защищён проверками no-follow типа, владельца, ссылок,
+  размера и закреплённого SHA-256, ограниченным чтением, атомарной публикацией,
+  межпроцессной блокировкой, absolute-path загрузкой и редактированием ошибок.
+- Реализован независимый от loader Java 8 Addon API `1.0.0`: typed services,
+  Javadocs, детерминированный testkit, проверяемый пример, аудит чистоты и
+  classfile API JAR, а также контроль бинарной поверхности.
+- Добавлены обнаружение аддонов обычными загрузчиками и детерминированный
+  lifecycle с проверкой API/dependencies/cycles, scoped capabilities,
+  изоляцией callback, заморозкой регистраций и обратным закрытием ресурсов.
+  Core не ищет и не скачивает произвольные addon JAR.
+- Реализованы scoped-адаптеры runtime, events, scheduler, identity, sessions,
+  access, lobby, UI, commands, config, private storage, localization, logging и
+  privacy-safe diagnostics.
+- Добавлена сеть аддонов с namespaced-каналами, required/optional согласованием
+  версий, fragmentation/reassembly, защитой от replay и stale generation,
+  ограниченными rate/queues и fairness для защиты Minecraft/control traffic.
+  Добавлен ограниченный virtual UDP service.
+- Добавлены нейтральные контракты World Settings, Modpack и Skin providers/
+  staging. Public Worlds, автоустановка модов, внешние скины и settings UI не
+  входят в core и требуют отдельных аддонов.
+- Добавлены universal macOS-библиотеки Steam client/GameServer для Intel и
+  Apple Silicon, строгая нормализация OS/architecture, проверка Mach-O slices и
+  hashes, CI для Intel и arm64. Реальный Steam multiplayer на macOS ещё не
+  проверен, поэтому статус остаётся experimental.
+- Добавлен opt-in headless backend `DEDICATED_GAME_SERVER`: anonymous Steam
+  GameServer login, проверка auth ticket, generation-bound loopback ingress,
+  стабильные identity, private/whitelist/unlisted, bans, console-команды и
+  graceful draining. Публичная публикация остаётся отключённой.
+- Добавлен строгий ограниченный `config/e4steam-dedicated.toml`, который
+  отклоняет неизвестные/секретные поля, небезопасные bind/auth/publication
+  настройки, symlink и изменяемый во время чтения файл. Для App ID 480 нет GSLT
+  input.
+- Современные и retro physical-server entrypoints отделены от client bootstrap;
+  добавлен транзитивный headless аудит class graph/JAR на утечки Minecraft
+  client, AWT, overlay и клиентского Steam runtime.
+- Добавлены exact build-only Java 8 retro JAR для Forge 1.6.4, 1.7.10, 1.8.9,
+  1.9.4, 1.10.2, 1.11.2, 1.12.2, 1.13.2, 1.14.4, 1.15.2 и 1.16.5, а также
+  Fabric 1.14.4, 1.15.2 и 1.16.5. Нет generic retro, Legacy Fabric, Ornithe,
+  Rift, Quilt и не-Steam tunnel backend.
+- Doctor теперь потоково считает hash мода, исключает raw Steam identity,
+  редактирует join addresses/secrets/user paths и ограничивает stack/report.
+- Усилен lifecycle dedicated-аутентификации: у каждой Steam auth session теперь
+  один владелец очистки, queued и timed-out admission завершаются
+  детерминированно, а копии tickets/nonces сразу обнуляются после использования
+  или отмены.
+- В каждом retro JAR оставлены ровно девять поддерживаемых 64-bit Steam natives;
+  32-bit и encrypted-ticket варианты исключены. Добавлены проверяемый список
+  dependencies/licenses и непубликующий Gradle/CI license audit.
+- Непубликующий CI с actions по SHA расширен на Windows, Linux, macOS Intel,
+  macOS arm64 и exact retro matrix. Ручные проверки macOS, dedicated с двумя
+  клиентами и каждой retro-сборки остаются обязательными перед релизом.
 
 ## 0.2.4 - 2026-08-09
 

@@ -1,13 +1,17 @@
-# Future Modpack Sync addon boundary
+# Modpack Sync addon boundary
 
-Modpack Sync is a separate future addon; core does not download, install or
-execute JAR files. The current API foundation contains no staging service.
+Modpack Sync is **not** included in e4steam core. Core does not discover,
+download, install, hot-load or execute a remote JAR.
 
-A safe future flow requires explicit user confirmation, a bounded signed or
-hash-pinned manifest, filename/path confinement, size/count limits, HTTPS in
-the addon's own documented implementation, staging outside the live mods
-directory, integrity verification, a preview and an explicit restart. A
-manifest cannot silently enable code or bypass loader/version checks.
+API 1.0 supplies neutral bounded manifest, compatibility, artifact, staging,
+progress and proposal contracts. A separate addon owns sources and UI. A safe
+implementation must use explicit user confirmation, bounded manifests and
+artifact counts/sizes, normalized path confinement, HTTPS sources, declared
+hashes/signatures, staging outside the live mods directory, integrity checks,
+preview, backup, restart and rollback.
 
-Steam passwords, tickets, tokens, API keys and arbitrary filesystem access are
-not exposed by e4steam. The API is not a sandbox for an installed addon.
+The contract rejects traversal, absolute/device paths, duplicate normalized
+entries, oversized metadata and unsafe executable transitions. Staging is not
+permission to move files into `mods` or launch code. Steam credentials and
+arbitrary filesystem access are never supplied by e4steam. The API remains a
+contract boundary, not a sandbox for the installed addon.

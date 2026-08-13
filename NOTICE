@@ -5,3 +5,7 @@ This product includes software derived from e4mc, originally developed by
 Skye and contributors and made available under the MIT License. The applicable
 third-party copyright and license notices are provided in
 THIRD_PARTY_NOTICES.md.
+
+Portions of the retro Minecraft loader and listener integration are adapted
+from xhyrom/e4mc-retro, licensed under the Apache License, Version 2.0. Exact
+source revisions and adapted seams are documented in docs/RETRO_PORTING.md.

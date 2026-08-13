@@ -1,15 +1,20 @@
-# Future Public Worlds addon boundary
+# Public Worlds addon boundary
 
-Public Worlds is not included in e4steam core and does not appear without a
-separately installed addon. The current API foundation does not yet expose
-lobby search/publication services.
+Public Worlds is **not** included in e4steam core. Without a separate addon
+there is no public button, access mode, browser, search, publication, command,
+setting or network channel.
 
-A future addon may propose public lobby metadata only after explicit host
-configuration. Core still performs transport authentication, current-session
-secret validation, mandatory access checks, capacity and generation checks.
-The addon cannot override a rejection. SteamID/profile fields require a
-separate capability and are personal data. Passwords, tickets, tokens and raw
-join secrets are never available.
+API 1.0 supplies bounded primitives a future addon may use: custom access-mode
+registration, optional post-core admission policy, typed lobby metadata and
+search pages, UI/command contributions and a publication proposal capability.
+Public metadata is an untrusted advertisement and never authorization.
 
-The addon must bound result counts, metadata sizes, update rates and retention.
-Core sends no listing telemetry and provides no universal HTTP client.
+A future addon must require explicit host configuration, namespace and bound
+metadata, rate-limit search/update work and revalidate every result during the
+authenticated handshake. Core always retains Steam authentication, current
+generation, protocol, replay, invite/session binding, ban, owner, capacity and
+rate gates. An addon can reject but cannot override a core rejection.
+
+Steam profile data requires a separate capability. Passwords, tickets, tokens,
+GSLT and credential-bearing join addresses are unavailable. Core performs no
+listing telemetry and provides no universal external HTTP backend.

@@ -245,7 +245,16 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
 
     /** Creates one private cache directory for filesystem-focused tests. */
     static Path createPrivateCacheDirectory(Path parent, String child) throws IOException {
-        Path safeParent = parent.toAbsolutePath().normalize();
+        Path safeParent;
+        try {
+            // macOS exposes its per-user temporary area through /var, which is
+            // an OS-owned alias of /private/var. Resolve the already-existing
+            // test parent first, then apply the strict no-link validation to
+            // the canonical chain and to every cache entry we create below.
+            safeParent = parent.toRealPath();
+        } catch (IOException exception) {
+            throw new IOException("Could not resolve the native cache parent safely");
+        }
         validateDirectoryChain(safeParent);
         return ensurePrivateChildDirectory(safeParent, child, currentProcessOwner(safeParent));
     }

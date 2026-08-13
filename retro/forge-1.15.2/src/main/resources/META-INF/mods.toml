@@ -1,0 +1,21 @@
+modLoader="javafml"
+loaderVersion="[31,)"
+license="Apache-2.0"
+[[mods]]
+modId="e4steam"
+version="${version}"
+displayName="e4steam"
+authors="Kamilchik"
+description='''Play Minecraft with friends through Steam. Retro build for Minecraft 1.15.2.'''
+[[dependencies.e4steam]]
+modId="forge"
+mandatory=true
+versionRange="[31,)"
+ordering="NONE"
+side="CLIENT"
+[[dependencies.e4steam]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.15.2,1.16)"
+ordering="NONE"
+side="CLIENT"

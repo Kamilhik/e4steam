@@ -1,0 +1,10 @@
+[
+  {
+    "modid": "e4steam",
+    "name": "e4steam",
+    "description": "Play Minecraft with friends through Steam. Retro build for Minecraft ${minecraftVersion}.",
+    "version": "${version}",
+    "mcversion": "${minecraftVersion}",
+    "authorList": ["Kamilchik"]
+  }
+]

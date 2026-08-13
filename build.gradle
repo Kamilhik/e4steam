@@ -100,12 +100,177 @@ tasks.register("legacyReleaseJars", GradleBuild) {
     tasks = ["clean", "releaseJars"]
 }
 
+tasks.register("headlessEntrypointAudit") {
+    group = "verification"
+    description = "Reject client/UI class references reachable from dedicated server entrypoints."
+    dependsOn(
+            ":common:classes",
+            ":fabric:classes",
+            ":forge:classes",
+            ":neoforge:classes"
+    )
+
+    doLast {
+        List<File> roots = [
+                file("common/build/classes/java/main"),
+                file("fabric/build/classes/java/main"),
+                file("forge/build/classes/java/main"),
+                file("neoforge/build/classes/java/main"),
+                file("api/build/classes/java/main")
+        ].findAll { it.isDirectory() }
+        Map<String, byte[]> classes = [:]
+        roots.each { root ->
+            fileTree(root) { include "**/*.class" }.files.each { classFile ->
+                String relative = root.toPath().relativize(classFile.toPath()).toString()
+                        .replace(File.separatorChar, '/' as char)
+                classes[relative.substring(0, relative.length() - ".class".length())] =
+                        classFile.bytes
+            }
+        }
+
+        List<String> entrypoints = [
+                "link/e4steam/fabric/E4steamFabric",
+                "link/e4steam/forge/E4steamForge",
+                "link/e4steam/neoforge/E4steamNeoForge",
+                "link/e4steam/mixin/ServerConnectionListenerMixin",
+                "link/e4steam/mixin/ServerLoginPacketListenerImplMixin"
+        ]
+        List<String> forbidden = [
+                "net/minecraft/client/",
+                "java/awt/",
+                "javax/swing/",
+                "javafx/",
+                "link/e4steam/E4steamClient",
+                "link/e4steam/MinecraftUiCompat",
+                "link/e4steam/Mirror",
+                "link/e4steam/Doctor",
+                "link/e4steam/steam/SteamRuntime",
+                "link/e4steam/steam/SteamLobbyManager",
+                "link/e4steam/steam/SteamSession"
+        ]
+        def references = { byte[] bytes ->
+            String constants = new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+            LinkedHashSet<String> found = new LinkedHashSet<>()
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile('(?:\\[L)?([a-zA-Z_$][a-zA-Z0-9_$]*(?:/[a-zA-Z0-9_$]+)+)')
+                    .matcher(constants)
+            while (matcher.find()) found.add(matcher.group(1))
+            return found
+        }
+
+        entrypoints.each { entrypoint ->
+            if (!classes.containsKey(entrypoint)) {
+                throw new GradleException("Missing headless entrypoint class ${entrypoint}")
+            }
+            LinkedHashSet<String> visited = new LinkedHashSet<>()
+            ArrayDeque<String> pending = new ArrayDeque<>()
+            Map<String, String> parent = [:]
+            pending.add(entrypoint)
+            while (!pending.isEmpty()) {
+                String name = pending.removeFirst()
+                if (!visited.add(name)) continue
+                byte[] bytes = classes[name]
+                if (bytes == null) continue
+                references(bytes).each { reference ->
+                    String violation = forbidden.find { prefix ->
+                        prefix.endsWith('/')
+                                ? reference.startsWith(prefix)
+                                : reference == prefix || reference.startsWith(prefix + '$')
+                    }
+                    if (violation != null) {
+                        List<String> path = [name, reference]
+                        String cursor = name
+                        while (parent.containsKey(cursor)) {
+                            cursor = parent[cursor]
+                            path.add(0, cursor)
+                        }
+                        throw new GradleException("Headless client reference via ${path.join(' -> ')}")
+                    }
+                    if (classes.containsKey(reference) && !visited.contains(reference)) {
+                        parent.putIfAbsent(reference, name)
+                        pending.addLast(reference)
+                    }
+                }
+            }
+            println("Headless graph audit passed for ${entrypoint} (${visited.size()} local classes).")
+        }
+
+        [
+                file("common/src/main/resources/e4steam.mixins.json"),
+                file("legacy/common/src/main/resources/e4steam.mixins.json")
+        ].each { mixinFile ->
+            Map parsed = new groovy.json.JsonSlurper().parse(mixinFile) as Map
+            List commonMixins = (parsed.mixins ?: []) as List
+            commonMixins.each { name ->
+                File source = file("common/src/main/java/link/e4steam/mixin/${name}.java")
+                if (!source.isFile()) {
+                    source = file("legacy/common/src/main/java/link/e4steam/mixin/${name}.java")
+                }
+                if (source.isFile()) {
+                    String text = source.getText("UTF-8")
+                    if (text.contains("net.minecraft.client")
+                            || text.contains("E4steamClient")
+                            || text.contains("MinecraftUiCompat")) {
+                        throw new GradleException(
+                                "Client-only Mixin ${name} is listed in the common/server section"
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.register("dependencyLicenseAudit") {
+    group = "verification"
+    description = "Verify the checked-in dependency/license inventory and mandatory notices."
+
+    doLast {
+        def requiredText = [
+                (file("NOTICE")): ["e4mc-retro", "Apache License"],
+                (file("THIRD_PARTY_NOTICES.md")): [
+                        "steamworks4j 1.10.0",
+                        "Kaleido Config 0.3.3+1.3.2",
+                        "Valve Steamworks redistributables",
+                        "xhyrom/e4mc-retro"
+                ],
+                (file("docs/DEPENDENCY_LICENSE_REPORT.md")): [
+                        "steamworks4j | 1.10.0",
+                        "steamworks4j-server | 1.10.0",
+                        "Kaleido Config | 0.3.3+1.3.2",
+                        "UniMixins 0.1.20",
+                        "exactly nine selected 64-bit Steam native files"
+                ]
+        ]
+        requiredText.each { document, fragments ->
+            if (!document.isFile()) {
+                throw new GradleException("Missing dependency/license document: ${document}")
+            }
+            String content = document.getText("UTF-8")
+            fragments.each { fragment ->
+                if (!content.contains(fragment)) {
+                    throw new GradleException("${document} is missing dependency/license entry: ${fragment}")
+                }
+            }
+        }
+        if (rootProject.steamworks4j_version != "1.10.0") {
+            throw new GradleException(
+                    "Update the dependency/license report for steamworks4j ${rootProject.steamworks4j_version}"
+            )
+        }
+    }
+}
+
 tasks.register("releaseJars") {
     group = "build"
     description = "Build and test all six public runtime JAR variants."
     dependsOn(
             legacyReleaseJars,
+            headlessEntrypointAudit,
+            dependencyLicenseAudit,
             ":common:test",
+            ":api:jar",
+            ":api:sourcesJar",
             ":fabric:remapJar",
             ":fabric:modernRemapJar",
             ":forge:remapJar",
@@ -199,16 +364,51 @@ tasks.register("releaseJars") {
                 ]
         ]
         def requiredNatives = [
-                "steam_api64.dll",
-                "steamworks4j64.dll",
-                "libsteam_api.so",
-                "libsteamworks4j.so"
+                "steam_api64.dll": [
+                        size: 319584L,
+                        sha256: "e082bf5c9f881c822b1540a76b74f9d15e18019a73ebd206a559595badcb7f65"
+                ],
+                "steamworks4j64.dll": [
+                        size: 310784L,
+                        sha256: "5b7e1860775001b47efcd0378c3de8dec4d633967b1c70b5e469f7488539deaa"
+                ],
+                "steamworks4j-server64.dll": [
+                        size: 152064L,
+                        sha256: "0c7e676870bcf33d4a4b5269931d670bed2890e39e115656dfbd680533ec4b29"
+                ],
+                "libsteam_api.so": [
+                        size: 388288L,
+                        sha256: "0f2c41c20644503c17e13498203986493332fc8296dbd78493bc1fed352ec0cc"
+                ],
+                "libsteamworks4j.so": [
+                        size: 310528L,
+                        sha256: "4d255292c9ee257087053f8b1c0f0ab5a8f831193d3e6f37a10e5c046d6e1886"
+                ],
+                "libsteamworks4j-server.so": [
+                        size: 92704L,
+                        sha256: "268d16c2fac4beda0f649ac5809a557cce50fd7662ad3de5733f8bd84a12afab"
+                ],
+                "libsteam_api.dylib": [
+                        size: 415344L,
+                        sha256: "d828cbd6365daa2b16d3bd7dc2969c60e97f497c0996a6def0b7b174a7e19953"
+                ],
+                "libsteamworks4j.dylib": [
+                        size: 681280L,
+                        sha256: "f596487a0edce464c21c551c1a29a29aedaf4965d0a21b6d58ab3a55bce5c97e"
+                ],
+                "libsteamworks4j-server.dylib": [
+                        size: 251248L,
+                        sha256: "2204191a95ca5d9a9da3f46cb420fc9cec9a68c92d7184e7d9e77ecf9807fad7"
+                ]
         ]
         def forbiddenNatives = [
                 "steam_api.dll",
                 "steamworks4j.dll",
-                "libsteam_api.dylib",
-                "libsteamworks4j.dylib"
+                "steamworks4j-server.dll",
+                "steamworks4j-encryptedappticket.dll",
+                "steamworks4j-encryptedappticket64.dll",
+                "libsteamworks4j-encryptedappticket.so",
+                "libsteamworks4j-encryptedappticket.dylib"
         ]
 
         variants.each { variant ->
@@ -219,9 +419,32 @@ tasks.register("releaseJars") {
 
             def zip = new java.util.zip.ZipFile(jarFile)
             try {
-                requiredNatives.each { name ->
-                    if (zip.getEntry(name) == null) {
+                requiredNatives.each { name, manifest ->
+                    def entries = Collections.list(zip.entries()).findAll {
+                        it.name == name
+                    }
+                    if (entries.size() != 1) {
                         throw new GradleException("${variant.label} is missing bundled native ${name}")
+                    }
+                    def entry = entries[0]
+                    if (entry.size != manifest.size) {
+                        throw new GradleException(
+                                "${variant.label} native ${name} has an unexpected size"
+                        )
+                    }
+                    def digest = java.security.MessageDigest.getInstance("SHA-256")
+                    zip.getInputStream(entry).withCloseable { input ->
+                        byte[] buffer = new byte[8192]
+                        int read
+                        while ((read = input.read(buffer)) >= 0) {
+                            if (read > 0) digest.update(buffer, 0, read)
+                        }
+                    }
+                    String actualHash = digest.digest().encodeHex().toString()
+                    if (actualHash != manifest.sha256) {
+                        throw new GradleException(
+                                "${variant.label} native ${name} does not match the pinned SHA-256"
+                        )
                     }
                 }
                 forbiddenNatives.each { name ->
@@ -360,6 +583,26 @@ tasks.register("releaseJars") {
                                     "${variant.label} ${path} is missing expected range ${fragment}"
                             )
                         }
+                    }
+                }
+            } finally {
+                zip.close()
+            }
+        }
+        [
+                file("api/build/libs/e4steam-api-${api_version}.jar"),
+                file("api/build/libs/e4steam-api-${api_version}-sources.jar")
+        ].each { apiArtifact ->
+            if (!apiArtifact.isFile()) {
+                throw new GradleException("Missing API artifact for native isolation audit: ${apiArtifact}")
+            }
+            def zip = new java.util.zip.ZipFile(apiArtifact)
+            try {
+                requiredNatives.keySet().each { name ->
+                    if (zip.getEntry(name) != null) {
+                        throw new GradleException(
+                                "${apiArtifact.name} must not contain runtime native ${name}"
+                        )
                     }
                 }
             } finally {

@@ -1,6 +1,6 @@
 package link.e4steam.api.capability;
 
-/** Built-in capability ids understood by the 0.x addon API foundation. */
+/** Built-in capability ids understood by the 1.0 addon API. */
 public final class Capabilities {
     /** Observe safe session snapshots. */
     public static final CapabilityId SESSION_OBSERVE = id("session.observe");

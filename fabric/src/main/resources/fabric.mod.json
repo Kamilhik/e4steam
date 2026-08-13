@@ -9,9 +9,12 @@
   ],
   "license": "Apache-2.0",
   "icon": "assets/e4steam_minecraft/icon.png",
-  "environment": "client",
+  "environment": "*",
   "entrypoints": {
     "main": [
+      "link.e4steam.fabric.E4steamFabric"
+    ],
+    "client": [
       "link.e4steam.fabric.E4steamClientFabric"
     ]
   },

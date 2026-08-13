@@ -1,10 +1,22 @@
 package link.e4steam.api.testkit;
 
 import link.e4steam.api.ApiResult;
+import link.e4steam.api.ApiConstants;
 import link.e4steam.api.Subscription;
+import link.e4steam.api.addon.AddonHandle;
 import link.e4steam.api.capability.Capabilities;
 import link.e4steam.api.event.EventListener;
 import link.e4steam.api.event.RuntimeStoppingEvent;
+import link.e4steam.api.logging.SafeLogger;
+import link.e4steam.api.runtime.Architecture;
+import link.e4steam.api.runtime.CompatibilityFlag;
+import link.e4steam.api.runtime.LifecyclePhase;
+import link.e4steam.api.runtime.LoaderInfo;
+import link.e4steam.api.runtime.Platform;
+import link.e4steam.api.runtime.RuntimeMode;
+import link.e4steam.api.runtime.RuntimeSnapshot;
+import link.e4steam.api.runtime.SteamRuntimeState;
+import link.e4steam.api.runtime.TransportCapability;
 import link.e4steam.api.scheduler.ExecutionContext;
 import link.e4steam.api.scheduler.TaskHandle;
 import org.junit.jupiter.api.Test;
@@ -13,6 +25,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -99,5 +113,41 @@ class TestkitContractTest {
             rejected = true;
         }
         assertTrue(rejected);
+    }
+
+    @Test
+    void standardServicesExposeLoggerAndRejectSensitiveFields() {
+        StandardFakeServices services = new StandardFakeServices();
+        TestServiceRegistry registry = services.registerInto(new TestServiceRegistry());
+        FakeE4steamApi api = new FakeE4steamApi(
+                new FakeRuntimeService(new RuntimeSnapshot(
+                        ApiConstants.API_VERSION,
+                        "0.3.0",
+                        ApiConstants.WIRE_PROTOCOL_VERSION,
+                        Platform.WINDOWS,
+                        Architecture.X86_64,
+                        RuntimeMode.CLIENT,
+                        new LoaderInfo("fabric", "test"),
+                        "1.20.2",
+                        SteamRuntimeState.READY,
+                        LifecyclePhase.IDLE,
+                        Collections.singleton(TransportCapability.RELIABLE_STREAM),
+                        Collections.singleton(CompatibilityFlag.LOADER_ADAPTER_PRESENT),
+                        ""
+                )),
+                new FakeAddonService(Collections.<AddonHandle>emptyList(), false),
+                new FakeCapabilityService(Collections.emptySet(), Collections.emptySet()),
+                new TestEventService(),
+                new DeterministicScheduler(),
+                registry
+        );
+
+        assertTrue(api.logger().log(SafeLogger.Level.INFO, "example.ready",
+                Collections.singletonMap("attempt", SafeLogger.SafeValue.integer(1))).isSuccess());
+
+        Map<String, SafeLogger.SafeValue> unsafe = new LinkedHashMap<>();
+        unsafe.put("authToken", SafeLogger.SafeValue.text("redacted-value"));
+        assertFalse(api.logger().log(SafeLogger.Level.INFO, "example.unsafe", unsafe).isSuccess());
+        services.close();
     }
 }

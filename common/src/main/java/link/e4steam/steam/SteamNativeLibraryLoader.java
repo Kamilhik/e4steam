@@ -46,10 +46,30 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
             new HashSet<>(Arrays.asList(
                     "steam_api64.dll",
                     "steamworks4j64.dll",
+                    "steamworks4j-server64.dll",
                     "libsteam_api.so",
-                    "libsteamworks4j.so"
+                    "libsteamworks4j.so",
+                    "libsteamworks4j-server.so",
+                    "libsteam_api.dylib",
+                    "libsteamworks4j.dylib",
+                    "libsteamworks4j-server.dylib"
             ))
     );
+    private static final Map<String, KnownNative> KNOWN_NATIVES;
+
+    static {
+        Map<String, KnownNative> known = new HashMap<>();
+        known.put("steam_api64.dll", new KnownNative(319584L, "e082bf5c9f881c822b1540a76b74f9d15e18019a73ebd206a559595badcb7f65"));
+        known.put("steamworks4j64.dll", new KnownNative(310784L, "5b7e1860775001b47efcd0378c3de8dec4d633967b1c70b5e469f7488539deaa"));
+        known.put("steamworks4j-server64.dll", new KnownNative(152064L, "0c7e676870bcf33d4a4b5269931d670bed2890e39e115656dfbd680533ec4b29"));
+        known.put("libsteam_api.so", new KnownNative(388288L, "0f2c41c20644503c17e13498203986493332fc8296dbd78493bc1fed352ec0cc"));
+        known.put("libsteamworks4j.so", new KnownNative(310528L, "4d255292c9ee257087053f8b1c0f0ab5a8f831193d3e6f37a10e5c046d6e1886"));
+        known.put("libsteamworks4j-server.so", new KnownNative(92704L, "268d16c2fac4beda0f649ac5809a557cce50fd7662ad3de5733f8bd84a12afab"));
+        known.put("libsteam_api.dylib", new KnownNative(415344L, "d828cbd6365daa2b16d3bd7dc2969c60e97f497c0996a6def0b7b174a7e19953"));
+        known.put("libsteamworks4j.dylib", new KnownNative(681280L, "f596487a0edce464c21c551c1a29a29aedaf4965d0a21b6d58ab3a55bce5c97e"));
+        known.put("libsteamworks4j-server.dylib", new KnownNative(251248L, "2204191a95ca5d9a9da3f46cb420fc9cec9a68c92d7184e7d9e77ecf9807fad7"));
+        KNOWN_NATIVES = Collections.unmodifiableMap(known);
+    }
 
     private final Map<String, VerifiedLibrary> libraries;
     private volatile Throwable failureCause;
@@ -63,7 +83,14 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
 
         byte[] steamApi = readBundledLibrary(names.steamApi());
         byte[] steamworks4j = readBundledLibrary(names.steamworks4j());
-        String fingerprint = fingerprint(names, steamApi, steamworks4j);
+        byte[] steamworks4jServer = readBundledLibrary(names.steamworks4jServer());
+        validateKnownNative(names.steamApi(), steamApi);
+        validateKnownNative(names.steamworks4j(), steamworks4j);
+        validateKnownNative(names.steamworks4jServer(), steamworks4jServer);
+        validateBundledBinary(names, steamApi);
+        validateBundledBinary(names, steamworks4j);
+        validateBundledBinary(names, steamworks4jServer);
+        String fingerprint = fingerprint(names, steamApi, steamworks4j, steamworks4jServer);
         Path cache = createCacheDirectory(names.platformDirectory() + "-" + fingerprint);
 
         VerifiedLibrary steamApiLibrary = materialize(cache, names.steamApi(), steamApi);
@@ -72,9 +99,15 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
                 names.steamworks4j(),
                 steamworks4j
         );
+        VerifiedLibrary steamworks4jServerLibrary = materialize(
+                cache,
+                names.steamworks4jServer(),
+                steamworks4jServer
+        );
         Map<String, VerifiedLibrary> resolvedLibraries = new HashMap<>();
         resolvedLibraries.put("steam_api", steamApiLibrary);
         resolvedLibraries.put("steamworks4j", steamworks4jLibrary);
+        resolvedLibraries.put("steamworks4j-server", steamworks4jServerLibrary);
         libraries = Collections.unmodifiableMap(resolvedLibraries);
     }
 
@@ -122,24 +155,79 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
     }
 
     static NativeNames nativeNames(String osName, String architecture) throws IOException {
-        String os = osName.toLowerCase(Locale.ROOT);
-        String arch = architecture.toLowerCase(Locale.ROOT);
-        if (!(arch.equals("amd64") || arch.equals("x86_64") || arch.equals("x64"))) {
-            throw new IOException(
-                    "Unsupported Steam native architecture '" + architecture
-                            + "'. This build requires a 64-bit x86 Java runtime"
-            );
+        NativePlatform platform = NativePlatform.normalize(osName, architecture);
+        if (platform.operatingSystem() == NativePlatform.OperatingSystem.WINDOWS) {
+            return new NativeNames(platform, "steam_api64.dll", "steamworks4j64.dll",
+                    "steamworks4j-server64.dll");
         }
-        if (os.contains("win")) {
-            return new NativeNames("windows-x64", "steam_api64.dll", "steamworks4j64.dll");
+        if (platform.operatingSystem() == NativePlatform.OperatingSystem.LINUX) {
+            return new NativeNames(platform, "libsteam_api.so", "libsteamworks4j.so",
+                    "libsteamworks4j-server.so");
         }
-        if (os.contains("linux")) {
-            return new NativeNames("linux-x64", "libsteam_api.so", "libsteamworks4j.so");
+        return new NativeNames(platform, "libsteam_api.dylib", "libsteamworks4j.dylib",
+                "libsteamworks4j-server.dylib");
+    }
+
+    static void validateBundledBinary(NativeNames names, byte[] content) throws IOException {
+        if (content == null || content.length < 8) throw new IOException("Native binary header is truncated");
+        NativePlatform platform = names.platform();
+        if (platform.operatingSystem() == NativePlatform.OperatingSystem.WINDOWS) {
+            if (content[0] != 'M' || content[1] != 'Z') throw new IOException("Invalid Windows native binary");
+            return;
         }
-        throw new IOException(
-                "Unsupported operating system '" + osName
-                        + "'. This build supports Windows x64 and Linux x64"
-        );
+        if (platform.operatingSystem() == NativePlatform.OperatingSystem.LINUX) {
+            if ((content[0] & 0xff) != 0x7f || content[1] != 'E' || content[2] != 'L' || content[3] != 'F') {
+                throw new IOException("Invalid Linux native binary");
+            }
+            return;
+        }
+        if (!containsMachOSlice(content, platform.architecture())) {
+            throw new IOException("macOS native binary does not contain the active JVM architecture");
+        }
+    }
+
+    static void validateKnownNative(String resourceName, byte[] content) throws IOException {
+        KnownNative known = KNOWN_NATIVES.get(resourceName);
+        if (known == null || content == null || content.length != known.size) {
+            throw new IOException("Bundled Steam native does not match the pinned manifest");
+        }
+        String actual = HexCodec.encode(sha256(content), 0, 32);
+        if (!actual.equals(known.sha256)) {
+            throw new IOException("Bundled Steam native hash does not match the pinned manifest");
+        }
+    }
+
+    private static boolean containsMachOSlice(byte[] content, NativePlatform.Architecture architecture)
+            throws IOException {
+        int magic = readBigEndianInt(content, 0);
+        int expectedCpu = architecture == NativePlatform.Architecture.X86_64
+                ? 0x01000007 : 0x0100000c;
+        if (magic == 0xcafebabe || magic == 0xcafebabf) {
+            int count = readBigEndianInt(content, 4);
+            if (count < 1 || count > 32) throw new IOException("Invalid Mach-O slice count");
+            int stride = magic == 0xcafebabe ? 20 : 32;
+            if (content.length < 8 + count * stride) throw new IOException("Truncated Mach-O slice table");
+            for (int index = 0; index < count; index++) {
+                if (readBigEndianInt(content, 8 + index * stride) == expectedCpu) return true;
+            }
+            return false;
+        }
+        int littleMagic = readLittleEndianInt(content, 0);
+        if (littleMagic == 0xfeedfacf) return readLittleEndianInt(content, 4) == expectedCpu;
+        if (magic == 0xfeedfacf) return readBigEndianInt(content, 4) == expectedCpu;
+        return false;
+    }
+
+    private static int readBigEndianInt(byte[] content, int offset) throws IOException {
+        if (offset < 0 || offset > content.length - 4) throw new IOException("Truncated native header");
+        return (content[offset] & 0xff) << 24 | (content[offset + 1] & 0xff) << 16
+                | (content[offset + 2] & 0xff) << 8 | content[offset + 3] & 0xff;
+    }
+
+    private static int readLittleEndianInt(byte[] content, int offset) throws IOException {
+        if (offset < 0 || offset > content.length - 4) throw new IOException("Truncated native header");
+        return content[offset] & 0xff | (content[offset + 1] & 0xff) << 8
+                | (content[offset + 2] & 0xff) << 16 | (content[offset + 3] & 0xff) << 24;
     }
 
     private static Path createCacheDirectory(String versionDirectory) throws IOException {
@@ -546,12 +634,14 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
         }
     }
 
-    private static String fingerprint(NativeNames names, byte[] steamApi, byte[] steamworks4j)
+    private static String fingerprint(NativeNames names, byte[] steamApi, byte[] steamworks4j,
+                                      byte[] steamworks4jServer)
             throws IOException {
         MessageDigest digest = newSha256();
         digest.update(names.platformDirectory().getBytes(java.nio.charset.StandardCharsets.US_ASCII));
         digest.update(steamApi);
         digest.update(steamworks4j);
+        digest.update(steamworks4jServer);
         return HexCodec.encode(digest.digest(), 0, 12);
     }
 
@@ -575,18 +665,29 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
     }
 
     static final class NativeNames {
-        private final String platformDirectory;
+        private final NativePlatform platform;
         private final String steamApi;
         private final String steamworks4j;
+        private final String steamworks4jServer;
 
-        NativeNames(String platformDirectory, String steamApi, String steamworks4j) {
-            this.platformDirectory = platformDirectory;
+        NativeNames(NativePlatform platform, String steamApi, String steamworks4j,
+                    String steamworks4jServer) {
+            this.platform = platform;
             this.steamApi = steamApi;
             this.steamworks4j = steamworks4j;
+            this.steamworks4jServer = steamworks4jServer;
         }
 
-        String platformDirectory() { return platformDirectory; }
+        NativePlatform platform() { return platform; }
+        String platformDirectory() { return platform.directoryName(); }
         String steamApi() { return steamApi; }
         String steamworks4j() { return steamworks4j; }
+        String steamworks4jServer() { return steamworks4jServer; }
+    }
+
+    private static final class KnownNative {
+        private final long size;
+        private final String sha256;
+        private KnownNative(long size, String sha256) { this.size = size; this.sha256 = sha256; }
     }
 }

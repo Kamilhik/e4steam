@@ -29,6 +29,7 @@ import link.e4steam.api.testkit.FakeRuntimeService;
 import link.e4steam.api.testkit.TestEventService;
 import link.e4steam.api.testkit.TestResourceScope;
 import link.e4steam.api.testkit.TestServiceRegistry;
+import link.e4steam.api.testkit.StandardFakeServices;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -44,6 +45,7 @@ class ExampleAddonTest {
         FakeRuntimeService runtime = new FakeRuntimeService(initial);
         TestEventService events = new TestEventService();
         DeterministicScheduler scheduler = new DeterministicScheduler();
+        StandardFakeServices platform = new StandardFakeServices();
         E4steamApi api = new FakeE4steamApi(
                 runtime,
                 new FakeAddonService(Collections.<AddonHandle>emptyList(), false),
@@ -53,14 +55,14 @@ class ExampleAddonTest {
                 ),
                 events,
                 scheduler,
-                new TestServiceRegistry()
+                platform.registerInto(new TestServiceRegistry())
         );
         TestResourceScope resources = new TestResourceScope();
         AddonDescriptor descriptor = new AddonDescriptor(
                 new AddonId("e4steam:example"),
                 "e4steam API example",
-                ApiVersion.parse("0.1.0"),
-                new ApiVersionRange(ApiVersion.parse("0.1.0"), ApiVersion.parse("1.0.0")),
+                ApiVersion.parse("1.0.0"),
+                new ApiVersionRange(ApiVersion.parse("1.0.0"), ApiVersion.parse("2.0.0")),
                 Collections.<AddonDependency>emptyList(),
                 Collections.<CapabilityId>emptySet()
         );
@@ -85,6 +87,7 @@ class ExampleAddonTest {
         assertEquals(1, addon.workerCallbacks());
         resources.close();
         resources.assertNoLeaks();
+        platform.close();
     }
 
     private static RuntimeSnapshot snapshot(SteamRuntimeState steamState) {

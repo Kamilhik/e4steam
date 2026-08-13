@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -57,6 +58,25 @@ class SteamNetworkingMessagesTransportTest {
         target.get(payload);
         assertArrayEquals(new byte[]{9, 8, 7}, payload);
         assertEquals(1, nativeAccess.releaseCount);
+        transport.close();
+    }
+
+    @Test
+    void receivesNativeMessagesInBoundedBatchesWithoutReordering() throws Exception {
+        FakeNativeAccess nativeAccess = new FakeNativeAccess();
+        nativeAccess.queueMessage(REMOTE_ID, new byte[]{1});
+        nativeAccess.queueMessage(REMOTE_ID + 1, new byte[]{2, 3});
+        SteamNetworkingMessagesTransport transport = transport(nativeAccess);
+
+        assertEquals(1, transport.availablePacketSize(480));
+        ByteBuffer firstTarget = ByteBuffer.allocateDirect(8);
+        assertEquals(REMOTE_ID, transport.receive(firstTarget, 480).remoteSteamId());
+        assertEquals(2, transport.availablePacketSize(480));
+        ByteBuffer secondTarget = ByteBuffer.allocateDirect(8);
+        assertEquals(REMOTE_ID + 1, transport.receive(secondTarget, 480).remoteSteamId());
+
+        assertEquals(1, nativeAccess.receiveCalls);
+        assertEquals(2, nativeAccess.releaseCount);
         transport.close();
     }
 
@@ -146,15 +166,15 @@ class SteamNetworkingMessagesTransportTest {
     private static final class FakeNativeAccess implements SteamNetworkingMessagesTransport.NativeAccess {
         private SteamNetworkingMessagesTransport.SessionRequestCallback requestCallback;
         private SteamNetworkingMessagesTransport.SessionFailedCallback failedCallback;
-        private Memory queuedMessage;
-        private Memory deliveredMessage;
-        private Memory queuedPayload;
+        private final ArrayDeque<Memory> queuedMessages = new ArrayDeque<>();
+        private final ArrayList<Memory> retainedPayloads = new ArrayList<>();
         private byte[] sentPayload;
         private long sentSteamId;
         private int sentFlags;
         private int releaseCount;
         private int connectionState;
         private int pendingReliable;
+        private int receiveCalls;
 
         @Override
         public int send(Pointer identity, Pointer data, int size, int flags, int channel) {
@@ -166,13 +186,12 @@ class SteamNetworkingMessagesTransportTest {
 
         @Override
         public int receive(int channel, Pointer[] messages, int maxMessages) {
-            if (queuedMessage == null) {
-                return 0;
+            receiveCalls++;
+            int count = 0;
+            while (count < maxMessages && !queuedMessages.isEmpty()) {
+                messages[count++] = queuedMessages.removeFirst();
             }
-            deliveredMessage = queuedMessage;
-            messages[0] = deliveredMessage;
-            queuedMessage = null;
-            return 1;
+            return count;
         }
 
         @Override
@@ -197,8 +216,6 @@ class SteamNetworkingMessagesTransportTest {
         @Override
         public void releaseMessage(Pointer message) {
             releaseCount++;
-            deliveredMessage = null;
-            queuedPayload = null;
         }
 
         @Override
@@ -218,14 +235,16 @@ class SteamNetworkingMessagesTransportTest {
         }
 
         private void queueMessage(long remoteSteamId, byte[] payload) {
-            queuedPayload = new Memory(payload.length);
+            Memory queuedPayload = new Memory(payload.length);
             queuedPayload.write(0, payload, 0, payload.length);
-            queuedMessage = new Memory(216);
+            retainedPayloads.add(queuedPayload);
+            Memory queuedMessage = new Memory(216);
             queuedMessage.clear();
             queuedMessage.setPointer(0, queuedPayload);
             queuedMessage.setInt(8, payload.length);
             Memory identity = SteamNetworkingMessagesTransport.newIdentity(remoteSteamId);
             queuedMessage.write(16, identity.getByteArray(0, 136), 0, 136);
+            queuedMessages.addLast(queuedMessage);
         }
     }
 }

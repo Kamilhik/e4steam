@@ -1,6 +1,7 @@
 package link.e4steam.steam;
 
-import link.e4steam.E4steamClient;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -14,19 +15,23 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Bridges one ordinary local TCP connection to one logical Steam P2P stream. */
 final class SteamConnectionBridge {
+    private static final Logger LOGGER = LogManager.getLogger("e4steam");
     // Eight MiB at the current 32 KiB protocol chunk size. This absorbs
     // registry/chunk bursts while remaining bounded for multiple players.
     private static final int MAX_QUEUED_INBOUND_CHUNKS = 256;
     private static final long OUTBOUND_BACKPRESSURE_TIMEOUT_MILLIS = 30_000;
     private static final long OUTBOUND_BACKPRESSURE_RETRY_MILLIS = 10;
     private static final long GRACEFUL_CLOSE_TIMEOUT_MILLIS = 2_000;
+    private static final int MAX_PRE_NEGOTIATION_CHUNKS = 32;
+    private static final int MAX_PRE_NEGOTIATION_BYTES = 1024 * 1024;
 
-    private final SteamRuntime runtime;
+    private final SteamBridgeRuntime runtime;
     private final long remoteSteamId;
     private final int connectionId;
     private final Socket socket;
-    private final SteamSession hostOwner;
-    private final AtomicReference<SteamRuntime.Activity> activity;
+    private final Object hostOwner;
+    private final boolean hostSide;
+    private final AtomicReference<AutoCloseable> activity;
     private final BlockingQueue<InboundFrame> inbound = new ArrayBlockingQueue<>(MAX_QUEUED_INBOUND_CHUNKS + 1);
     private final Semaphore inboundDataSlots = new Semaphore(MAX_QUEUED_INBOUND_CHUNKS);
     private final AtomicBoolean started = new AtomicBoolean();
@@ -38,26 +43,56 @@ final class SteamConnectionBridge {
     private final AtomicBoolean outboundDataObserved = new AtomicBoolean();
     private final AtomicBoolean inboundDataObserved = new AtomicBoolean();
     private final AtomicBoolean peerReady = new AtomicBoolean();
+    private final AtomicBoolean addonNegotiationReady = new AtomicBoolean(true);
+    private final Object addonNegotiationLock = new Object();
+    private final java.util.ArrayList<byte[]> preNegotiationData = new java.util.ArrayList<>();
+    private int preNegotiationBytes;
     private final AtomicLong gracefulCloseDeadlineMillis = new AtomicLong(Long.MAX_VALUE);
     private final AtomicLong outboundNotBeforeMillis = new AtomicLong();
     private final AtomicLong outboundDataFallbackMillis = new AtomicLong();
+    private final AtomicLong dedicatedSessionGeneration = new AtomicLong();
 
     private volatile Thread readerThread;
     private volatile Thread writerThread;
 
     SteamConnectionBridge(
-            SteamRuntime runtime,
+            SteamBridgeRuntime runtime,
             long remoteSteamId,
             int connectionId,
             Socket socket,
-            SteamSession hostOwner,
-            SteamRuntime.Activity activity
+            Object hostOwner,
+            AutoCloseable activity
+    ) {
+        this(runtime, remoteSteamId, connectionId, socket, hostOwner,
+                hostOwner != null, activity);
+    }
+
+    SteamConnectionBridge(
+            SteamBridgeRuntime runtime,
+            long remoteSteamId,
+            int connectionId,
+            Socket socket,
+            boolean hostSide,
+            AutoCloseable activity
+    ) {
+        this(runtime, remoteSteamId, connectionId, socket, null, hostSide, activity);
+    }
+
+    private SteamConnectionBridge(
+            SteamBridgeRuntime runtime,
+            long remoteSteamId,
+            int connectionId,
+            Socket socket,
+            Object hostOwner,
+            boolean hostSide,
+            AutoCloseable activity
     ) {
         this.runtime = runtime;
         this.remoteSteamId = remoteSteamId;
         this.connectionId = connectionId;
         this.socket = socket;
         this.hostOwner = hostOwner;
+        this.hostSide = hostSide;
         this.activity = new AtomicReference<>(activity);
     }
 
@@ -74,15 +109,25 @@ final class SteamConnectionBridge {
     }
 
     boolean isHostSide() {
-        return hostOwner != null;
+        return hostSide;
     }
 
-    boolean isHostedBy(SteamSession owner) {
+    boolean isHostedBy(Object owner) {
         return hostOwner == owner;
     }
 
     boolean isClosed() {
         return closed.get();
+    }
+
+    void dedicatedSessionGeneration(long generation) {
+        if (generation <= 0L || !dedicatedSessionGeneration.compareAndSet(0L, generation)) {
+            throw new IllegalStateException("Dedicated session generation is already bound");
+        }
+    }
+
+    long dedicatedSessionGeneration() {
+        return dedicatedSessionGeneration.get();
     }
 
     void delayOutboundUntil(long deadlineMillis) {
@@ -101,8 +146,25 @@ final class SteamConnectionBridge {
         peerReady.set(true);
     }
 
+    void requireAddonNegotiation() {
+        addonNegotiationReady.set(false);
+    }
+
+    void markAddonNegotiated() {
+        java.util.List<byte[]> pending;
+        synchronized (addonNegotiationLock) {
+            if (addonNegotiationReady.getAndSet(true)) return;
+            pending = new java.util.ArrayList<>(preNegotiationData);
+            preNegotiationData.clear();
+            preNegotiationBytes = 0;
+        }
+        for (byte[] payload : pending) {
+            if (!enqueueSteamData(payload)) break;
+        }
+    }
+
     boolean isOutboundDataReady(long nowMillis) {
-        return isPeerReadyOrFallbackReached(
+        return addonNegotiationReady.get() && isPeerReadyOrFallbackReached(
                 outboundDataFallbackMillis.get(),
                 peerReady.get(),
                 nowMillis
@@ -140,23 +202,43 @@ final class SteamConnectionBridge {
         if (closed.get()) {
             return;
         }
+        synchronized (addonNegotiationLock) {
+            if (!addonNegotiationReady.get()) {
+                if (payload == null || payload.length == 0
+                        || preNegotiationData.size() >= MAX_PRE_NEGOTIATION_CHUNKS
+                        || preNegotiationBytes > MAX_PRE_NEGOTIATION_BYTES - payload.length) {
+                    closeForSlowOrInvalidPeer();
+                    return;
+                }
+                preNegotiationData.add(payload.clone());
+                preNegotiationBytes += payload.length;
+                return;
+            }
+        }
+        enqueueSteamData(payload);
+    }
+
+    private boolean enqueueSteamData(byte[] payload) {
+        if (closed.get()) return false;
         if (inboundFinQueued.get()) {
             closeForSlowOrInvalidPeer();
-            return;
+            return false;
         }
         if (!inboundDataSlots.tryAcquire()) {
             closeForSlowOrInvalidPeer();
-            return;
+            return false;
         }
         if (!inbound.offer(new InboundData(payload))) {
             inboundDataSlots.release();
             closeForSlowOrInvalidPeer();
+            return false;
         }
+        return true;
     }
 
     private void closeForSlowOrInvalidPeer() {
         if (!closed.get()) {
-            E4steamClient.LOGGER.warn(
+            LOGGER.warn(
                     "Closing Steam bridge {}:{} because its local TCP consumer is too slow or sent data after FIN",
                     Long.toUnsignedString(remoteSteamId),
                     Integer.toUnsignedString(connectionId)
@@ -203,6 +285,10 @@ final class SteamConnectionBridge {
             } catch (IOException ignored) {
             }
             inbound.clear();
+            synchronized (addonNegotiationLock) {
+                preNegotiationData.clear();
+                preNegotiationBytes = 0;
+            }
 
             Thread reader = readerThread;
             if (reader != null) {
@@ -225,14 +311,14 @@ final class SteamConnectionBridge {
     }
 
     void releaseActivity() {
-        SteamRuntime.Activity activityToClose = activity.getAndSet(null);
+        AutoCloseable activityToClose = activity.getAndSet(null);
         if (activityToClose == null) {
             return;
         }
         try {
             activityToClose.close();
         } catch (Exception exception) {
-            E4steamClient.LOGGER.warn("Could not release Steam bridge activity", exception);
+            LOGGER.warn("Could not release Steam bridge activity", exception);
         }
     }
 
@@ -260,7 +346,7 @@ final class SteamConnectionBridge {
             }
         } catch (IOException exception) {
             if (!closed.get()) {
-                E4steamClient.LOGGER.debug("Local TCP reader for a Steam bridge stopped", exception);
+                LOGGER.debug("Local TCP reader for a Steam bridge stopped", exception);
                 close(true);
             }
         }
@@ -308,7 +394,7 @@ final class SteamConnectionBridge {
             Thread.currentThread().interrupt();
         } catch (IOException exception) {
             if (!closed.get()) {
-                E4steamClient.LOGGER.debug("Local TCP writer for a Steam bridge stopped", exception);
+                LOGGER.debug("Local TCP writer for a Steam bridge stopped", exception);
                 close(true);
             }
         }
@@ -323,7 +409,7 @@ final class SteamConnectionBridge {
     void closeIfGracefulCloseTimedOut(long nowMillis) {
         long deadline = gracefulCloseDeadlineMillis.get();
         if (!closed.get() && isGracefulCloseExpired(deadline, nowMillis)) {
-            E4steamClient.LOGGER.debug(
+            LOGGER.debug(
                     "Forcing cleanup of stale Steam bridge {}:{} after graceful FIN timeout",
                     Long.toUnsignedString(remoteSteamId),
                     Integer.toUnsignedString(connectionId)

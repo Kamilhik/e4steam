@@ -35,6 +35,7 @@ class SteamNativeLibraryLoaderTest {
         assertEquals("windows-x64", names.platformDirectory());
         assertEquals("steam_api64.dll", names.steamApi());
         assertEquals("steamworks4j64.dll", names.steamworks4j());
+        assertEquals("steamworks4j-server64.dll", names.steamworks4jServer());
     }
 
     @Test
@@ -45,6 +46,48 @@ class SteamNativeLibraryLoaderTest {
         assertEquals("linux-x64", names.platformDirectory());
         assertEquals("libsteam_api.so", names.steamApi());
         assertEquals("libsteamworks4j.so", names.steamworks4j());
+        assertEquals("libsteamworks4j-server.so", names.steamworks4jServer());
+    }
+
+    @Test
+    void selectsMacIntelAndAppleSiliconUniversalLibraries() throws Exception {
+        SteamNativeLibraryLoader.NativeNames intel =
+                SteamNativeLibraryLoader.nativeNames("Mac OS X", "x86_64");
+        SteamNativeLibraryLoader.NativeNames arm =
+                SteamNativeLibraryLoader.nativeNames("Darwin", "aarch64");
+
+        assertEquals("macos-x64", intel.platformDirectory());
+        assertEquals("macos-arm64", arm.platformDirectory());
+        assertEquals("libsteam_api.dylib", intel.steamApi());
+        assertEquals("libsteamworks4j.dylib", arm.steamworks4j());
+        assertEquals("libsteamworks4j-server.dylib", arm.steamworks4jServer());
+    }
+
+    @Test
+    void bundledMacLibrariesContainBothRequiredSlices() throws Exception {
+        byte[] steamApi;
+        byte[] steamworks;
+        byte[] steamworksServer;
+        try (java.io.InputStream first = SteamNativeLibraryLoaderTest.class
+                .getResourceAsStream("/libsteam_api.dylib");
+             java.io.InputStream second = SteamNativeLibraryLoaderTest.class
+                     .getResourceAsStream("/libsteamworks4j.dylib");
+             java.io.InputStream third = SteamNativeLibraryLoaderTest.class
+                     .getResourceAsStream("/libsteamworks4j-server.dylib")) {
+            assertTrue(first != null);
+            assertTrue(second != null);
+            assertTrue(third != null);
+            steamApi = first.readAllBytes();
+            steamworks = second.readAllBytes();
+            steamworksServer = third.readAllBytes();
+        }
+        for (String architecture : new String[] {"x86_64", "arm64"}) {
+            SteamNativeLibraryLoader.NativeNames names =
+                    SteamNativeLibraryLoader.nativeNames("macOS", architecture);
+            SteamNativeLibraryLoader.validateBundledBinary(names, steamApi);
+            SteamNativeLibraryLoader.validateBundledBinary(names, steamworks);
+            SteamNativeLibraryLoader.validateBundledBinary(names, steamworksServer);
+        }
     }
 
     @Test
@@ -52,6 +95,10 @@ class SteamNativeLibraryLoaderTest {
         assertThrows(
                 IOException.class,
                 () -> SteamNativeLibraryLoader.nativeNames("Windows 11", "aarch64")
+        );
+        assertThrows(
+                IOException.class,
+                () -> SteamNativeLibraryLoader.nativeNames("Linux", "aarch64")
         );
     }
 

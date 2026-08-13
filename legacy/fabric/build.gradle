@@ -10,6 +10,7 @@ architectury {
 sourceSets.main {
     java.srcDir("../../fabric/src/main/java")
     java.exclude("link/e4steam/fabric/E4steamClientFabric.java")
+    java.exclude("link/e4steam/fabric/E4steamFabric.java")
 }
 
 configurations {
@@ -31,6 +32,9 @@ dependencies {
     shadowCommon("com.code-disaster.steamworks4j:steamworks4j:${rootProject.steamworks4j_version}") {
         transitive = false
     }
+    shadowCommon("com.code-disaster.steamworks4j:steamworks4j-server:${rootProject.steamworks4j_version}") {
+        transitive = false
+    }
 }
 
 processResources {
@@ -46,8 +50,11 @@ shadowJar {
     exclude("architectury.common.json")
     exclude("steam_api.dll")
     exclude("steamworks4j.dll")
-    exclude("libsteam_api.dylib")
-    exclude("libsteamworks4j.dylib")
+    exclude("steamworks4j-server.dll")
+    exclude("steamworks4j-encryptedappticket.dll")
+    exclude("steamworks4j-encryptedappticket64.dll")
+    exclude("libsteamworks4j-encryptedappticket.so")
+    exclude("libsteamworks4j-encryptedappticket.dylib")
     configurations = [project.configurations.shadowCommon]
     archiveClassifier = "dev-shadow"
 }

@@ -2,7 +2,7 @@ package link.e4steam.mixin;
 
 import com.mojang.authlib.GameProfile;
 import link.e4steam.steam.SteamMinecraftIdentity;
-import link.e4steam.steam.SteamRuntime;
+import link.e4steam.steam.SteamMinecraftAuthentication;
 import net.minecraft.network.Connection;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerLoginPacketListenerImpl;
@@ -23,6 +23,15 @@ public abstract class LegacyServerLoginPacketListenerImplMixin {
 
     @Shadow @Final private Connection connection;
     @Shadow public GameProfile gameProfile;
+    private long e4steam$authenticatedSteamId;
+
+    private long e4steam$authenticatedSteamId() {
+        long current = e4steam$authenticatedSteamId;
+        if (current != 0L) return current;
+        current = SteamMinecraftAuthentication.authenticatedPeer(connection.getRemoteAddress());
+        if (current != 0L) e4steam$authenticatedSteamId = current;
+        return current;
+    }
 
     @Redirect(
             method = "handleHello",
@@ -32,9 +41,18 @@ public abstract class LegacyServerLoginPacketListenerImplMixin {
             )
     )
     private boolean e4steam$useSteamAuthentication(MinecraftServer server) {
-        long authenticatedSteamId = SteamRuntime.get()
-                .authenticatedMinecraftPeer(connection.getRemoteAddress());
+        long authenticatedSteamId = e4steam$authenticatedSteamId();
         return authenticatedSteamId == 0 && server.usesAuthentication();
+    }
+
+    @Inject(method = "handleHello", at = @At("HEAD"), cancellable = true)
+    private void e4steam$rejectDirectDedicatedLogin(CallbackInfo ci) {
+        if (e4steam$authenticatedSteamId() != 0L
+                || !SteamMinecraftAuthentication.rejectUntrustedDedicatedIngress(
+                        connection.getRemoteAddress())) return;
+        connection.disconnect(new net.minecraft.network.chat.TextComponent(
+                "This server requires an authenticated e4steam connection"));
+        ci.cancel();
     }
 
     /**
@@ -44,8 +62,7 @@ public abstract class LegacyServerLoginPacketListenerImplMixin {
      */
     @Inject(method = "handleAcceptedLogin", at = @At("HEAD"))
     private void e4steam$bindLegacyProfileToSteamIdentity(CallbackInfo ci) {
-        long authenticatedSteamId = SteamRuntime.get()
-                .authenticatedMinecraftPeer(connection.getRemoteAddress());
+        long authenticatedSteamId = e4steam$authenticatedSteamId();
         if (authenticatedSteamId == 0) {
             return;
         }
@@ -58,8 +75,7 @@ public abstract class LegacyServerLoginPacketListenerImplMixin {
     /** Forge negotiation may need longer than the vanilla 600-tick budget. */
     @ModifyConstant(method = "tick", constant = @Constant(intValue = 600), require = 0)
     private int e4steam$extendAuthenticatedSteamLoginTimeout(int vanillaTimeout) {
-        long authenticatedSteamId = SteamRuntime.get()
-                .authenticatedMinecraftPeer(connection.getRemoteAddress());
+        long authenticatedSteamId = e4steam$authenticatedSteamId();
         return authenticatedSteamId == 0 ? vanillaTimeout : E4STEAM_LOGIN_TIMEOUT_TICKS;
     }
 }

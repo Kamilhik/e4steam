@@ -31,4 +31,29 @@ class DoctorTest {
         assertEquals(240, message.length());
         assertTrue(message.endsWith("..."));
     }
+
+    @Test
+    void diagnosticsRedactJoinAddressesSteamIdsSecretsAndHomePaths() {
+        String home = System.getProperty("user.home", "");
+        String value = "peer 76561198000000001 at s-abc-1234567890.steam "
+                + "token=super-secret " + home + "\\logs";
+
+        String redacted = Doctor.redactDiagnostic(value);
+
+        assertFalse(redacted.contains("76561198000000001"));
+        assertFalse(redacted.contains("s-abc-1234567890.steam"));
+        assertFalse(redacted.contains("super-secret"));
+        if (!home.isEmpty()) assertFalse(redacted.contains(home));
+        assertTrue(redacted.contains("<redacted-join-address>"));
+        assertTrue(redacted.contains("<redacted-steam-id>"));
+    }
+
+    @Test
+    void shortMessageAlsoRedactsCredentialBearingAddress() {
+        String message = Doctor.shortMessage(new IOException(
+                "failed s-abc-1234567890.steam ticket=raw-ticket"));
+
+        assertFalse(message.contains("1234567890.steam"));
+        assertFalse(message.contains("raw-ticket"));
+    }
 }

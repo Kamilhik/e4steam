@@ -10,10 +10,14 @@ import link.e4steam.api.runtime.RuntimeSnapshot;
 import link.e4steam.api.runtime.SteamRuntimeState;
 import link.e4steam.api.runtime.TransportCapability;
 import org.junit.jupiter.api.Test;
+import link.e4steam.api.config.ConfigService;
+import link.e4steam.api.lobby.LobbyService;
+import link.e4steam.api.world.WorldSettingsService;
 
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class PrivacyContractTest {
     @Test
@@ -42,5 +46,21 @@ class PrivacyContractTest {
         );
 
         assertFalse(snapshot.toString().contains(canary));
+    }
+
+    @Test
+    void structuredStringValuesDoNotLeakThroughToString() {
+        String canary = "credential-CANARY";
+        assertFalse(ConfigService.ConfigValue.text(canary).toString().contains(canary));
+        assertFalse(WorldSettingsService.WorldSettingValue.text(canary).toString().contains(canary));
+        assertFalse(LobbyService.MetadataValue.text(canary).toString().contains(canary));
+    }
+
+    @Test
+    void lobbyMetadataRejectsCredentialLikeValuesBeforePublication() {
+        assertThrows(IllegalArgumentException.class,
+                () -> LobbyService.MetadataValue.text("token=TOKEN-CANARY"));
+        assertThrows(IllegalArgumentException.class,
+                () -> LobbyService.MetadataValue.text("Bearer TOKEN-CANARY"));
     }
 }

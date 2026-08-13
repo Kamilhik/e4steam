@@ -135,7 +135,7 @@ tasks.register("printApiSurfaceHash") {
 
 tasks.register("apiBinaryCompatibilityCheck") {
     group = "verification"
-    description = "Reject accidental public API surface changes against the 0.1.0 baseline."
+    description = "Reject accidental public API surface changes against the 1.0.0 baseline."
     dependsOn jar
     doLast {
         File baseline = file("api-surface.sha256")

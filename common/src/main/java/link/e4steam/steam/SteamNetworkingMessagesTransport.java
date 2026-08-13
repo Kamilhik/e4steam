@@ -5,7 +5,8 @@ import com.sun.jna.Library;
 import com.sun.jna.Memory;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
-import link.e4steam.E4steamClient;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -15,12 +16,14 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ArrayDeque;
 
 /**
  * Packet-oriented transport backed by ISteamNetworkingMessages, the
  * connectionless facade over Steam Networking Sockets.
  */
 final class SteamNetworkingMessagesTransport implements AutoCloseable {
+    private static final Logger LOGGER = LogManager.getLogger("e4steam");
     private static final int STEAM_IDENTITY_TYPE = 16;
     private static final int STEAM_IDENTITY_SIZE = 136;
     private static final int STEAM_IDENTITY_VALUE_SIZE = Long.BYTES;
@@ -112,12 +115,26 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
     private final SessionFailedCallback failedCallback = this::handleSessionFailed;
     private final DebugOutputCallback debugOutputCallback = this::handleDebugOutput;
 
-    private Pointer pendingMessage;
+    private static final int RECEIVE_BATCH_SIZE = 32;
+    private final ArrayDeque<Pointer> pendingMessages = new ArrayDeque<>(RECEIVE_BATCH_SIZE);
     private boolean closed;
 
     static SteamNetworkingMessagesTransport open(Path steamApiLibrary, SessionListener listener)
             throws IOException {
-        return new SteamNetworkingMessagesTransport(new JnaNativeAccess(steamApiLibrary), listener);
+        return new SteamNetworkingMessagesTransport(
+                new JnaNativeAccess(steamApiLibrary, false),
+                listener
+        );
+    }
+
+    static SteamNetworkingMessagesTransport openGameServer(
+            Path steamApiLibrary,
+            SessionListener listener
+    ) throws IOException {
+        return new SteamNetworkingMessagesTransport(
+                new JnaNativeAccess(steamApiLibrary, true),
+                listener
+        );
     }
 
     SteamNetworkingMessagesTransport(NativeAccess nativeAccess, SessionListener listener) {
@@ -176,32 +193,36 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
 
     int availablePacketSize(int channel) throws IOException {
         ensureOpen();
-        if (pendingMessage == null) {
-            Pointer[] messages = new Pointer[1];
-            int count = nativeAccess.receive(channel, messages, 1);
-            if (count < 0 || count > 1) {
+        if (pendingMessages.isEmpty()) {
+            Pointer[] messages = new Pointer[RECEIVE_BATCH_SIZE];
+            int count = nativeAccess.receive(channel, messages, RECEIVE_BATCH_SIZE);
+            if (count < 0 || count > RECEIVE_BATCH_SIZE) {
                 throw new IOException("Steam returned an invalid received-message count: " + count);
             }
             if (count == 0) {
                 return 0;
             }
-            if (messages[0] == null) {
-                throw new IOException("Steam returned a null received message");
+            for (int index = 0; index < count; index++) {
+                if (messages[index] == null) {
+                    while (!pendingMessages.isEmpty()) {
+                        nativeAccess.releaseMessage(pendingMessages.removeFirst());
+                    }
+                    throw new IOException("Steam returned a null received message");
+                }
+                pendingMessages.addLast(messages[index]);
             }
-            pendingMessage = messages[0];
         }
+        Pointer pendingMessage = pendingMessages.peekFirst();
         int size = pendingMessage.getInt(MESSAGE_SIZE_OFFSET);
         if (size == 0) {
-            nativeAccess.releaseMessage(pendingMessage);
-            pendingMessage = null;
+            nativeAccess.releaseMessage(pendingMessages.removeFirst());
         }
         return size;
     }
 
     Received receive(ByteBuffer target, int channel) throws IOException {
         ensureOpen();
-        Pointer message = pendingMessage;
-        pendingMessage = null;
+        Pointer message = pendingMessages.pollFirst();
         if (message == null) {
             throw new IOException("No Steam Networking Messages packet is available on channel " + channel);
         }
@@ -229,8 +250,7 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
 
     void discardPendingMessage() throws IOException {
         ensureOpen();
-        Pointer message = pendingMessage;
-        pendingMessage = null;
+        Pointer message = pendingMessages.pollFirst();
         if (message != null) {
             nativeAccess.releaseMessage(message);
         }
@@ -270,9 +290,8 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
         closed = true;
         nativeAccess.setCallbacks(null, null);
         nativeAccess.setDebugOutput(0, null);
-        Pointer message = pendingMessage;
-        pendingMessage = null;
-        if (message != null) {
+        Pointer message;
+        while ((message = pendingMessages.pollFirst()) != null) {
             nativeAccess.releaseMessage(message);
         }
         for (Memory identity : identities.values()) {
@@ -290,7 +309,7 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
             try {
                 listener.onSessionRequest(remoteSteamId);
             } catch (Throwable throwable) {
-                E4steamClient.LOGGER.error("Steam session-request callback failed", throwable);
+                LOGGER.error("Steam session-request callback failed", throwable);
             }
         }
     }
@@ -312,7 +331,7 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
         try {
             listener.onSessionFailed(remoteSteamId, endReason, detail);
         } catch (Throwable throwable) {
-            E4steamClient.LOGGER.error("Steam session-failure callback failed", throwable);
+            LOGGER.error("Steam session-failure callback failed", throwable);
         }
     }
 
@@ -322,9 +341,9 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
         }
         String clean = message.trim();
         if (type <= 2) {
-            E4steamClient.LOGGER.warn("Steam Networking Sockets: {}", clean);
+            LOGGER.warn("Steam Networking Sockets: {}", clean);
         } else {
-            E4steamClient.LOGGER.debug("Steam Networking Sockets: {}", clean);
+            LOGGER.debug("Steam Networking Sockets: {}", clean);
         }
     }
 
@@ -373,6 +392,8 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
 
     private interface FlatApi extends Library {
         Pointer SteamAPI_SteamNetworkingMessages_SteamAPI_v002();
+
+        Pointer SteamAPI_SteamGameServerNetworkingMessages_SteamAPI_v002();
 
         Pointer SteamAPI_SteamNetworkingUtils_SteamAPI_v004();
 
@@ -429,7 +450,7 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
         private final Pointer messages;
         private final Pointer utils;
 
-        private JnaNativeAccess(Path steamApiLibrary) throws IOException {
+        private JnaNativeAccess(Path steamApiLibrary, boolean gameServer) throws IOException {
             Objects.requireNonNull(steamApiLibrary, "steamApiLibrary");
             try {
                 // loadLibrary exists in both Minecraft's old bundled JNA 3.x
@@ -439,7 +460,9 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
                         steamApiLibrary.toAbsolutePath().normalize().toString(),
                         FlatApi.class
                 );
-                messages = api.SteamAPI_SteamNetworkingMessages_SteamAPI_v002();
+                messages = gameServer
+                        ? api.SteamAPI_SteamGameServerNetworkingMessages_SteamAPI_v002()
+                        : api.SteamAPI_SteamNetworkingMessages_SteamAPI_v002();
                 utils = api.SteamAPI_SteamNetworkingUtils_SteamAPI_v004();
             } catch (UnsatisfiedLinkError | RuntimeException exception) {
                 throw new IOException("Could not bind Steam Networking Messages", exception);

@@ -20,6 +20,7 @@ public final class AddonDescriptor {
     private final ApiVersionRange apiRange;
     private final List<AddonDependency> dependencies;
     private final Set<CapabilityId> requestedCapabilities;
+    private final Set<CapabilityId> requiredCapabilities;
 
     /** Creates one validated addon descriptor with defensive copies. */
     public AddonDescriptor(
@@ -30,12 +31,34 @@ public final class AddonDescriptor {
             List<AddonDependency> dependencies,
             Set<CapabilityId> requestedCapabilities
     ) {
+        this(id, displayName, version, apiRange, dependencies,
+                requestedCapabilities, Collections.<CapabilityId>emptySet());
+    }
+
+    /**
+     * Creates one validated descriptor and marks a subset of requested capabilities as mandatory.
+     * Unknown optional capabilities are ignored, while an unavailable mandatory capability causes
+     * controlled rejection before addon code runs.
+     */
+    public AddonDescriptor(
+            AddonId id,
+            String displayName,
+            ApiVersion version,
+            ApiVersionRange apiRange,
+            List<AddonDependency> dependencies,
+            Set<CapabilityId> requestedCapabilities,
+            Set<CapabilityId> requiredCapabilities
+    ) {
         this.id = Objects.requireNonNull(id, "id");
         this.displayName = validateName(displayName);
         this.version = Objects.requireNonNull(version, "version");
         this.apiRange = Objects.requireNonNull(apiRange, "apiRange");
         this.dependencies = immutableDependencies(dependencies);
         this.requestedCapabilities = immutableCapabilities(requestedCapabilities);
+        this.requiredCapabilities = immutableCapabilities(requiredCapabilities);
+        if (!this.requestedCapabilities.containsAll(this.requiredCapabilities)) {
+            throw new IllegalArgumentException("Required capabilities must also be requested");
+        }
         for (AddonDependency dependency : this.dependencies) {
             if (dependency.addonId().equals(id)) {
                 throw new IllegalArgumentException("Addon cannot depend on itself");
@@ -60,6 +83,9 @@ public final class AddonDescriptor {
 
     /** Returns immutable requested capabilities. */
     public Set<CapabilityId> requestedCapabilities() { return requestedCapabilities; }
+
+    /** Returns the immutable mandatory subset of requested capabilities. */
+    public Set<CapabilityId> requiredCapabilities() { return requiredCapabilities; }
 
     @Override
     public String toString() {

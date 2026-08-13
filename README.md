@@ -78,6 +78,12 @@ user-facing features is included in core.
 | 1.20.2–1.21.x | NeoForge | `neoforge-mc1.20.2-26.2` | None |
 | 26.1–26.2 | Fabric/Quilt or NeoForge | file containing `mc26.1-26.2` | Fabric API only for Fabric/Quilt |
 
+The 0.3.0 build-only retro candidates for Forge 1.6.4–1.16.5 and Fabric
+1.14.4–1.16.5 are also collected in the shared `release/0.3.0` directory.
+Every filename identifies its exact loader and Minecraft version. Fabric still
+requires the matching Fabric API, and these candidates remain build-only until
+their manual smoke tests are recorded.
+
 Each listed JAR already contains both Windows x64 and Linux x64 Steam native
 libraries. Download one file for your Minecraft version and loader; there are
 no separate Windows and Linux builds.
@@ -188,6 +194,11 @@ Public Worlds, Modpack Sync, Offline Skins и World Settings реализова�
 | 1.18.2–1.20.2 | Forge | `forge-mc1.18.2-1.20.2` | Ничего |
 | 1.20.2–1.21.x | NeoForge | `neoforge-mc1.20.2-26.2` | Ничего |
 | 26.1–26.2 | Fabric/Quilt или NeoForge | файл с `mc26.1-26.2` | Fabric API только для Fabric/Quilt |
+
+Тестовые retro-сборки 0.3.0 для Forge 1.6.4–1.16.5 и Fabric 1.14.4–1.16.5
+также находятся в общей папке `release/0.3.0`. В названии каждого файла точно
+указаны загрузчик и версия Minecraft. До ручной проверки они имеют статус
+build-only, а Fabric по-прежнему требует подходящий Fabric API.
 
 Каждый указанный JAR уже содержит библиотеки Steam для Windows x64 и Linux x64.
 Для своей версии Minecraft и загрузчика нужно скачать один файл — отдельных

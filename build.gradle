@@ -100,6 +100,13 @@ tasks.register("legacyReleaseJars", GradleBuild) {
     tasks = ["clean", "releaseJars"]
 }
 
+tasks.register("retroReleaseJars", GradleBuild) {
+    group = "build"
+    description = "Build and audit all fourteen exact Java 8 retro variants."
+    dir = file("retro")
+    tasks = ["clean", "auditRetroArtifacts"]
+}
+
 tasks.register("headlessEntrypointAudit") {
     group = "verification"
     description = "Reject client/UI class references reachable from dedicated server entrypoints."
@@ -263,9 +270,10 @@ tasks.register("dependencyLicenseAudit") {
 
 tasks.register("releaseJars") {
     group = "build"
-    description = "Build and test all six public runtime JAR variants."
+    description = "Build, audit and collect all six modern and fourteen retro runtime JAR variants."
     dependsOn(
             legacyReleaseJars,
+            retroReleaseJars,
             headlessEntrypointAudit,
             dependencyLicenseAudit,
             ":common:test",
@@ -363,6 +371,31 @@ tasks.register("releaseJars") {
                         ]
                 ]
         ]
+        def retroVariants = [
+                "forge-1.6.4",
+                "forge-1.7.10",
+                "forge-1.8.9",
+                "forge-1.9.4",
+                "forge-1.10.2",
+                "forge-1.11.2",
+                "forge-1.12.2",
+                "forge-1.13.2",
+                "forge-1.14.4",
+                "forge-1.15.2",
+                "forge-1.16.5",
+                "fabric-1.14.4",
+                "fabric-1.15.2",
+                "fabric-1.16.5"
+        ].collect { target ->
+            String loader = target.substring(0, target.indexOf('-'))
+            String minecraftVersion = target.substring(target.indexOf('-') + 1)
+            String publicName = "e4steam-${loader}-mc${minecraftVersion}-v${version}.jar"
+            return [
+                    label: "Retro ${loader} ${minecraftVersion}",
+                    publicName: publicName,
+                    file: file("retro/${target}/build/libs/${publicName}")
+            ]
+        }
         def requiredNatives = [
                 "steam_api64.dll": [
                         size: 319584L,
@@ -589,6 +622,11 @@ tasks.register("releaseJars") {
                 zip.close()
             }
         }
+        retroVariants.each { variant ->
+            if (!variant.file.isFile()) {
+                throw new GradleException("Missing ${variant.label} runtime JAR: ${variant.file}")
+            }
+        }
         [
                 file("api/build/libs/e4steam-api-${api_version}.jar"),
                 file("api/build/libs/e4steam-api-${api_version}-sources.jar")
@@ -618,9 +656,23 @@ tasks.register("releaseJars") {
                 rename { variant.publicName }
             }
         }
-        if (fileTree(publicDirectory) { include "*.jar" }.files.size() != variants.size()) {
-            throw new GradleException("Could not assemble all public release JARs in ${publicDirectory}")
+        retroVariants.each { variant ->
+            copy {
+                from variant.file
+                into publicDirectory
+                rename { variant.publicName }
+            }
         }
-        println("Artifact audit passed for all six runtime JAR variants.")
+        Set<String> expectedNames = (variants + retroVariants)
+                .collect { it.publicName } as Set<String>
+        Set<String> actualNames = fileTree(publicDirectory) { include "*.jar" }
+                .files.collect { it.name } as Set<String>
+        if (actualNames != expectedNames) {
+            throw new GradleException(
+                    "Could not assemble the exact public release set in ${publicDirectory}; "
+                            + "missing=${expectedNames - actualNames}, unexpected=${actualNames - expectedNames}"
+            )
+        }
+        println("Artifact audit passed and collected all 20 runtime JAR variants in ${publicDirectory}.")
     }
 }

@@ -46,6 +46,12 @@ Forge versions (1.6.4 through 1.16.5 at the listed baselines) and Fabric 1.14.4,
 1.15.2 and 1.16.5. Each file must keep exact Minecraft+loader in its name.
 There is no generic retro, Legacy Fabric, Ornithe, Rift or Quilt file.
 
+The root `releaseJars` task invokes that retro audit and copies all 14 exact
+files into `release/<version>` beside the six modern candidates. The resulting
+directory must contain exactly 20 runtime JARs; stale or unexpected JARs fail
+the assembly check. The direct retro command below remains useful as a focused
+verification command.
+
 Retro candidates are build-only until every exact artifact completes launch,
 LAN host, Steam join, movement/chunk, disconnect/reconnect, teardown and
 physical-server classloading checks. Do not upload only because the build is

@@ -120,7 +120,7 @@ jobs:
           done
 
   release-audit:
-    name: Existing runtime artifact audit
+    name: Complete 20-artifact release directory
     needs:
       - api-java8
       - verify
@@ -145,7 +145,7 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
 
-      - name: Build and audit the six existing runtime artifacts
+      - name: Build, audit and collect all modern and retro runtime artifacts
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace clean dependencyLicenseAudit releaseJars

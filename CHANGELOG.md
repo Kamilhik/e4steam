@@ -61,6 +61,9 @@ belong to this fork and are independent of upstream e4mc releases.
 - Reduced every retro JAR to the exact nine supported 64-bit Steam natives,
   excluding 32-bit and encrypted-ticket variants. Added a checked dependency/
   license inventory and a non-publishing Gradle/CI license audit.
+- The root `releaseJars` task now builds, audits and collects all 14 exact retro
+  JARs in `release/0.3.0` beside the six modern JARs, and rejects a release
+  directory that is missing a candidate or contains an unexpected JAR.
 - Expanded non-publishing SHA-pinned CI to Windows, Linux, macOS Intel, macOS
   arm64 and the exact retro artifact matrix. Manual macOS, dedicated two-client
   and per-retro Minecraft/Steam smoke tests remain release blockers.
@@ -122,6 +125,9 @@ belong to this fork and are independent of upstream e4mc releases.
 - В каждом retro JAR оставлены ровно девять поддерживаемых 64-bit Steam natives;
   32-bit и encrypted-ticket варианты исключены. Добавлены проверяемый список
   dependencies/licenses и непубликующий Gradle/CI license audit.
+- Корневая задача `releaseJars` теперь собирает, проверяет и помещает все 14
+  точных retro JAR в `release/0.3.0` рядом с шестью современными JAR. Неполный
+  набор или посторонний JAR в этой папке приводит к ошибке сборки.
 - Непубликующий CI с actions по SHA расширен на Windows, Linux, macOS Intel,
   macOS arm64 и exact retro matrix. Ручные проверки macOS, dedicated с двумя
   клиентами и каждой retro-сборки остаются обязательными перед релизом.

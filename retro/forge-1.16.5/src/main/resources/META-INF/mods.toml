@@ -7,7 +7,7 @@ modId="e4steam"
 version="${version}"
 displayName="e4steam"
 authors="Kamilchik"
-description='''Play Minecraft with friends through Steam. Retro build for Minecraft 1.16.5.'''
+description='''Play Minecraft with friends through Steam. Retro build for Minecraft ${minecraftBranch}.'''
 
 [[dependencies.e4steam]]
 modId="forge"
@@ -19,6 +19,6 @@ side="CLIENT"
 [[dependencies.e4steam]]
 modId="minecraft"
 mandatory=true
-versionRange="[1.16.5,1.17)"
+versionRange="[1.16,1.17)"
 ordering="NONE"
 side="CLIENT"

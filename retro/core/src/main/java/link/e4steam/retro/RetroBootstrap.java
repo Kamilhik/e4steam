@@ -6,7 +6,7 @@ import link.e4steam.steam.SteamAccessMode;
 import link.e4steam.steam.SteamRuntime;
 import link.e4steam.steam.SteamSession;
 
-/** Shared idempotent lifecycle called by every exact retro loader adapter. */
+/** Shared idempotent lifecycle called by every branch-scoped retro loader adapter. */
 public final class RetroBootstrap {
     private static final Object LOCK = new Object();
     private static int hostedPort;

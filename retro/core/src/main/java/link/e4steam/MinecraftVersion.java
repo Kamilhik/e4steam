@@ -1,6 +1,6 @@
 package link.e4steam;
 
-/** Exact retro game version advertised in Steam lobby metadata. */
+/** Actual retro game version advertised in Steam lobby metadata. */
 public final class MinecraftVersion {
     private static volatile String current = "retro-uninitialized";
 

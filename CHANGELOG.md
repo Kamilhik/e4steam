@@ -49,10 +49,14 @@ belong to this fork and are independent of upstream e4mc releases.
 - Split modern and retro physical server entrypoints from client bootstrap and
   added transitive headless class-graph/JAR audits for Minecraft client, AWT,
   overlay and client Steam runtime leakage.
-- Added exact Java 8 build-only retro artifacts for Forge 1.6.4, 1.7.10, 1.8.9,
-  1.9.4, 1.10.2, 1.11.2, 1.12.2, 1.13.2, 1.14.4, 1.15.2 and 1.16.5, plus
-  Fabric 1.14.4, 1.15.2 and 1.16.5. No generic retro, Legacy Fabric, Ornithe,
-  Rift, Quilt or non-Steam tunnel backend is included.
+- Added Java 8 build-only retro branch artifacts: exact Forge 1.6.4, Forge
+  `1.7.x` through `1.16.x`, and Fabric `1.14.x` through `1.16.x`. Each branch
+  is built on a documented representative patch and detects the actual running
+  Minecraft version. No all-retro, Legacy Fabric, Ornithe, Rift, retro Quilt or
+  non-Steam tunnel backend is included.
+- Added an offline 20-profile Prism test kit and browser checklist for two-PC
+  launch, LAN/Steam host, join, gameplay, reconnect and cleanup verification.
+  Fabric/Quilt test profiles use SHA-pinned Fabric API files.
 - Hardened Doctor output: it streams the mod hash, excludes raw Steam identity,
   redacts join addresses/secrets/user paths and bounds exception/report output.
 - Tightened dedicated authentication ownership: every Steam auth session now
@@ -61,11 +65,11 @@ belong to this fork and are independent of upstream e4mc releases.
 - Reduced every retro JAR to the exact nine supported 64-bit Steam natives,
   excluding 32-bit and encrypted-ticket variants. Added a checked dependency/
   license inventory and a non-publishing Gradle/CI license audit.
-- The root `releaseJars` task now builds, audits and collects all 14 exact retro
+- The root `releaseJars` task now builds, audits and collects all 14 retro branch
   JARs in `release/0.3.0` beside the six modern JARs, and rejects a release
   directory that is missing a candidate or contains an unexpected JAR.
 - Expanded non-publishing SHA-pinned CI to Windows, Linux, macOS Intel, macOS
-  arm64 and the exact retro artifact matrix. Manual macOS, dedicated two-client
+  arm64 and the retro branch artifact matrix. Manual macOS, dedicated two-client
   and per-retro Minecraft/Steam smoke tests remain release blockers.
 
 ### Русский
@@ -112,10 +116,15 @@ belong to this fork and are independent of upstream e4mc releases.
 - Современные и retro physical-server entrypoints отделены от client bootstrap;
   добавлен транзитивный headless аудит class graph/JAR на утечки Minecraft
   client, AWT, overlay и клиентского Steam runtime.
-- Добавлены exact build-only Java 8 retro JAR для Forge 1.6.4, 1.7.10, 1.8.9,
-  1.9.4, 1.10.2, 1.11.2, 1.12.2, 1.13.2, 1.14.4, 1.15.2 и 1.16.5, а также
-  Fabric 1.14.4, 1.15.2 и 1.16.5. Нет generic retro, Legacy Fabric, Ornithe,
-  Rift, Quilt и не-Steam tunnel backend.
+- Добавлены build-only Java 8 retro JAR по веткам: точная Forge 1.6.4, Forge
+  от `1.7.x` до `1.16.x` и Fabric от `1.14.x` до `1.16.x`. Каждая ветка
+  собирается на документированной основной patch-версии, а мод определяет
+  реальную запущенную версию Minecraft. Нет единого all-retro JAR, Legacy
+  Fabric, Ornithe, Rift, retro Quilt и не-Steam tunnel backend.
+- Добавлены автономный набор из 20 Prism-профилей и браузерный чеклист для
+  проверки запуска на двух ПК, открытия мира, Steam-подключения, игры,
+  переподключения и завершения. Fabric/Quilt-профили используют Fabric API с
+  закреплённым SHA-хешем.
 - Doctor теперь потоково считает hash мода, исключает raw Steam identity,
   редактирует join addresses/secrets/user paths и ограничивает stack/report.
 - Усилен lifecycle dedicated-аутентификации: у каждой Steam auth session теперь
@@ -126,10 +135,10 @@ belong to this fork and are independent of upstream e4mc releases.
   32-bit и encrypted-ticket варианты исключены. Добавлены проверяемый список
   dependencies/licenses и непубликующий Gradle/CI license audit.
 - Корневая задача `releaseJars` теперь собирает, проверяет и помещает все 14
-  точных retro JAR в `release/0.3.0` рядом с шестью современными JAR. Неполный
+  веточных retro JAR в `release/0.3.0` рядом с шестью современными JAR. Неполный
   набор или посторонний JAR в этой папке приводит к ошибке сборки.
 - Непубликующий CI с actions по SHA расширен на Windows, Linux, macOS Intel,
-  macOS arm64 и exact retro matrix. Ручные проверки macOS, dedicated с двумя
+  macOS arm64 и матрицу веточных retro JAR. Ручные проверки macOS, dedicated с двумя
   клиентами и каждой retro-сборки остаются обязательными перед релизом.
 
 ## 0.2.4 - 2026-08-09

@@ -52,6 +52,11 @@ dependencies {
     }
     compileOnly("net.java.dev.jna:jna:5.10.0")
     compileOnly("org.apache.logging.log4j:log4j-api:2.17.2")
+    testImplementation("junit:junit:4.13.2")
+}
+
+tasks.test {
+    useJUnit()
 }
 
 tasks.jar {

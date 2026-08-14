@@ -52,24 +52,25 @@ Steam bridge. Ordinary LAN/TCP keeps normal Minecraft authentication behavior.
 In 0.3.0 the guest UUID and safe name derive from authenticated Steam identity,
 so persona-name changes do not alter ownership/bans.
 
-## 0.3.0 exact retro matrix
+## 0.3.0 retro branch matrix
 
-Every entry below has an isolated Java 8 build and exact JAR audit, but no
-Minecraft launch or Steam join has been recorded.
+Every entry below has an isolated Java 8 build and branch JAR audit, but no
+Minecraft launch or Steam join has been recorded. The version in parentheses
+is the representative build/test baseline, not proof of every patch.
 
 | Minecraft | Forge | Fabric | Windows/Linux/macOS runtime |
 | --- | --- | --- | --- |
 | 1.6.4 | 🧱 | — | ⏳ |
-| 1.7.10 | 🧱 | — | ⏳ |
-| 1.8.9 | 🧱 | — | ⏳ |
-| 1.9.4 | 🧱 | — | ⏳ |
-| 1.10.2 | 🧱 | — | ⏳ |
-| 1.11.2 | 🧱 | — | ⏳ |
-| 1.12.2 | 🧱 | — | ⏳ |
-| 1.13.2 | 🧱 | — | ⏳ |
-| 1.14.4 | 🧱 | 🧱 | ⏳ |
-| 1.15.2 | 🧱 | 🧱 | ⏳ |
-| 1.16.5 | 🧱 | 🧱 | ⏳ |
+| 1.7.x (1.7.10) | 🧱 | — | ⏳ |
+| 1.8.x (1.8.9) | 🧱 | — | ⏳ |
+| 1.9.x (1.9.4) | 🧱 | — | ⏳ |
+| 1.10.x (1.10.2) | 🧱 | — | ⏳ |
+| 1.11.x (1.11.2) | 🧱 | — | ⏳ |
+| 1.12.x (1.12.2) | 🧱 | — | ⏳ |
+| 1.13.x (1.13.2) | 🧱 | — | ⏳ |
+| 1.14.x (1.14.4) | 🧱 | 🧱 | ⏳ |
+| 1.15.x (1.15.2) | 🧱 | 🧱 | ⏳ |
+| 1.16.x (1.16.5) | 🧱 | 🧱 | ⏳ |
 
 Legacy Fabric, Ornithe, Rift and retro Quilt are intentionally unsupported.
 Retro dedicated GameServer behavior is not verified and must not be advertised.
@@ -81,7 +82,7 @@ Retro dedicated GameServer behavior is not verified and must not be advertised.
 | Fabric/Quilt 1.17+ | 🧪 | ⏳ | ⏳ |
 | Forge 1.17.1+ | 🧪 | ⏳ | ⏳ |
 | NeoForge 1.20.2+ | 🧪 | ⏳ | ⏳ |
-| Exact retro artifacts | Physical-side audit for Forge; client mixins separated | ⏳ | ⏳ |
+| Retro branch artifacts | Physical-side audit for Forge; client mixins separated | ⏳ | ⏳ |
 
 Before any status becomes supported, record exact artifact SHA-256, Minecraft,
 loader, Java, OS/arch, host/join/invite/reconnect, direct-TCP rejection and

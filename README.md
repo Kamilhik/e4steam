@@ -33,7 +33,7 @@
 > [!WARNING]
 > **0.3.0 is under development and is not a release yet.** The development
 > branch contains Addon API 1.0, loader-native addon discovery, macOS natives,
-> a fail-closed dedicated-server foundation and exact retro artifacts. These
+> a fail-closed dedicated-server foundation and retro branch artifacts. These
 > parts are built and unit-tested, but macOS Steam, dedicated two-client and
 > retro Minecraft smoke tests have not been completed. They are experimental
 > or build-only, not supported release features.
@@ -78,11 +78,11 @@ user-facing features is included in core.
 | 1.20.2–1.21.x | NeoForge | `neoforge-mc1.20.2-26.2` | None |
 | 26.1–26.2 | Fabric/Quilt or NeoForge | file containing `mc26.1-26.2` | Fabric API only for Fabric/Quilt |
 
-The 0.3.0 build-only retro candidates for Forge 1.6.4–1.16.5 and Fabric
-1.14.4–1.16.5 are also collected in the shared `release/0.3.0` directory.
-Every filename identifies its exact loader and Minecraft version. Fabric still
-requires the matching Fabric API, and these candidates remain build-only until
-their manual smoke tests are recorded.
+The 0.3.0 build-only retro candidates are also collected in `release/0.3.0`:
+exact Forge 1.6.4, Forge branch JARs from `1.7.x` through `1.16.x`, and Fabric
+branch JARs from `1.14.x` through `1.16.x`. Every filename identifies its loader
+and minor branch. Fabric still requires the matching Fabric API. A successful
+baseline test does not automatically prove every patch in that `.x` branch.
 
 Each listed JAR already contains both Windows x64 and Linux x64 Steam native
 libraries. Download one file for your Minecraft version and loader; there are
@@ -195,10 +195,11 @@ Public Worlds, Modpack Sync, Offline Skins и World Settings реализова�
 | 1.20.2–1.21.x | NeoForge | `neoforge-mc1.20.2-26.2` | Ничего |
 | 26.1–26.2 | Fabric/Quilt или NeoForge | файл с `mc26.1-26.2` | Fabric API только для Fabric/Quilt |
 
-Тестовые retro-сборки 0.3.0 для Forge 1.6.4–1.16.5 и Fabric 1.14.4–1.16.5
-также находятся в общей папке `release/0.3.0`. В названии каждого файла точно
-указаны загрузчик и версия Minecraft. До ручной проверки они имеют статус
-build-only, а Fabric по-прежнему требует подходящий Fabric API.
+В `release/0.3.0` также находятся тестовые retro-сборки: точная Forge 1.6.4,
+веточные Forge JAR от `1.7.x` до `1.16.x` и Fabric JAR от `1.14.x` до `1.16.x`.
+В названии указаны загрузчик и ветка Minecraft. Для Fabric по-прежнему нужен
+подходящий Fabric API. Проверка основной версии не доказывает автоматически
+работу каждого патча внутри ветки `.x`.
 
 Каждый указанный JAR уже содержит библиотеки Steam для Windows x64 и Linux x64.
 Для своей версии Minecraft и загрузчика нужно скачать один файл — отдельных

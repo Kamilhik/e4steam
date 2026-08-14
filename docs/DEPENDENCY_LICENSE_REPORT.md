@@ -3,7 +3,7 @@
 This report describes direct dependencies relevant to distributed e4steam
 artifacts. It does not treat Minecraft's complete loader/runtime classpath as
 content of the mod JAR. Generated dependency trees remain available through
-Gradle (`:common:dependencies` and the corresponding exact retro project).
+Gradle (`:common:dependencies` and the corresponding retro baseline project).
 
 ## Distributed project code
 
@@ -11,7 +11,7 @@ Gradle (`:common:dependencies` and the corresponding exact retro project).
 | --- | --- | --- | --- |
 | e4steam core and API | 0.3.0 / API 1.0.0 | Yes | Apache License 2.0 |
 | inherited e4mc portions | `vgskye/e4mc-minecraft-architectury` | Yes | MIT; notice retained in `THIRD_PARTY_NOTICES.md` |
-| adapted retro seams | exact `xhyrom/e4mc-retro` revisions in `RETRO_PORTING.md` | Retro JARs | Apache License 2.0; attribution retained in `NOTICE` |
+| adapted retro seams | exact `xhyrom/e4mc-retro` revisions in `RETRO_PORTING.md` | Retro branch JARs | Apache License 2.0; attribution retained in `NOTICE` |
 
 ## Modern runtime JARs
 
@@ -28,9 +28,9 @@ Minecraft, Fabric Loader, Forge, NeoForge, Architectury Loom, mappings and
 their transitive runtime classpaths are build/loader inputs. They are not
 copied into the six modern release JARs by e4steam's shadow configuration.
 
-## Exact retro JARs
+## Retro branch JARs
 
-Every exact retro JAR shades the Java 8 e4steam core, steamworks4j 1.10.0,
+Every retro branch JAR shades the Java 8 e4steam core, steamworks4j 1.10.0,
 steamworks4j-server 1.10.0 and exactly nine selected 64-bit Steam native files.
 The build rejects 32-bit and encrypted-app-ticket native variants.
 

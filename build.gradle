@@ -102,7 +102,7 @@ tasks.register("legacyReleaseJars", GradleBuild) {
 
 tasks.register("retroReleaseJars", GradleBuild) {
     group = "build"
-    description = "Build and audit all fourteen exact Java 8 retro variants."
+    description = "Build and audit all fourteen Java 8 retro branch variants."
     dir = file("retro")
     tasks = ["clean", "auditRetroArtifacts"]
 }
@@ -372,28 +372,29 @@ tasks.register("releaseJars") {
                 ]
         ]
         def retroVariants = [
-                "forge-1.6.4",
-                "forge-1.7.10",
-                "forge-1.8.9",
-                "forge-1.9.4",
-                "forge-1.10.2",
-                "forge-1.11.2",
-                "forge-1.12.2",
-                "forge-1.13.2",
-                "forge-1.14.4",
-                "forge-1.15.2",
-                "forge-1.16.5",
-                "fabric-1.14.4",
-                "fabric-1.15.2",
-                "fabric-1.16.5"
+                [project: "forge-1.6.4", branch: "1.6.4"],
+                [project: "forge-1.7.10", branch: "1.7.x"],
+                [project: "forge-1.8.9", branch: "1.8.x"],
+                [project: "forge-1.9.4", branch: "1.9.x"],
+                [project: "forge-1.10.2", branch: "1.10.x"],
+                [project: "forge-1.11.2", branch: "1.11.x"],
+                [project: "forge-1.12.2", branch: "1.12.x"],
+                [project: "forge-1.13.2", branch: "1.13.x"],
+                [project: "forge-1.14.4", branch: "1.14.x"],
+                [project: "forge-1.15.2", branch: "1.15.x"],
+                [project: "forge-1.16.5", branch: "1.16.x"],
+                [project: "fabric-1.14.4", branch: "1.14.x"],
+                [project: "fabric-1.15.2", branch: "1.15.x"],
+                [project: "fabric-1.16.5", branch: "1.16.x"]
         ].collect { target ->
-            String loader = target.substring(0, target.indexOf('-'))
-            String minecraftVersion = target.substring(target.indexOf('-') + 1)
-            String publicName = "e4steam-${loader}-mc${minecraftVersion}-v${version}.jar"
+            String projectName = target.project
+            String loader = projectName.substring(0, projectName.indexOf('-'))
+            String minecraftVersion = projectName.substring(projectName.indexOf('-') + 1)
+            String publicName = "e4steam-${loader}-mc${target.branch}-v${version}.jar"
             return [
-                    label: "Retro ${loader} ${minecraftVersion}",
+                    label: "Retro ${loader} ${target.branch} (built on ${minecraftVersion})",
                     publicName: publicName,
-                    file: file("retro/${target}/build/libs/${publicName}")
+                    file: file("retro/${projectName}/build/libs/${publicName}")
             ]
         }
         def requiredNatives = [
@@ -669,7 +670,7 @@ tasks.register("releaseJars") {
                 .files.collect { it.name } as Set<String>
         if (actualNames != expectedNames) {
             throw new GradleException(
-                    "Could not assemble the exact public release set in ${publicDirectory}; "
+                    "Could not assemble the complete public release set in ${publicDirectory}; "
                             + "missing=${expectedNames - actualNames}, unexpected=${actualNames - expectedNames}"
             )
         }

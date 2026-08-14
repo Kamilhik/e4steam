@@ -8,7 +8,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Java 8 hosting lifecycle shared by all exact retro artifacts. */
+/** Java 8 hosting lifecycle shared by all retro branch artifacts. */
 public final class SteamSession {
     private static final SecureRandom RANDOM = new SecureRandom();
     private final Object lock = new Object();

@@ -3,7 +3,7 @@
   "id": "e4steam",
   "version": "${version}",
   "name": "e4steam",
-  "description": "Play Minecraft with friends through Steam. Retro build for Minecraft ${minecraftVersion}.",
+  "description": "Play Minecraft with friends through Steam. Retro build for Minecraft ${minecraftBranch}.",
   "authors": ["Kamilchik"],
   "license": "Apache-2.0",
   "environment": "client",
@@ -12,7 +12,7 @@
   "depends": {
     "fabricloader": ">=0.16.0",
     "fabric-api": "*",
-    "minecraft": "1.16.5",
+    "minecraft": ">=1.16 <1.17",
     "java": ">=8"
   }
 }

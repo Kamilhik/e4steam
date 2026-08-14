@@ -1,5 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import xyz.wagyourtail.unimined.api.minecraft.task.RemapJarTask
+import java.util.Properties
 import java.util.zip.ZipFile
 
 plugins {
@@ -38,11 +39,62 @@ subprojects {
 
 val runtimeProjects = subprojects.filter { it.name != "core" }
 
+fun retroMinecraftBranch(minecraftVersion: String): String =
+    if (minecraftVersion == "1.6.4") minecraftVersion
+    else "${minecraftVersion.substringBeforeLast('.')}.x"
+
+fun retroForgeMinecraftRange(minecraftBranch: String): String {
+    if (minecraftBranch == "1.6.4") return "[1.6.4]"
+    val parts = minecraftBranch.removeSuffix(".x").split('.')
+    check(parts.size == 2) { "Invalid retro Minecraft branch: $minecraftBranch" }
+    val major = parts[0].toInt()
+    val minor = parts[1].toInt()
+    return "[$major.$minor,$major.${minor + 1})"
+}
+
 configure(runtimeProjects) {
     val loader = name.substringBefore('-')
     val minecraftVersion = name.substringAfter('-')
+    val minecraftBranch = retroMinecraftBranch(minecraftVersion)
     apply(plugin = "java")
     apply(plugin = "com.github.johnrengelman.shadow")
+
+    if (loader == "forge") {
+        val generatedSourceRoot = layout.buildDirectory.dir(
+            "generated/sources/e4steamRetroMetadata/main/java")
+        val generatedMetadata = generatedSourceRoot.map {
+            it.file("link/e4steam/retro/RetroBuildMetadata.java")
+        }
+        val generateRetroMetadata = tasks.register("generateRetroMetadata") {
+            inputs.property("minecraftBranch", minecraftBranch)
+            inputs.property("acceptedForgeRange", retroForgeMinecraftRange(minecraftBranch))
+            outputs.file(generatedMetadata)
+            doLast {
+                val output = generatedMetadata.get().asFile
+                output.parentFile.mkdirs()
+                output.writeText(
+                    """package link.e4steam.retro;
+
+/** Generated loader metadata for this branch-scoped retro artifact. */
+public final class RetroBuildMetadata {
+    public static final String MINECRAFT_BRANCH = "$minecraftBranch";
+    public static final String ACCEPTED_FORGE_RANGE = "${retroForgeMinecraftRange(minecraftBranch)}";
+
+    private RetroBuildMetadata() {
+    }
+}
+""",
+                    Charsets.UTF_8
+                )
+            }
+        }
+        extensions.configure<SourceSetContainer> {
+            named("main") { java.srcDir(generatedSourceRoot) }
+        }
+        tasks.named<JavaCompile>("compileJava") {
+            dependsOn(generateRetroMetadata)
+        }
+    }
 
     val shadowBundle = configurations.create("shadowBundle")
     dependencies.add("implementation", project(":core"))
@@ -90,8 +142,12 @@ configure(runtimeProjects) {
     }
 
     tasks.named<ProcessResources>("processResources") {
+        inputs.property("minecraftBranch", minecraftBranch)
         from(rootProject.file("runtime-template/e4steam-retro.properties")) {
-            expand("minecraftVersion" to minecraftVersion)
+            expand(mapOf(
+                "minecraftVersion" to minecraftVersion,
+                "minecraftBranch" to minecraftBranch
+            ))
         }
     }
 
@@ -101,7 +157,7 @@ configure(runtimeProjects) {
                 dependsOn(tasks.named("shadowJar"))
                 asJar {
                     inputFile.set(tasks.named<ShadowJar>("shadowJar").flatMap { it.archiveFile })
-                    archiveFileName.set("e4steam-${loader}-mc${minecraftVersion}-v${project.version}.jar")
+                    archiveFileName.set("e4steam-${loader}-mc${minecraftBranch}-v${project.version}.jar")
                 }
             }
             tasks.named("build") { dependsOn(tasks.named("remapJar")) }
@@ -117,25 +173,60 @@ tasks.register("retroArtifacts") {
 
 tasks.register("auditRetroArtifacts") {
     group = "verification"
-    dependsOn("retroArtifacts")
+    dependsOn("retroArtifacts", ":core:test")
     doLast {
         runtimeProjects.forEach { project ->
+            val minecraftVersion = project.name.substringAfter('-')
+            val minecraftBranch = retroMinecraftBranch(minecraftVersion)
+            val loader = if (project.name.startsWith("forge-")) "forge" else "fabric"
+            val expectedName = "e4steam-${loader}-mc${minecraftBranch}-v${project.version}.jar"
             val jars = project.layout.buildDirectory.dir("libs").get().asFile
                 .listFiles()
                 ?.filter { file ->
-                    file.isFile && file.name == "e4steam-${if (project.name.startsWith("forge-")) "forge" else "fabric"}-mc${project.name.substringAfter('-')}-v${project.version}.jar"
+                    file.isFile && file.name == expectedName
                 }
                 .orEmpty()
             check(jars.size == 1) { "Missing or ambiguous retro artifact for ${project.name}" }
             jars.forEach { jar ->
-                check(jar.name.contains(project.name.removePrefix("forge-").removePrefix("fabric-")))
-                check(jar.name.contains(if (project.name.startsWith("forge-")) "forge" else "fabric"))
+                check(jar.name.contains(minecraftBranch))
+                check(jar.name.contains(loader))
                 check(jar.length() > 1_000_000L) { "Retro artifact is not the shaded runtime: ${jar.name}" }
                 ZipFile(jar).use { zip ->
                     val names = zip.entries().asSequence().map { it.name }.toSet()
                     check("link/e4steam/steam/SteamRuntime.class" in names)
                     check("link/e4steam/retro/RetroBootstrap.class" in names)
                     check("e4steam-retro.properties" in names)
+                    val retroProperties = Properties()
+                    zip.getInputStream(checkNotNull(zip.getEntry("e4steam-retro.properties"))).use {
+                        retroProperties.load(it)
+                    }
+                    check(retroProperties.getProperty("minecraftVersion") == minecraftVersion) {
+                        "${jar.name} does not record its ${minecraftVersion} build baseline"
+                    }
+                    check(retroProperties.getProperty("minecraftBranch") == minecraftBranch) {
+                        "${jar.name} does not record its ${minecraftBranch} compatibility branch"
+                    }
+                    val loaderMetadata = when (project.name) {
+                        "forge-1.13.2" -> "META-INF/mods.toml" to "versionRange=\"[1.13,1.14)\""
+                        "forge-1.14.4" -> "META-INF/mods.toml" to "versionRange=\"[1.14,1.15)\""
+                        "forge-1.15.2" -> "META-INF/mods.toml" to "versionRange=\"[1.15,1.16)\""
+                        "forge-1.16.5" -> "META-INF/mods.toml" to "versionRange=\"[1.16,1.17)\""
+                        "fabric-1.14.4" -> "fabric.mod.json" to "\"minecraft\": \">=1.14 <1.15\""
+                        "fabric-1.15.2" -> "fabric.mod.json" to "\"minecraft\": \">=1.15 <1.16\""
+                        "fabric-1.16.5" -> "fabric.mod.json" to "\"minecraft\": \">=1.16 <1.17\""
+                        else -> null
+                    }
+                    if (loaderMetadata != null) {
+                        val metadataEntry = checkNotNull(zip.getEntry(loaderMetadata.first)) {
+                            "Missing ${loaderMetadata.first} from ${jar.name}"
+                        }
+                        val metadataText = zip.getInputStream(metadataEntry).use {
+                            it.readBytes().toString(Charsets.UTF_8)
+                        }
+                        check(loaderMetadata.second in metadataText) {
+                            "${jar.name} does not advertise its full ${minecraftBranch} loader range"
+                        }
+                    }
                     listOf(
                         "META-INF/LICENSE-e4steam.txt",
                         "META-INF/NOTICE-e4steam.txt",
@@ -179,7 +270,9 @@ tasks.register("auditRetroArtifacts") {
                     check(names.none { it.contains("e4mc", ignoreCase = true) })
                     check(names.none { it.contains("cloudflare", ignoreCase = true) || it.contains("quiclime", ignoreCase = true) })
                     if (project.name.startsWith("forge-")) {
-                        val minecraftVersion = project.name.removePrefix("forge-")
+                        check("link/e4steam/retro/RetroBuildMetadata.class" in names) {
+                            "Missing generated Forge branch metadata from ${jar.name}"
+                        }
                         val entrypoint = when (minecraftVersion) {
                             "1.6.4" -> "link/e4steam/retro/forge/E4steamForge164.class"
                             "1.7.10" -> "link/e4steam/retro/forge/E4steamForgeLegacy.class"
@@ -196,6 +289,24 @@ tasks.register("auditRetroArtifacts") {
                         }
                         val constantPool = zip.getInputStream(entry).use { input ->
                             input.readBytes().toString(Charsets.ISO_8859_1)
+                        }
+                        val acceptedMinecraftVersions = when (minecraftVersion) {
+                            "1.6.4" -> "[1.6.4]"
+                            "1.7.10" -> "[1.7,1.8)"
+                            "1.8.9" -> "[1.8,1.9)"
+                            "1.9.4" -> "[1.9,1.10)"
+                            "1.10.2" -> "[1.10,1.11)"
+                            "1.11.2" -> "[1.11,1.12)"
+                            "1.12.2" -> "[1.12,1.13)"
+                            else -> null
+                        }
+                        if (acceptedMinecraftVersions != null) {
+                            check("acceptedMinecraftVersions" in constantPool) {
+                                "${jar.name} does not declare a Forge Minecraft compatibility range"
+                            }
+                            check(acceptedMinecraftVersions in constantPool) {
+                                "${jar.name} does not declare ${acceptedMinecraftVersions}"
+                            }
                         }
                         check("net/minecraft/client" !in constantPool) {
                             "Physical-server Forge entrypoint references Minecraft client classes: ${jar.name}"

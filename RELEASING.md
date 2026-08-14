@@ -9,11 +9,11 @@ open. App ID 480 is permanent for this project.
 1. Finish the English and Russian `CHANGELOG.md` section before creating a tag.
 2. Record exact automated and manual evidence in `COMPATIBILITY.md`; never turn
    a compile/main-menu result into a multiplayer or platform support claim.
-3. Run the modern, Java 8 API and exact retro verification commands below.
+3. Run the modern, Java 8 API and retro branch verification commands below.
 4. Inspect every intended runtime JAR, its metadata, classfile level, notices,
    natives and SHA-256. Do not publish dev/sources/unstubbed/root artifacts.
 5. Wait for Windows, Linux, macOS Intel, macOS arm64 and retro CI jobs to pass.
-6. Complete the applicable two-instance Steam matrices using the exact candidate
+6. Complete the applicable two-instance Steam matrices using the candidate
    hashes. macOS, dedicated and every retro artifact remain non-releaseable if
    their required smoke evidence is absent.
 7. Commit the final docs/results, then create annotated `v<version>` from that
@@ -41,18 +41,19 @@ than making a blanket server claim.
 
 ## Retro candidates
 
-`./gradlew -p retro auditRetroArtifacts` builds 14 exact Java 8 candidates: 11
-Forge versions (1.6.4 through 1.16.5 at the listed baselines) and Fabric 1.14.4,
-1.15.2 and 1.16.5. Each file must keep exact Minecraft+loader in its name.
-There is no generic retro, Legacy Fabric, Ornithe, Rift or Quilt file.
+`./gradlew -p retro auditRetroArtifacts` builds 14 Java 8 candidates: exact
+Forge 1.6.4, Forge branch JARs for 1.7.x through 1.16.x, and Fabric branch JARs
+for 1.14.x through 1.16.x. Every filename must keep its loader and public
+Minecraft branch. There is no single all-retro, Legacy Fabric, Ornithe, Rift or
+retro Quilt file.
 
-The root `releaseJars` task invokes that retro audit and copies all 14 exact
+The root `releaseJars` task invokes that retro audit and copies all 14 branch
 files into `release/<version>` beside the six modern candidates. The resulting
 directory must contain exactly 20 runtime JARs; stale or unexpected JARs fail
 the assembly check. The direct retro command below remains useful as a focused
 verification command.
 
-Retro candidates are build-only until every exact artifact completes launch,
+Retro candidates are build-only until every branch artifact's baseline completes launch,
 LAN host, Steam join, movement/chunk, disconnect/reconnect, teardown and
 physical-server classloading checks. Do not upload only because the build is
 green.
@@ -79,7 +80,7 @@ Record output and any assumptions/skips. CI does not publish on pull requests.
 - dedicated: anonymous GameServer startup, readiness, descriptor, two clients,
   stable identity, bans/whitelist, direct TCP rejection, replay/stale session,
   reconnect, capacity and graceful drain on each claimed OS/loader;
-- retro: the exact per-artifact checks described above.
+- retro: the per-branch-artifact baseline checks described above.
 
 Record Minecraft, loader, Java, OS/arch, Steam accounts/roles without exposing
 their IDs, artifact SHA-256, date and outcome. Never publish auth tickets,

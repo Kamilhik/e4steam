@@ -50,7 +50,7 @@ git diff --check
 
 The root aggregate covers the two Minecraft 1.17 legacy artifacts, standard and
 modern Fabric variants, Forge and NeoForge. The separate `retro` build covers
-11 exact Forge and 3 exact Fabric Java 8 artifacts. Do not silently omit a
+10 Forge branch and 3 Fabric branch Java 8 artifacts. Do not silently omit a
 variant or infer runtime support from compilation.
 
 ## Pull requests

@@ -36,6 +36,13 @@ Use a 64-bit JVM matching the desired architecture, install the normal
 loader/version JAR, start and sign in to the macOS Steam client, then launch
 Minecraft normally. Do not add the launcher as a non-Steam game.
 
+When Steam reports an injected overlay, e4steam can use it normally. Otherwise
+the invitation button opens the standalone Steam friends window through the
+fixed `steam://open/friends` URI; lobby rich presence remains available for
+**Join Game**. The supported build does not inject `DYLD_INSERT_LIBRARIES`,
+restart Minecraft or require a `-javaagent`: that experimental approach needs
+native macOS testing and a separate security review before it can be offered.
+
 e4steam never disables Gatekeeper, removes quarantine, asks for `sudo` or
 changes system security policy. If macOS blocks Minecraft or a native library,
 inspect the publisher/quarantine state yourself and install only from a trusted

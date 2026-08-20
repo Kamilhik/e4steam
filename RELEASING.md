@@ -41,15 +41,17 @@ than making a blanket server claim.
 
 ## Retro candidates
 
-`./gradlew -p retro auditRetroArtifacts` builds 14 Java 8 candidates: exact
-Forge 1.6.4, Forge branch JARs for 1.7.x through 1.16.x, and Fabric branch JARs
+`./gradlew -p retro auditRetroArtifacts` builds 13 Java 8 candidates: Forge
+branch JARs for 1.7.x through 1.16.x, and Fabric branch JARs
 for 1.14.x through 1.16.x. Every filename must keep its loader and public
-Minecraft branch. There is no single all-retro, Legacy Fabric, Ornithe, Rift or
+Minecraft branch. There is no single all-retro file. Legacy Fabric/Ornithe
+(1.7.10-1.13.2) and Rift (1.13.2) are separate possible future ports, not aliases
+for regular Fabric/Quilt and not part of the current artifact set. There is no
 retro Quilt file.
 
-The root `releaseJars` task invokes that retro audit and copies all 14 branch
+The root `releaseJars` task invokes that retro audit and copies all 13 branch
 files into `release/<version>` beside the six modern candidates. The resulting
-directory must contain exactly 20 runtime JARs; stale or unexpected JARs fail
+directory must contain exactly 19 runtime JARs; stale or unexpected JARs fail
 the assembly check. The direct retro command below remains useful as a focused
 verification command.
 

@@ -22,7 +22,7 @@ Gradle (`:common:dependencies` and the corresponding retro baseline project).
 | Valve `steam_api` redistributables | supplied by the declared steamworks4j artifacts | Windows x64, Linux x64 and universal macOS dylib | Valve/Steamworks SDK terms; not relicensed under Apache 2.0 |
 | Kaleido Config | 0.3.3+1.3.2 | Shaded and relocated under `link.e4steam.internal.kaleido` | Apache License 2.0; full text retained in `THIRD_PARTY_NOTICES.md` |
 | Fabric API | loader/version-specific | Required beside Fabric/Quilt builds; not shaded | Apache License 2.0 |
-| JNA | provided by supported Minecraft runtimes | Compile-only; not shaded | LGPL-2.1-or-later / Apache-2.0 dual licensing according to JNA upstream |
+| JNA | 5.10.0 in retro JARs; provided by modern Minecraft runtimes | Shaded only into Java 8 retro JARs | LGPL-2.1-or-later / Apache-2.0 dual licensing according to JNA upstream |
 
 Minecraft, Fabric Loader, Forge, NeoForge, Architectury Loom, mappings and
 their transitive runtime classpaths are build/loader inputs. They are not
@@ -30,8 +30,8 @@ copied into the six modern release JARs by e4steam's shadow configuration.
 
 ## Retro branch JARs
 
-Every retro branch JAR shades the Java 8 e4steam core, steamworks4j 1.10.0,
-steamworks4j-server 1.10.0 and exactly nine selected 64-bit Steam native files.
+Every retro branch JAR shades the Java 8 e4steam core, JNA 5.10.0,
+steamworks4j 1.10.0, steamworks4j-server 1.10.0 and exactly nine selected 64-bit Steam native files.
 The build rejects 32-bit and encrypted-app-ticket native variants.
 
 Additional compatibility dependencies are limited to the families that need
@@ -39,7 +39,6 @@ them:
 
 | Target family | Dependency | Packaging/legal handling |
 | --- | --- | --- |
-| Forge 1.6.4 | ASM 5.2 and Sponge Mixin 0.7.11 | Shaded; upstream license resources remain in the JAR |
 | Forge 1.7.10 | UniMixins 0.1.20 | Shaded; its complete module-specific `META-INF/licenses` tree is preserved |
 | Forge 1.8.9–1.12.2 | Sponge Mixin 0.7.11 | Shaded; upstream license resource remains in the JAR |
 | Forge 1.13.2–1.16.5 | loader-provided Mixin | Compile-only; not shaded by e4steam |

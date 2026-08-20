@@ -18,6 +18,16 @@ backend was copied. Exact upstream branches, commit SHAs and adapted files are
 recorded in `docs/RETRO_PORTING.md`. The applicable Apache 2.0 text is the
 repository-root `LICENSE`.
 
+## Java Native Access (JNA) 5.10.0
+
+The Java 8 retro runtime JARs include JNA 5.10.0 so Steam Networking Messages
+can run on Minecraft versions that do not provide JNA. JNA is available under
+the Apache License, Version 2.0, or LGPL-2.1-or-later. e4steam distributes it
+under the Apache 2.0 option; the applicable text is the repository-root
+`LICENSE`.
+
+Source: [java-native-access/jna](https://github.com/java-native-access/jna)
+
 ## steamworks4j 1.10.0
 
 Copyright (c) 2014–2025 Daniel Ludwig

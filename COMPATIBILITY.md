@@ -54,25 +54,28 @@ so persona-name changes do not alter ownership/bans.
 
 ## 0.3.0 retro branch matrix
 
-Every entry below has an isolated Java 8 build and branch JAR audit, but no
-Minecraft launch or Steam join has been recorded. The version in parentheses
-is the representative build/test baseline, not proof of every patch.
+Every entry below has an isolated Java 8 build and branch JAR audit. The
+version in parentheses is the representative build/test baseline, not proof of
+every patch. Client/LAN and two-client Steam evidence are recorded separately.
 
-| Minecraft | Forge | Fabric | Windows/Linux/macOS runtime |
-| --- | --- | --- | --- |
-| 1.6.4 | 🧱 | — | ⏳ |
-| 1.7.x (1.7.10) | 🧱 | — | ⏳ |
-| 1.8.x (1.8.9) | 🧱 | — | ⏳ |
-| 1.9.x (1.9.4) | 🧱 | — | ⏳ |
-| 1.10.x (1.10.2) | 🧱 | — | ⏳ |
-| 1.11.x (1.11.2) | 🧱 | — | ⏳ |
-| 1.12.x (1.12.2) | 🧱 | — | ⏳ |
-| 1.13.x (1.13.2) | 🧱 | — | ⏳ |
-| 1.14.x (1.14.4) | 🧱 | 🧱 | ⏳ |
-| 1.15.x (1.15.2) | 🧱 | 🧱 | ⏳ |
-| 1.16.x (1.16.5) | 🧱 | 🧱 | ⏳ |
+| Minecraft | Forge | Fabric | Windows client + LAN host | Steam host/guest | Linux/macOS |
+| --- | --- | --- | --- | --- | --- |
+| 1.7.x (1.7.10) | 🧱 | — | ✅ 2026-08-20 | ⏳ | ⏳ |
+| 1.8.x (1.8.9) | 🧱 | — | ⏳ | ⏳ | ⏳ |
+| 1.9.x (1.9.4) | 🧱 | — | ⏳ | ⏳ | ⏳ |
+| 1.10.x (1.10.2) | 🧱 | — | ⏳ | ⏳ | ⏳ |
+| 1.11.x (1.11.2) | 🧱 | — | ⏳ | ⏳ | ⏳ |
+| 1.12.x (1.12.2) | 🧱 | — | ⏳ | ⏳ | ⏳ |
+| 1.13.x (1.13.2) | 🧱 | — | ⏳ | ⏳ | ⏳ |
+| 1.14.x (1.14.4) | 🧱 | 🧱 | ⏳ | ⏳ | ⏳ |
+| 1.15.x (1.15.2) | 🧱 | 🧱 | ⏳ | ⏳ | ⏳ |
+| 1.16.x (1.16.5) | 🧱 | 🧱 | ⏳ | ⏳ | ⏳ |
 
-Legacy Fabric, Ornithe, Rift and retro Quilt are intentionally unsupported.
+Regular Fabric/Quilt must not be used as the loader name for Minecraft
+1.7.10-1.13.2. Separate Legacy Fabric or Ornithe ports are possible for those
+versions, and a separate Rift port is possible for 1.13.2, but none of those
+artifacts is built or verified in the current matrix. Retro Quilt remains
+unsupported.
 Retro dedicated GameServer behavior is not verified and must not be advertised.
 
 ## 0.3.0 dedicated matrix

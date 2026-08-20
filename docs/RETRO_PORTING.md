@@ -10,23 +10,29 @@ that Steam multiplayer works.
 
 | Public branch | Build baseline | Loader | Branch artifact | Status |
 | --- | --- | --- | --- | --- |
-| 1.6.4 | 1.6.4 | Forge 9.11.1.1345 | `e4steam-forge-mc1.6.4-v0.3.0.jar` | Build-only |
 | 1.7.x | 1.7.10 | Forge 10.13.4.1614 | `e4steam-forge-mc1.7.x-v0.3.0.jar` | Build-only |
 | 1.8.x | 1.8.9 | Forge 11.15.1.2318 | `e4steam-forge-mc1.8.x-v0.3.0.jar` | Build-only |
 | 1.9.x | 1.9.4 | Forge 12.17.0.2317 | `e4steam-forge-mc1.9.x-v0.3.0.jar` | Build-only |
 | 1.10.x | 1.10.2 | Forge 12.18.3.2511 | `e4steam-forge-mc1.10.x-v0.3.0.jar` | Build-only |
 | 1.11.x | 1.11.2 | Forge 13.20.1.2588 | `e4steam-forge-mc1.11.x-v0.3.0.jar` | Build-only |
-| 1.12.x | 1.12.2 | Forge 14.23.5.2847 | `e4steam-forge-mc1.12.x-v0.3.0.jar` | Build-only |
+| 1.12.x | 1.12.2 | Forge 14.23.5.2864 | `e4steam-forge-mc1.12.x-v0.3.0.jar` | Build-only |
 | 1.13.x | 1.13.2 | Forge 25.0.223 | `e4steam-forge-mc1.13.x-v0.3.0.jar` | Build-only |
-| 1.14.x | 1.14.4 | Forge 28.2.26 | `e4steam-forge-mc1.14.x-v0.3.0.jar` | Build-only |
-| 1.15.x | 1.15.2 | Forge 31.2.57 | `e4steam-forge-mc1.15.x-v0.3.0.jar` | Build-only |
+| 1.14.x | 1.14.4 | Forge 28.2.30 | `e4steam-forge-mc1.14.x-v0.3.0.jar` | Build-only |
+| 1.15.x | 1.15.2 | Forge 31.2.62 | `e4steam-forge-mc1.15.x-v0.3.0.jar` | Build-only |
 | 1.16.x | 1.16.5 | Forge 36.2.42 | `e4steam-forge-mc1.16.x-v0.3.0.jar` | Build-only |
 | 1.14.x | 1.14.4 | Fabric Loader 0.16.14 | `e4steam-fabric-mc1.14.x-v0.3.0.jar` | Build-only |
 | 1.15.x | 1.15.2 | Fabric Loader 0.16.14 | `e4steam-fabric-mc1.15.x-v0.3.0.jar` | Build-only |
 | 1.16.x | 1.16.5 | Fabric Loader 0.16.14 | `e4steam-fabric-mc1.16.x-v0.3.0.jar` | Build-only |
 
-The three Fabric versions reflect the owner's later explicit scope expansion.
-There is no Legacy Fabric, Ornithe, Rift, retro Quilt or single all-retro JAR.
+Minecraft 1.6.4 source remains available only as a reference port and is not
+part of the 0.3.0 build, test or release matrix.
+
+The three regular Fabric versions reflect the owner's later explicit scope
+expansion. Minecraft 1.7.10-1.13.2 would require distinct **Legacy Fabric** or
+**Ornithe** ports rather than regular Fabric/Quilt; Minecraft 1.13.2 may also
+use a distinct **Rift** port. Those loader artifacts are candidates for later
+work and are not part of the current release matrix. There is no retro Quilt or
+single all-retro JAR.
 The `.x` range belongs only to the minor branch named by that artifact.
 
 ## Architecture

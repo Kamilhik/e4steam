@@ -79,7 +79,7 @@ user-facing features is included in core.
 | 26.1–26.2 | Fabric/Quilt or NeoForge | file containing `mc26.1-26.2` | Fabric API only for Fabric/Quilt |
 
 The 0.3.0 build-only retro candidates are also collected in `release/0.3.0`:
-exact Forge 1.6.4, Forge branch JARs from `1.7.x` through `1.16.x`, and Fabric
+Forge branch JARs from `1.7.x` through `1.16.x`, and Fabric
 branch JARs from `1.14.x` through `1.16.x`. Every filename identifies its loader
 and minor branch. Fabric still requires the matching Fabric API. A successful
 baseline test does not automatically prove every patch in that `.x` branch.
@@ -195,8 +195,8 @@ Public Worlds, Modpack Sync, Offline Skins и World Settings реализова�
 | 1.20.2–1.21.x | NeoForge | `neoforge-mc1.20.2-26.2` | Ничего |
 | 26.1–26.2 | Fabric/Quilt или NeoForge | файл с `mc26.1-26.2` | Fabric API только для Fabric/Quilt |
 
-В `release/0.3.0` также находятся тестовые retro-сборки: точная Forge 1.6.4,
-веточные Forge JAR от `1.7.x` до `1.16.x` и Fabric JAR от `1.14.x` до `1.16.x`.
+В `release/0.3.0` также находятся тестовые retro-сборки: веточные Forge JAR
+от `1.7.x` до `1.16.x` и Fabric JAR от `1.14.x` до `1.16.x`.
 В названии указаны загрузчик и ветка Minecraft. Для Fabric по-прежнему нужен
 подходящий Fabric API. Проверка основной версии не доказывает автоматически
 работу каждого патча внутри ветки `.x`.

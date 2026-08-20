@@ -39,6 +39,9 @@ belong to this fork and are independent of upstream e4mc releases.
   strict OS/architecture normalization, Mach-O slice/hash validation and Intel
   plus arm64 CI audits. Real macOS Steam multiplayer is not yet smoke-tested,
   so the platform remains experimental.
+- Added a crash-safe Unix invitation path: Linux and macOS use the real Steam
+  overlay when Steam reports it ready, otherwise e4steam opens the standalone
+  Steam friends window while keeping lobby rich presence active.
 - Added an opt-in headless `DEDICATED_GAME_SERVER` backend using anonymous Steam
   GameServer login, Steam auth-ticket validation, a generation-bound loopback
   ingress guard, stable identities, private/whitelist/unlisted policy, bans,
@@ -49,14 +52,22 @@ belong to this fork and are independent of upstream e4mc releases.
 - Split modern and retro physical server entrypoints from client bootstrap and
   added transitive headless class-graph/JAR audits for Minecraft client, AWT,
   overlay and client Steam runtime leakage.
-- Added Java 8 build-only retro branch artifacts: exact Forge 1.6.4, Forge
-  `1.7.x` through `1.16.x`, and Fabric `1.14.x` through `1.16.x`. Each branch
+- Added Java 8 build-only retro branch artifacts: Forge `1.7.x` through
+  `1.16.x`, and Fabric `1.14.x` through `1.16.x`. Each branch
   is built on a documented representative patch and detects the actual running
-  Minecraft version. No all-retro, Legacy Fabric, Ornithe, Rift, retro Quilt or
-  non-Steam tunnel backend is included.
-- Added an offline 20-profile Prism test kit and browser checklist for two-PC
+  Minecraft version. Pre-1.14 Fabric-family ports are now described correctly
+  as future Legacy Fabric or Ornithe targets (and Rift on 1.13.2), rather than
+  regular Fabric/Quilt. No such artifact, all-retro JAR, retro Quilt or
+  non-Steam tunnel backend is included yet.
+- Updated the retro Forge baselines to the latest official builds for 1.12.2
+  (`14.23.5.2864`), 1.14.4 (`28.2.30`), 1.15.2 (`31.2.62`) and 1.16.5
+  (`36.2.42`). Forge 1.7.x-1.12.x JARs now contain both uppercase and lowercase
+  legacy language filenames, enforced by the artifact audit.
+- Added an offline 19-profile Prism test kit and browser checklist for two-PC
   launch, LAN/Steam host, join, gameplay, reconnect and cleanup verification.
-  Fabric/Quilt test profiles use SHA-pinned Fabric API files.
+  Fabric/Quilt test profiles use SHA-pinned Fabric API files. Added a repeatable
+  two-client Steam smoke runner that records only sanitized profile, hash and
+  pass/fail evidence.
 - Hardened Doctor output: it streams the mod hash, excludes raw Steam identity,
   redacts join addresses/secrets/user paths and bounds exception/report output.
 - Tightened dedicated authentication ownership: every Steam auth session now
@@ -65,7 +76,7 @@ belong to this fork and are independent of upstream e4mc releases.
 - Reduced every retro JAR to the exact nine supported 64-bit Steam natives,
   excluding 32-bit and encrypted-ticket variants. Added a checked dependency/
   license inventory and a non-publishing Gradle/CI license audit.
-- The root `releaseJars` task now builds, audits and collects all 14 retro branch
+- The root `releaseJars` task now builds, audits and collects all 13 retro branch
   JARs in `release/0.3.0` beside the six modern JARs, and rejects a release
   directory that is missing a candidate or contains an unexpected JAR.
 - Expanded non-publishing SHA-pinned CI to Windows, Linux, macOS Intel, macOS
@@ -105,6 +116,9 @@ belong to this fork and are independent of upstream e4mc releases.
   Apple Silicon, строгая нормализация OS/architecture, проверка Mach-O slices и
   hashes, CI для Intel и arm64. Реальный Steam multiplayer на macOS ещё не
   проверен, поэтому статус остаётся experimental.
+- Добавлен безопасный путь приглашений для Unix: Linux и macOS используют
+  настоящий Steam Overlay, когда Steam сообщает о его готовности, а иначе
+  e4steam открывает отдельное окно друзей Steam, сохраняя rich presence лобби.
 - Добавлен opt-in headless backend `DEDICATED_GAME_SERVER`: anonymous Steam
   GameServer login, проверка auth ticket, generation-bound loopback ingress,
   стабильные identity, private/whitelist/unlisted, bans, console-команды и
@@ -116,15 +130,22 @@ belong to this fork and are independent of upstream e4mc releases.
 - Современные и retro physical-server entrypoints отделены от client bootstrap;
   добавлен транзитивный headless аудит class graph/JAR на утечки Minecraft
   client, AWT, overlay и клиентского Steam runtime.
-- Добавлены build-only Java 8 retro JAR по веткам: точная Forge 1.6.4, Forge
-  от `1.7.x` до `1.16.x` и Fabric от `1.14.x` до `1.16.x`. Каждая ветка
+- Добавлены build-only Java 8 retro JAR по веткам: Forge от `1.7.x` до
+  `1.16.x` и Fabric от `1.14.x` до `1.16.x`. Каждая ветка
   собирается на документированной основной patch-версии, а мод определяет
-  реальную запущенную версию Minecraft. Нет единого all-retro JAR, Legacy
-  Fabric, Ornithe, Rift, retro Quilt и не-Steam tunnel backend.
-- Добавлены автономный набор из 20 Prism-профилей и браузерный чеклист для
+  реальную запущенную версию Minecraft. Возможные порты до 1.14 теперь правильно
+  названы отдельными целями Legacy Fabric или Ornithe, а для 1.13.2 также Rift,
+  а не обычным Fabric/Quilt. Эти JAR пока не собираются; также нет единого
+  all-retro JAR, retro Quilt и не-Steam tunnel backend.
+- Основные Forge-версии обновлены до последних официальных сборок: 1.12.2
+  (`14.23.5.2864`), 1.14.4 (`28.2.30`), 1.15.2 (`31.2.62`) и 1.16.5
+  (`36.2.42`). В Forge JAR для 1.7.x-1.12.x теперь входят оба варианта имён
+  старых lang-файлов; их наличие проверяется аудитом артефактов.
+- Добавлены автономный набор из 19 Prism-профилей и браузерный чеклист для
   проверки запуска на двух ПК, открытия мира, Steam-подключения, игры,
   переподключения и завершения. Fabric/Quilt-профили используют Fabric API с
-  закреплённым SHA-хешем.
+  закреплённым SHA-хешем. Добавлен повторяемый двухклиентный Steam smoke-скрипт,
+  который сохраняет только безопасные сведения о профиле, SHA и результате.
 - Doctor теперь потоково считает hash мода, исключает raw Steam identity,
   редактирует join addresses/secrets/user paths и ограничивает stack/report.
 - Усилен lifecycle dedicated-аутентификации: у каждой Steam auth session теперь
@@ -134,7 +155,7 @@ belong to this fork and are independent of upstream e4mc releases.
 - В каждом retro JAR оставлены ровно девять поддерживаемых 64-bit Steam natives;
   32-bit и encrypted-ticket варианты исключены. Добавлены проверяемый список
   dependencies/licenses и непубликующий Gradle/CI license audit.
-- Корневая задача `releaseJars` теперь собирает, проверяет и помещает все 14
+- Корневая задача `releaseJars` теперь собирает, проверяет и помещает все 13
   веточных retro JAR в `release/0.3.0` рядом с шестью современными JAR. Неполный
   набор или посторонний JAR в этой папке приводит к ошибке сборки.
 - Непубликующий CI с actions по SHA расширен на Windows, Linux, macOS Intel,

@@ -3,7 +3,7 @@ plugins { id("xyz.wagyourtail.unimined") }
 unimined.minecraft {
     version("1.12.2")
     minecraftForge {
-        loader("14.23.5.2847")
+        loader("14.23.5.2864")
         mixinConfig("e4steam.retro.mixins.json")
     }
     mappings {

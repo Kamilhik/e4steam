@@ -37,7 +37,16 @@ subprojects {
     }
 }
 
-val runtimeProjects = subprojects.filter { it.name != "core" }
+// Keep the 1.6.4 source port available for reference, but do not build or
+// publish it as part of the 0.3.0 runtime matrix.
+val runtimeProjects = subprojects.filter {
+    it.name != "core" && it.name != "forge-1.6.4"
+}
+
+val legacyLangProjects = setOf(
+    "forge-1.7.10", "forge-1.8.9", "forge-1.9.4",
+    "forge-1.10.2", "forge-1.11.2", "forge-1.12.2"
+)
 
 fun retroMinecraftBranch(minecraftVersion: String): String =
     if (minecraftVersion == "1.6.4") minecraftVersion
@@ -58,6 +67,14 @@ configure(runtimeProjects) {
     val minecraftBranch = retroMinecraftBranch(minecraftVersion)
     apply(plugin = "java")
     apply(plugin = "com.github.johnrengelman.shadow")
+
+    if (name in legacyLangProjects) {
+        extensions.configure<SourceSetContainer> {
+            named("main") {
+                resources.srcDir(rootProject.file("adapters/forge-legacy/src/main/resources"))
+            }
+        }
+    }
 
     if (loader == "forge") {
         val generatedSourceRoot = layout.buildDirectory.dir(
@@ -106,6 +123,7 @@ public final class RetroBuildMetadata {
         isTransitive = false
     }
     dependencies.add("compileOnly", "net.java.dev.jna:jna:5.10.0")
+    dependencies.add(shadowBundle.name, "net.java.dev.jna:jna:5.10.0")
     dependencies.add("implementation", "com.code-disaster.steamworks4j:steamworks4j-server:1.10.0") {
         isTransitive = false
     }
@@ -118,6 +136,25 @@ public final class RetroBuildMetadata {
         archiveClassifier.set("all")
         exclude("META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA")
         exclude("META-INF/maven/**", "META-INF/versions/**", "META-INF/native-image/**")
+        // JNA is required by Steam Networking Messages on old Minecraft, but
+        // e4steam only supports the same 64-bit desktop targets as its Steam
+        // native bundle.
+        exclude(
+            "com/sun/jna/win32-x86/**",
+            "com/sun/jna/win32-aarch64/**",
+            "com/sun/jna/linux-x86/**",
+            "com/sun/jna/linux-arm/**",
+            "com/sun/jna/linux-armel/**",
+            "com/sun/jna/linux-aarch64/**",
+            "com/sun/jna/linux-ppc/**",
+            "com/sun/jna/linux-ppc64le/**",
+            "com/sun/jna/linux-mips64el/**",
+            "com/sun/jna/linux-s390x/**",
+            "com/sun/jna/linux-riscv64/**",
+            "com/sun/jna/sunos-*/**",
+            "com/sun/jna/freebsd-*/**",
+            "com/sun/jna/openbsd-*/**"
+        )
         // e4steam supports only 64-bit desktop runtimes. Do not ship legacy
         // 32-bit or encrypted-app-ticket natives that this mod never loads.
         exclude(
@@ -139,6 +176,21 @@ public final class RetroBuildMetadata {
             rename { "NOTICE-e4steam.txt" }
         }
         from(rootProject.file("../THIRD_PARTY_NOTICES.md")) { into("META-INF") }
+        if (project.name in legacyLangProjects) {
+            // Windows cannot materialize en_US.lang and en_us.lang (or the
+            // Russian pair) in one directory. A ZIP can, so add the lowercase
+            // aliases directly while creating the shaded runtime JAR.
+            from(rootProject.file(
+                "adapters/forge-legacy/src/main/resources/assets/e4steam/lang/en_US.lang")) {
+                into("assets/e4steam/lang")
+                rename { "en_us.lang" }
+            }
+            from(rootProject.file(
+                "adapters/forge-legacy/src/main/resources/assets/e4steam/lang/ru_RU.lang")) {
+                into("assets/e4steam/lang")
+                rename { "ru_ru.lang" }
+            }
+        }
     }
 
     tasks.named<ProcessResources>("processResources") {
@@ -195,6 +247,12 @@ tasks.register("auditRetroArtifacts") {
                     val names = zip.entries().asSequence().map { it.name }.toSet()
                     check("link/e4steam/steam/SteamRuntime.class" in names)
                     check("link/e4steam/retro/RetroBootstrap.class" in names)
+                    check("com/sun/jna/Pointer.class" in names) {
+                        "Missing the Java 8 Steam transport JNA runtime from ${jar.name}"
+                    }
+                    check("com/sun/jna/Native.class" in names) {
+                        "Missing the Java 8 Steam transport JNA loader from ${jar.name}"
+                    }
                     check("e4steam-retro.properties" in names)
                     val retroProperties = Properties()
                     zip.getInputStream(checkNotNull(zip.getEntry("e4steam-retro.properties"))).use {
@@ -253,18 +311,41 @@ tasks.register("auditRetroArtifacts") {
                         "libsteam_api.so", "libsteamworks4j.so", "libsteamworks4j-server.so",
                         "libsteam_api.dylib", "libsteamworks4j.dylib", "libsteamworks4j-server.dylib"
                     )
+                    val requiredJnaNatives = setOf(
+                        "com/sun/jna/win32-x86-64/jnidispatch.dll",
+                        "com/sun/jna/linux-x86-64/libjnidispatch.so",
+                        "com/sun/jna/darwin-x86-64/libjnidispatch.jnilib",
+                        "com/sun/jna/darwin-aarch64/libjnidispatch.jnilib"
+                    )
                     requiredNatives.forEach { native ->
                         check(native in names) { "Missing $native from ${jar.name}" }
                     }
+                    requiredJnaNatives.forEach { native ->
+                        check(native in names) { "Missing $native from ${jar.name}" }
+                    }
                     val packagedNatives = names.filter { name ->
-                        name.endsWith(".dll") || name.endsWith(".so") || name.endsWith(".dylib")
+                        name.endsWith(".dll") || name.endsWith(".so") ||
+                                name.endsWith(".dylib") || name.endsWith(".jnilib")
                     }.toSet()
-                    check(packagedNatives == requiredNatives) {
-                        "Unexpected retro native set in ${jar.name}: ${packagedNatives - requiredNatives}"
+                    val expectedNatives = requiredNatives + requiredJnaNatives
+                    check(packagedNatives == expectedNatives) {
+                        "Unexpected retro native set in ${jar.name}: ${packagedNatives - expectedNatives}"
                     }
                     if (project.name == "forge-1.7.10") {
                         check("META-INF/licenses/module-common/LICENSE" in names) {
                             "UniMixins module licenses were not preserved in ${jar.name}"
+                        }
+                    }
+                    if (project.name in legacyLangProjects) {
+                        listOf(
+                            "assets/e4steam/lang/en_US.lang",
+                            "assets/e4steam/lang/en_us.lang",
+                            "assets/e4steam/lang/ru_RU.lang",
+                            "assets/e4steam/lang/ru_ru.lang"
+                        ).forEach { languageResource ->
+                            check(languageResource in names) {
+                                "Missing legacy language resource $languageResource from ${jar.name}"
+                            }
                         }
                     }
                     check(names.none { it.contains("e4mc", ignoreCase = true) })

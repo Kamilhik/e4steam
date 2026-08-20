@@ -51,7 +51,10 @@ dependencies {
         isTransitive = false
     }
     compileOnly("net.java.dev.jna:jna:5.10.0")
-    compileOnly("org.apache.logging.log4j:log4j-api:2.17.2")
+    // Minecraft 1.7.x ships an early Log4j 2 API. Compiling the shared retro
+    // runtime against that API prevents linkage to newer fixed-arity overloads
+    // that do not exist in the game process.
+    compileOnly("org.apache.logging.log4j:log4j-api:2.0-beta9")
     testImplementation("junit:junit:4.13.2")
 }
 

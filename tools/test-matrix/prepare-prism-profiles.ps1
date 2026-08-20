@@ -25,6 +25,19 @@ function Assert-ChildPath {
     }
 }
 
+function Write-Utf8NoBom {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Content
+    )
+
+    [IO.File]::WriteAllText(
+        $Path,
+        $Content,
+        [Text.UTF8Encoding]::new($false)
+    )
+}
+
 function Get-VerifiedDependency {
     param(
         [Parameter(Mandatory = $true)]$Dependency,
@@ -68,7 +81,7 @@ function New-ComponentList {
     param([Parameter(Mandatory = $true)]$Profile)
 
     $components = [Collections.Generic.List[object]]::new()
-    $lwjglName = if ([string]$Profile.lwjglUid -eq "org.lwjgl") { "LWJGL" } else { "LWJGL 3" }
+    $lwjglName = if ([string]$Profile.lwjglUid -eq "org.lwjgl") { "LWJGL 2" } else { "LWJGL 3" }
     $components.Add([ordered]@{
         cachedName = $lwjglName
         cachedVersion = [string]$Profile.lwjglVersion
@@ -79,7 +92,7 @@ function New-ComponentList {
     })
     $components.Add([ordered]@{
         cachedName = "Minecraft"
-        cachedRequires = @([ordered]@{
+        cachedRequires = [object[]]@([ordered]@{
             suggests = [string]$Profile.lwjglVersion
             uid = [string]$Profile.lwjglUid
         })
@@ -92,7 +105,7 @@ function New-ComponentList {
     if ([string]$Profile.loader -in @("Fabric", "Quilt")) {
         $components.Add([ordered]@{
             cachedName = "Intermediary Mappings"
-            cachedRequires = @([ordered]@{
+            cachedRequires = [object[]]@([ordered]@{
                 equals = [string]$Profile.minecraft
                 uid = "net.minecraft"
             })
@@ -116,11 +129,11 @@ function New-ComponentList {
     else {
         "net.minecraft"
     }
-    $requires = if ([string]$Profile.loader -in @("Forge", "NeoForge")) {
-        @([ordered]@{ equals = [string]$Profile.minecraft; uid = $requiresUid })
+    [object[]]$requires = if ([string]$Profile.loader -in @("Forge", "NeoForge")) {
+        [object[]]@([ordered]@{ equals = [string]$Profile.minecraft; uid = $requiresUid })
     }
     else {
-        @([ordered]@{ uid = $requiresUid })
+        [object[]]@([ordered]@{ uid = $requiresUid })
     }
     $components.Add([ordered]@{
         cachedName = $loaderName
@@ -183,14 +196,15 @@ foreach ($profile in $manifest.profiles) {
         Move-Item -LiteralPath $instanceRoot -Destination $backupDestination
     }
 
-    $modsRoot = Join-Path $instanceRoot ".minecraft\mods"
+    $modsRoot = Join-Path $instanceRoot "minecraft\mods"
     New-Item -ItemType Directory -Path $modsRoot -Force | Out-Null
 
     $pack = [ordered]@{
         components = New-ComponentList -Profile $profile
         formatVersion = 1
     }
-    $pack | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $instanceRoot "mmc-pack.json") -Encoding UTF8
+    Write-Utf8NoBom -Path (Join-Path $instanceRoot "mmc-pack.json") `
+        -Content ($pack | ConvertTo-Json -Depth 12)
 
     $cfg = @(
         "[General]",
@@ -214,7 +228,8 @@ foreach ($profile in $manifest.profiles) {
         "notes=e4steam 0.3.0 clean test profile; $($profile.artifact); representative Minecraft $($profile.minecraft) for $($profile.family)",
         "totalTimePlayed=0"
     )
-    $cfg | Set-Content -LiteralPath (Join-Path $instanceRoot "instance.cfg") -Encoding UTF8
+    Write-Utf8NoBom -Path (Join-Path $instanceRoot "instance.cfg") `
+        -Content (($cfg -join "`r`n") + "`r`n")
 
     Copy-Item -LiteralPath $artifactSource -Destination (Join-Path $modsRoot ([string]$profile.artifact))
     $hasFabricApi = $profile.PSObject.Properties.Name -contains "fabricApi"
@@ -233,7 +248,8 @@ foreach ($profile in $manifest.profiles) {
         artifact = [string]$profile.artifact
         artifactSha256 = (Get-FileHash -LiteralPath $artifactSource -Algorithm SHA256).Hash.ToLowerInvariant()
     }
-    $markerData | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $instanceRoot ".e4steam-test-profile.json") -Encoding UTF8
+    Write-Utf8NoBom -Path (Join-Path $instanceRoot ".e4steam-test-profile.json") `
+        -Content ($markerData | ConvertTo-Json -Depth 4)
 
     $created.Add([pscustomobject]@{
         Instance = [string]$profile.id

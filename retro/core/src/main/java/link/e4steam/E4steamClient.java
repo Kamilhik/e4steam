@@ -36,8 +36,7 @@ public final class E4steamClient {
                 if (session != ready || ready.address() == null) {
                     return;
                 }
-                current.showMessage("e4steam: " + ready.address().inviteString());
-                current.showMessage("/e4steam invite - invite Steam friends");
+                current.showSharingReady(ready.address().inviteString());
             }
         });
     }
@@ -80,7 +79,7 @@ public final class E4steamClient {
 
     public static void showSteamJoinFailure(Object detail) {
         final String message = detail == null ? "Steam operation failed" : String.valueOf(detail);
-        LOGGER.warn("Steam join failed: {}", message);
+        LOGGER.warn("Steam join failed: " + message);
         final RetroPlatform current = platform;
         if (current != null) {
             current.execute(new Runnable() {

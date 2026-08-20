@@ -1,7 +1,7 @@
 plugins { id("xyz.wagyourtail.unimined") }
 unimined.minecraft {
     version("1.14.4")
-    minecraftForge { loader("28.2.26"); mixinConfig("e4steam.retro.mixins.json") }
+    minecraftForge { loader("28.2.30"); mixinConfig("e4steam.retro.mixins.json") }
     mappings { intermediary(); mojmap() }
     defaultRemapJar = true
 }

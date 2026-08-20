@@ -33,6 +33,7 @@ hs_err_pid*.log
 replay_pid*.log
 crash-reports/
 logs/
+/tools/test-matrix/results/
 
 # Local credentials and signing material must never enter the repository.
 .env

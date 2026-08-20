@@ -35,7 +35,7 @@ $expectedIds = @($manifest.profiles | ForEach-Object { [string]$_.id })
 foreach ($profile in $manifest.profiles) {
     $id = [string]$profile.id
     $instanceRoot = Join-Path $instancesRoot $id
-    $modsRoot = Join-Path $instanceRoot ".minecraft\mods"
+    $modsRoot = Join-Path $instanceRoot "minecraft\mods"
     if (-not (Test-Path -LiteralPath $instanceRoot -PathType Container)) {
         $failures.Add("missing profile: $id")
         continue
@@ -103,6 +103,11 @@ foreach ($profile in $manifest.profiles) {
         continue
     }
     $pack = Get-Content -LiteralPath $packPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $packBytes = [IO.File]::ReadAllBytes($packPath)
+    if ($packBytes.Length -ge 3 -and $packBytes[0] -eq 0xEF -and
+            $packBytes[1] -eq 0xBB -and $packBytes[2] -eq 0xBF) {
+        $failures.Add("mmc-pack.json has a UTF-8 BOM: $id")
+    }
     $minecraft = @($pack.components | Where-Object uid -eq "net.minecraft")
     $loader = @($pack.components | Where-Object uid -eq ([string]$profile.loaderUid))
     if ($minecraft.Count -ne 1 -or [string]$minecraft[0].version -ne [string]$profile.minecraft) {
@@ -110,6 +115,9 @@ foreach ($profile in $manifest.profiles) {
     }
     if ($loader.Count -ne 1 -or [string]$loader[0].version -ne [string]$profile.loaderVersion) {
         $failures.Add("wrong loader component: $id")
+    }
+    elseif (-not ($loader[0].cachedRequires -is [Array])) {
+        $failures.Add("loader cachedRequires must be a JSON array: $id")
     }
 }
 

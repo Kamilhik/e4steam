@@ -9,4 +9,10 @@ public interface RetroPlatform {
     void connect(InetSocketAddress localAddress, String displayName);
 
     void showMessage(String message);
+
+    default void showSharingReady(String endpoint) {
+        showMessage("e4steam: " + endpoint);
+        showMessage("/e4steam invite - invite Steam friends");
+        showMessage("/e4steam stop - stop sharing");
+    }
 }

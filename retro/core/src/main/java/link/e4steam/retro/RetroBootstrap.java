@@ -10,6 +10,7 @@ import link.e4steam.steam.SteamSession;
 public final class RetroBootstrap {
     private static final Object LOCK = new Object();
     private static int hostedPort;
+    private static volatile SteamAccessMode selectedAccessMode = SteamAccessMode.FRIENDS_ONLY;
 
     private RetroBootstrap() {
     }
@@ -45,12 +46,24 @@ public final class RetroBootstrap {
                 current.stop();
             }
             hostedPort = port;
-            if (port > 0) {
-                SteamSession replacement = new SteamSession(port, SteamAccessMode.FRIENDS_ONLY);
+            if (port > 0 && selectedAccessMode != SteamAccessMode.LOCAL_ONLY) {
+                SteamSession replacement = new SteamSession(port, selectedAccessMode);
                 E4steamClient.session = replacement;
                 replacement.startAsync();
             }
         }
+    }
+
+    public static SteamAccessMode selectedAccessMode() {
+        return selectedAccessMode;
+    }
+
+    public static SteamAccessMode cycleAccessMode() {
+        SteamAccessMode current = selectedAccessMode;
+        SteamAccessMode[] modes = SteamAccessMode.values();
+        SteamAccessMode next = modes[(current.ordinal() + 1) % modes.length];
+        selectedAccessMode = next;
+        return next;
     }
 
     public static boolean handleClientCommand(String command) {

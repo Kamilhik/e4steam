@@ -28,7 +28,7 @@ rootProject.name = "e4steam-retro"
 
 listOf(
     "core",
-    "forge-1.6.4", "forge-1.7.10", "forge-1.8.9", "forge-1.9.4",
+    "forge-1.7.10", "forge-1.8.9", "forge-1.9.4",
     "forge-1.10.2", "forge-1.11.2", "forge-1.12.2", "forge-1.13.2",
     "forge-1.14.4", "forge-1.15.2", "forge-1.16.5",
     "fabric-1.14.4", "fabric-1.15.2", "fabric-1.16.5"

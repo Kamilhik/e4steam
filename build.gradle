@@ -102,7 +102,7 @@ tasks.register("legacyReleaseJars", GradleBuild) {
 
 tasks.register("retroReleaseJars", GradleBuild) {
     group = "build"
-    description = "Build and audit all fourteen Java 8 retro branch variants."
+    description = "Build and audit all thirteen Java 8 retro branch variants."
     dir = file("retro")
     tasks = ["clean", "auditRetroArtifacts"]
 }
@@ -270,7 +270,7 @@ tasks.register("dependencyLicenseAudit") {
 
 tasks.register("releaseJars") {
     group = "build"
-    description = "Build, audit and collect all six modern and fourteen retro runtime JAR variants."
+    description = "Build, audit and collect all six modern and thirteen retro runtime JAR variants."
     dependsOn(
             legacyReleaseJars,
             retroReleaseJars,
@@ -372,7 +372,6 @@ tasks.register("releaseJars") {
                 ]
         ]
         def retroVariants = [
-                [project: "forge-1.6.4", branch: "1.6.4"],
                 [project: "forge-1.7.10", branch: "1.7.x"],
                 [project: "forge-1.8.9", branch: "1.8.x"],
                 [project: "forge-1.9.4", branch: "1.9.x"],
@@ -674,6 +673,6 @@ tasks.register("releaseJars") {
                             + "missing=${expectedNames - actualNames}, unexpected=${actualNames - expectedNames}"
             )
         }
-        println("Artifact audit passed and collected all 20 runtime JAR variants in ${publicDirectory}.")
+        println("Artifact audit passed and collected all 19 runtime JAR variants in ${publicDirectory}.")
     }
 }

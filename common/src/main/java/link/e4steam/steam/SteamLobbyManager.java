@@ -216,13 +216,13 @@ final class SteamLobbyManager implements AutoCloseable {
         if (hostLobbyOwner != owner) {
             throw new IOException("Steam lobby is not ready");
         }
-        // On Linux the overlay is injected when Steam launches the game. In
-        // e4steam Minecraft is intentionally started by its normal launcher,
-        // so invoking the native invite dialog can crash some Steam/Linux
-        // combinations. Open the desktop Steam friends UI instead; lobby rich
-        // presence remains active and friends can use Join Game from there.
-        if (isLinux()) {
-            openLinuxSteamFriends();
+        // On Linux and macOS, invoking the native invite dialog without an
+        // injected overlay can crash some Steam/JVM combinations. Prefer the
+        // real overlay when Steam reports it ready; otherwise open the
+        // standalone Steam friends window. Lobby rich presence remains active
+        // in either case, so friends can still use Join Game.
+        if (shouldUseStandaloneFriends(isUnix(), runtime.isOverlayEnabledOnWorker())) {
+            openStandaloneSteamFriends();
             return;
         }
         requireOverlay();
@@ -234,8 +234,8 @@ final class SteamLobbyManager implements AutoCloseable {
     }
 
     void openFriendsOverlay() throws IOException {
-        if (isLinux()) {
-            openLinuxSteamFriends();
+        if (shouldUseStandaloneFriends(isUnix(), runtime.isOverlayEnabledOnWorker())) {
+            openStandaloneSteamFriends();
             return;
         }
         requireOverlay();
@@ -574,6 +574,28 @@ final class SteamLobbyManager implements AutoCloseable {
                 .contains("linux");
     }
 
+    private static boolean isMacOS() {
+        String os = System.getProperty("os.name", "")
+                .toLowerCase(java.util.Locale.ROOT);
+        return os.contains("mac") || os.contains("darwin") || os.contains("os x");
+    }
+
+    private static boolean isUnix() {
+        return isLinux() || isMacOS();
+    }
+
+    static boolean shouldUseStandaloneFriends(boolean unix, boolean overlayEnabled) {
+        return unix && !overlayEnabled;
+    }
+
+    private static void openStandaloneSteamFriends() throws IOException {
+        if (isMacOS()) {
+            openMacSteamFriends();
+        } else {
+            openLinuxSteamFriends();
+        }
+    }
+
     private static void openLinuxSteamFriends() throws IOException {
         String uri = "steam://open/friends";
         String[][] commands = new String[][]{
@@ -591,6 +613,14 @@ final class SteamLobbyManager implements AutoCloseable {
             }
         }
         throw new IOException("Could not open the Steam friends window on Linux", lastFailure);
+    }
+
+    private static void openMacSteamFriends() throws IOException {
+        try {
+            new ProcessBuilder("open", "steam://open/friends").start();
+        } catch (IOException exception) {
+            throw new IOException("Could not open the Steam friends window on macOS", exception);
+        }
     }
 
     private void requestJoin(SteamID lobby, SteamID friend) {

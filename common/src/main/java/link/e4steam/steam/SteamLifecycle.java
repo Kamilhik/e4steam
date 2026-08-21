@@ -7,6 +7,7 @@ import java.nio.file.Path;
 final class SteamLifecycle implements AutoCloseable {
     private final SteamApi api;
     private SteamNativeLibraryLoader nativeLoader;
+    private SteamProcessGuard.Lease processLease;
     private boolean librariesLoaded;
     private boolean initialized;
 
@@ -18,23 +19,32 @@ final class SteamLifecycle implements AutoCloseable {
         if (initialized) {
             return;
         }
-        if (!librariesLoaded) {
-            nativeLoader = new SteamNativeLibraryLoader();
-            if (!api.loadLibraries(nativeLoader)) {
-                throw new IOException(
-                        "Could not load Steam native libraries: " + nativeLoader.failureDescription(),
-                        nativeLoader.failureCause()
-                );
-            }
-            librariesLoaded = true;
-        }
+        SteamProcessGuard.Lease acquired = SteamProcessGuard.acquire(
+                SteamProcessGuard.Context.CLIENT
+        );
         try {
+            processLease = acquired;
+            if (!librariesLoaded) {
+                nativeLoader = new SteamNativeLibraryLoader();
+                if (!api.loadLibraries(nativeLoader)) {
+                    throw new IOException(
+                            "Could not load Steam native libraries: "
+                                    + nativeLoader.failureDescription(),
+                            nativeLoader.failureCause()
+                    );
+                }
+                librariesLoaded = true;
+            }
             if (!api.init()) {
                 throw new IOException("SteamAPI_Init failed. Start Steam and sign in before launching Minecraft");
             }
         } catch (IOException exception) {
+            processLease = null;
+            acquired.close();
             throw exception;
         } catch (Exception exception) {
+            processLease = null;
+            acquired.close();
             throw new IOException("SteamAPI_Init failed: " + exception.getMessage(), exception);
         }
         initialized = true;
@@ -68,5 +78,8 @@ final class SteamLifecycle implements AutoCloseable {
             initialized = false;
             api.shutdown();
         }
+        SteamProcessGuard.Lease lease = processLease;
+        processLease = null;
+        if (lease != null) lease.close();
     }
 }

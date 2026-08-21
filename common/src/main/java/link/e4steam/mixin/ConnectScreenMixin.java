@@ -1,6 +1,7 @@
 package link.e4steam.mixin;
 
 import link.e4steam.steam.SteamClientBridge;
+import link.e4steam.steam.SteamDedicatedClientBridge;
 import link.e4steam.steam.SteamRuntime;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ConnectScreen;
@@ -20,6 +21,7 @@ public abstract class ConnectScreenMixin {
     )
     private void e4steam$cancelSteamConnection(Button button, CallbackInfo ci) {
         SteamClientBridge.cancelPending();
+        SteamDedicatedClientBridge.cancelPending();
         SteamRuntime.get().cancelGuestJoin();
     }
 }

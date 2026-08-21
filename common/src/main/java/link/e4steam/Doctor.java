@@ -2,13 +2,29 @@ package link.e4steam;
 
 import link.e4steam.steam.SteamRuntime;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.security.MessageDigest;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 public class Doctor {
+    private static final int MAX_REPORT_CHARS = 64 * 1024;
+    private static final int MAX_FAILURE_DEPTH = 8;
+    private static final int MAX_STACK_FRAMES = 64;
+    private static final Pattern JOIN_ADDRESS = Pattern.compile(
+            "(?i)(?:s-[0-9a-z]{1,13}-[0-9a-z]{1,25}|"
+                    + "e4steam-[0-9]{1,20}-[0-9a-f]{32}|"
+                    + "d-[0-9a-z]{1,13}-[0-9a-z]{1,13})\\.steam\\.?"
+    );
+    private static final Pattern STEAM_ID = Pattern.compile("(?<![0-9])7656[0-9]{13}(?![0-9])");
+    private static final Pattern NAMED_SECRET = Pattern.compile(
+            "(?i)\\b(token|ticket|password|secret|cookie|authorization|gslt)"
+                    + "(\\s*[:=]\\s*|\\s+)[^\\s,;]+"
+    );
+
     /**
      * Short report intended for Minecraft chat. Stack traces remain in the
      * detailed report written to latest.log and must not flood the chat UI.
@@ -49,15 +65,19 @@ public class Doctor {
         var result = new StringBuilder();
         result.append("mod sha512sum: ");
         try {
-            var bytes = Files.readAllBytes(Agnos.jarPath());
             var md = MessageDigest.getInstance("SHA-512");
-            var digest = md.digest(bytes);
+            try (InputStream input = Files.newInputStream(Agnos.jarPath())) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = input.read(buffer)) >= 0) {
+                    if (read > 0) md.update(buffer, 0, read);
+                }
+            }
+            var digest = md.digest();
             result.append(HexCodec.encode(digest));
         } catch (Exception e) {
             result.append("exception during digest:\n");
-            var baos = new ByteArrayOutputStream();
-            e.printStackTrace(new PrintStream(baos, true, StandardCharsets.UTF_8));
-            result.append(baos.toString(StandardCharsets.UTF_8));
+            appendThrowable(result, e);
         }
         result.append("\n");
 
@@ -70,13 +90,7 @@ public class Doctor {
             appendThrowable(result, e);
         }
 
-        result.append("Steam ID: ");
-        try {
-            result.append(String.valueOf(runtime.steamId())).append("\n");
-        } catch (Exception e) {
-            result.append("exception while reading Steam ID:\n");
-            appendThrowable(result, e);
-        }
+        result.append("Steam identity: excluded from diagnostics\n");
 
         result.append("Steam runtime recorded exception:\n");
         Throwable runtimeFailure = null;
@@ -105,14 +119,33 @@ public class Doctor {
                 result.append("none recorded.\n");
             }
         }
-        return result.toString();
+        return bounded(result.toString());
     }
 
     private static void appendThrowable(StringBuilder result, Throwable throwable) {
-        var baos = new ByteArrayOutputStream();
-        throwable.printStackTrace(new PrintStream(baos, true, StandardCharsets.UTF_8));
-        result.append(baos.toString(StandardCharsets.UTF_8));
-        result.append("\n");
+        if (throwable == null || result.length() >= MAX_REPORT_CHARS) return;
+        Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        Throwable current = throwable;
+        int depth = 0;
+        int frames = 0;
+        while (current != null && depth++ < MAX_FAILURE_DEPTH
+                && visited.add(current) && result.length() < MAX_REPORT_CHARS) {
+            if (depth > 1) result.append("Caused by: ");
+            result.append(redactDiagnostic(current.getClass().getName()));
+            String message = current.getMessage();
+            if (message != null && !message.isBlank()) {
+                result.append(": ").append(redactDiagnostic(message));
+            }
+            result.append('\n');
+            for (StackTraceElement frame : current.getStackTrace()) {
+                if (frames++ >= MAX_STACK_FRAMES || result.length() >= MAX_REPORT_CHARS) break;
+                result.append("\tat ").append(redactDiagnostic(frame.toString())).append('\n');
+            }
+            current = current.getCause();
+        }
+        if (current != null || frames >= MAX_STACK_FRAMES) {
+            result.append("\t... diagnostic stack truncated\n");
+        }
     }
 
     static String shortMessage(Throwable throwable) {
@@ -127,9 +160,25 @@ public class Doctor {
         if (message == null) {
             message = throwable.getClass().getSimpleName();
         }
-        message = message.replace('\r', ' ').replace('\n', ' ').replace('\t', ' ')
+        message = redactDiagnostic(message).replace('\r', ' ').replace('\n', ' ').replace('\t', ' ')
                 .replaceAll("\\s+", " ")
                 .trim();
         return message.length() <= 240 ? message : message.substring(0, 237) + "...";
+    }
+
+    static String redactDiagnostic(String value) {
+        if (value == null) return "";
+        String redacted = JOIN_ADDRESS.matcher(value).replaceAll("<redacted-join-address>");
+        redacted = STEAM_ID.matcher(redacted).replaceAll("<redacted-steam-id>");
+        redacted = NAMED_SECRET.matcher(redacted).replaceAll("$1=<redacted>");
+        String home = System.getProperty("user.home", "");
+        if (!home.isEmpty()) redacted = redacted.replace(home, "<user-home>");
+        return bounded(redacted);
+    }
+
+    private static String bounded(String value) {
+        return value.length() <= MAX_REPORT_CHARS
+                ? value : value.substring(0, MAX_REPORT_CHARS - 24)
+                + "\n... report truncated\n";
     }
 }

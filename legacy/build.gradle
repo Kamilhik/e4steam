@@ -53,7 +53,89 @@ tasks.register("releaseJars") {
     description = "Build the Java 16 Fabric/Quilt and Forge legacy17 JARs."
     dependsOn(
             ":common:test",
+            ":headlessEntrypointAudit",
             ":fabric:remapJar",
             ":forge:remapJar"
     )
+}
+
+tasks.register("headlessEntrypointAudit") {
+    group = "verification"
+    description = "Reject client/UI class references reachable from Java 16 server entrypoints."
+    dependsOn(":common:classes", ":fabric:classes", ":forge:classes")
+
+    doLast {
+        List<File> roots = [
+                file("common/build/classes/java/main"),
+                file("fabric/build/classes/java/main"),
+                file("forge/build/classes/java/main")
+        ].findAll { it.isDirectory() }
+        Map<String, byte[]> classes = [:]
+        roots.each { root ->
+            fileTree(root) { include "**/*.class" }.files.each { classFile ->
+                String relative = root.toPath().relativize(classFile.toPath()).toString()
+                        .replace(File.separatorChar, '/' as char)
+                classes[relative.substring(0, relative.length() - ".class".length())] =
+                        classFile.bytes
+            }
+        }
+        List<String> entrypoints = [
+                "link/e4steam/fabric/E4steamFabricLegacyServer",
+                "link/e4steam/forge/E4steamForge",
+                "link/e4steam/mixin/ServerConnectionListenerMixin",
+                "link/e4steam/mixin/LegacyServerLoginPacketListenerImplMixin"
+        ]
+        List<String> forbidden = [
+                "net/minecraft/client/", "java/awt/", "javax/swing/", "javafx/",
+                "link/e4steam/E4steamClient", "link/e4steam/MinecraftUiCompat",
+                "link/e4steam/Mirror", "link/e4steam/Doctor",
+                "link/e4steam/steam/SteamRuntime", "link/e4steam/steam/SteamLobbyManager",
+                "link/e4steam/steam/SteamSession"
+        ]
+        def references = { byte[] bytes ->
+            String constants = new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+            LinkedHashSet<String> found = new LinkedHashSet<>()
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile('(?:\\[L)?([a-zA-Z_$][a-zA-Z0-9_$]*(?:/[a-zA-Z0-9_$]+)+)')
+                    .matcher(constants)
+            while (matcher.find()) found.add(matcher.group(1))
+            found
+        }
+        entrypoints.each { entrypoint ->
+            if (!classes.containsKey(entrypoint)) {
+                throw new GradleException("Missing Java 16 headless entrypoint ${entrypoint}")
+            }
+            LinkedHashSet<String> visited = new LinkedHashSet<>()
+            ArrayDeque<String> pending = new ArrayDeque<>()
+            Map<String, String> parent = [:]
+            pending.add(entrypoint)
+            while (!pending.isEmpty()) {
+                String name = pending.removeFirst()
+                if (!visited.add(name)) continue
+                byte[] bytes = classes[name]
+                if (bytes == null) continue
+                references(bytes).each { reference ->
+                    String violation = forbidden.find { prefix ->
+                        prefix.endsWith('/') ? reference.startsWith(prefix)
+                                : reference == prefix || reference.startsWith(prefix + '$')
+                    }
+                    if (violation != null) {
+                        List<String> path = [name, reference]
+                        String cursor = name
+                        while (parent.containsKey(cursor)) {
+                            cursor = parent[cursor]
+                            path.add(0, cursor)
+                        }
+                        throw new GradleException(
+                                "Java 16 headless client reference via ${path.join(' -> ')}")
+                    }
+                    if (classes.containsKey(reference) && !visited.contains(reference)) {
+                        parent.putIfAbsent(reference, name)
+                        pending.addLast(reference)
+                    }
+                }
+            }
+            println("Java 16 headless graph passed for ${entrypoint} (${visited.size()} local classes).")
+        }
+    }
 }

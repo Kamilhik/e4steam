@@ -4,6 +4,8 @@ import link.e4steam.E4steamClient;
 import link.e4steam.MinecraftUiCompat;
 import link.e4steam.steam.SteamAddress;
 import link.e4steam.steam.SteamClientBridge;
+import link.e4steam.steam.SteamDedicatedAddress;
+import link.e4steam.steam.SteamDedicatedClientBridge;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.multiplayer.resolver.ResolvedServerAddress;
@@ -32,7 +34,9 @@ public class ServerNameResolverMixin {
             ServerAddress serverAddress
     ) {
         Optional<SteamAddress> steamAddress = SteamAddress.tryParse(serverAddress.getHost());
-        if (steamAddress.isEmpty()) {
+        Optional<SteamDedicatedAddress> dedicatedAddress =
+                SteamDedicatedAddress.tryParse(serverAddress.getHost());
+        if (steamAddress.isEmpty() && dedicatedAddress.isEmpty()) {
             // Server-list pings also use this resolver. Only stop an active
             // e4steam sharing session on Minecraft's connection screen.
             Minecraft minecraft = Minecraft.getInstance();
@@ -53,12 +57,13 @@ public class ServerNameResolverMixin {
         }
 
         try {
-            InetSocketAddress localAddress = SteamClientBridge.open(steamAddress.get());
+            InetSocketAddress localAddress = steamAddress.isPresent()
+                    ? SteamClientBridge.open(steamAddress.get())
+                    : SteamDedicatedClientBridge.open(dedicatedAddress.get());
             return Optional.of(ResolvedServerAddress.from(localAddress));
         } catch (IOException exception) {
             E4steamClient.LOGGER.error(
-                    "Failed to create the local Steam bridge for Steam user {}",
-                    Long.toUnsignedString(steamAddress.get().steamId()),
+                    "Failed to create the local Steam bridge for an e4steam endpoint",
                     exception
             );
             return Optional.empty();

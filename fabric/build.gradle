@@ -16,14 +16,19 @@ configurations {
 }
 
 dependencies {
+    compileOnly project(":api")
     modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
     modApi "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
 
     common(project(path: ":common", configuration: "namedElements")) { transitive false }
     shadowCommon(project(path: ":common", configuration: "unstubbedJar")) { transitive false }
+    shadowCommon(project(":api")) { transitive false }
 
     shadowCommon('folk.sisby:kaleido-config:0.3.3+1.3.2') { transitive false }
     shadowCommon("com.code-disaster.steamworks4j:steamworks4j:${rootProject.steamworks4j_version}") {
+        transitive false
+    }
+    shadowCommon("com.code-disaster.steamworks4j:steamworks4j-server:${rootProject.steamworks4j_version}") {
         transitive false
     }
 }
@@ -44,8 +49,11 @@ shadowJar {
     exclude "architectury.common.json"
     exclude "steam_api.dll"
     exclude "steamworks4j.dll"
-    exclude "libsteam_api.dylib"
-    exclude "libsteamworks4j.dylib"
+    exclude "steamworks4j-server.dll"
+    exclude "steamworks4j-encryptedappticket.dll"
+    exclude "steamworks4j-encryptedappticket64.dll"
+    exclude "libsteamworks4j-encryptedappticket.so"
+    exclude "libsteamworks4j-encryptedappticket.dylib"
 
     configurations = [project.configurations.shadowCommon]
     archiveClassifier = "dev-shadow"

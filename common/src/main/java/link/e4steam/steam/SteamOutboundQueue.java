@@ -12,7 +12,12 @@ final class SteamOutboundQueue<B> {
     enum Kind {
         OPEN,
         OPEN_ACK,
+        DEDICATED_OPEN,
+        DEDICATED_OPEN_ACK,
         BRIDGE_READY,
+        ADDON_HELLO,
+        ADDON_DATA,
+        ADDON_DATAGRAM,
         DATA,
         DATAGRAM,
         FIN,
@@ -45,21 +50,26 @@ final class SteamOutboundQueue<B> {
     private final ArrayBlockingQueue<Packet<B>> packets;
     private final Semaphore dataSlots;
     private final Semaphore datagramSlots;
+    private final Semaphore addonSlots;
     private final Semaphore openSlots;
     private final Semaphore standaloneResetSlots;
+    private final int terminalReserve;
 
     SteamOutboundQueue(
             int totalCapacity,
             int dataCapacity,
             int datagramCapacity,
+            int addonCapacity,
             int openCapacity,
             int standaloneResetCapacity
     ) {
         packets = new ArrayBlockingQueue<>(totalCapacity);
         dataSlots = new Semaphore(dataCapacity);
         datagramSlots = new Semaphore(datagramCapacity);
+        addonSlots = new Semaphore(addonCapacity);
         openSlots = new Semaphore(openCapacity);
         standaloneResetSlots = new Semaphore(standaloneResetCapacity);
+        terminalReserve = Math.max(1, Math.min(64, totalCapacity / 16));
     }
 
     boolean offerData(long remoteSteamId, int connectionId, byte[] payload, B bridge) {
@@ -70,8 +80,15 @@ final class SteamOutboundQueue<B> {
         return offer(new Packet<>(remoteSteamId, connectionId, payload, Kind.DATAGRAM, bridge));
     }
 
+    boolean offerAddonData(long remoteSteamId, int connectionId, byte[] payload,
+                           boolean unreliable, B bridge) {
+        return offer(new Packet<>(remoteSteamId, connectionId, payload,
+                unreliable ? Kind.ADDON_DATAGRAM : Kind.ADDON_DATA, bridge));
+    }
+
     boolean offerControl(long remoteSteamId, int connectionId, byte[] payload, Kind kind, B bridge) {
-        if (kind == Kind.DATA || kind == Kind.DATAGRAM) {
+        if (kind == Kind.DATA || kind == Kind.DATAGRAM
+                || kind == Kind.ADDON_DATA || kind == Kind.ADDON_DATAGRAM) {
             throw new IllegalArgumentException("Control queue cannot accept " + kind);
         }
         return offer(new Packet<>(remoteSteamId, connectionId, payload, kind, bridge));
@@ -80,6 +97,10 @@ final class SteamOutboundQueue<B> {
     private boolean offer(Packet<B> packet) {
         synchronized (lock) {
             Semaphore category = categorySlots(packet);
+            if (!isTerminal(packet.kind())
+                    && packets.remainingCapacity() <= terminalReserve) {
+                return false;
+            }
             if (category != null && !category.tryAcquire()) {
                 return false;
             }
@@ -91,6 +112,10 @@ final class SteamOutboundQueue<B> {
             }
             return true;
         }
+    }
+
+    private static boolean isTerminal(Kind kind) {
+        return kind == Kind.FIN || kind == Kind.RESET;
     }
 
     Packet<B> poll() {
@@ -134,9 +159,15 @@ final class SteamOutboundQueue<B> {
                 return dataSlots;
             case DATAGRAM:
                 return datagramSlots;
+            case ADDON_DATA:
+            case ADDON_DATAGRAM:
+                return addonSlots;
             case OPEN:
             case OPEN_ACK:
+            case DEDICATED_OPEN:
+            case DEDICATED_OPEN_ACK:
             case BRIDGE_READY:
+            case ADDON_HELLO:
                 return openSlots;
             case RESET:
                 return packet.bridge() == null ? standaloneResetSlots : null;

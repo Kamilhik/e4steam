@@ -56,10 +56,7 @@ public abstract class ServerLoginPacketListenerImplMixin {
         ci.cancel();
     }
 
-    /**
-     * Replaces the client-supplied offline identity only after the exact
-     * loopback socket has been authenticated by its Steam bridge.
-     */
+    /** Binds the UUID to Steam while preserving the Minecraft nickname. */
     @ModifyVariable(
             method = "startClientVerification",
             at = @At("HEAD"),
@@ -74,7 +71,7 @@ public abstract class ServerLoginPacketListenerImplMixin {
         }
         return new GameProfile(
                 SteamMinecraftIdentity.uuid(authenticatedSteamId),
-                SteamMinecraftIdentity.safeName(authenticatedSteamId)
+                SteamMinecraftIdentity.profileName(original)
         );
     }
 

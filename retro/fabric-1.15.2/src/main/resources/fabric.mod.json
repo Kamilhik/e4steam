@@ -11,7 +11,7 @@
   "mixins": ["e4steam.retro.mixins.json"],
   "depends": {
     "fabricloader": ">=0.16.0",
-    "fabric-api": "*",
+    "fabric": "*",
     "minecraft": ">=1.15 <1.16",
     "java": ">=8"
   }

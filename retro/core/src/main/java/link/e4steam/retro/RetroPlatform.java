@@ -10,6 +10,16 @@ public interface RetroPlatform {
 
     void showMessage(String message);
 
+    /** Copies a join address locally without exposing it in chat or logs. */
+    default boolean copyToClipboard(String text) {
+        return false;
+    }
+
+    /** Displays a localized message where the adapter supports Minecraft translations. */
+    default void showTranslatedMessage(String translationKey, String fallback) {
+        showMessage(fallback);
+    }
+
     default void showSharingReady(String endpoint) {
         showMessage("e4steam: " + endpoint);
         showMessage("/e4steam invite - invite Steam friends");

@@ -1,5 +1,6 @@
 package link.e4steam.retro.forge;
 
+import cpw.mods.fml.client.FMLClientHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import link.e4steam.retro.RetroBootstrap;
@@ -9,11 +10,11 @@ import link.e4steam.steam.SteamAccessMode;
 import link.e4steam.steam.SteamSession;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiMultiplayer;
 import net.minecraft.client.gui.GuiShareToLan;
-import net.minecraft.client.multiplayer.GuiConnecting;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
@@ -27,6 +28,7 @@ import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
 
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /** Loaded reflectively only on the physical client. */
@@ -44,18 +46,31 @@ public final class E4steamForgeLegacyClient implements RetroPlatform {
             @Override public String getCommandName() { return "e4steam"; }
 
             @Override public String getCommandUsage(ICommandSender sender) {
-                return "/e4steam <invite|stop>";
+                return "/e4steam <start|stop|restart|invite|doctor|addon|help>";
             }
 
             @Override public void processCommand(ICommandSender sender, String[] arguments) {
-                if (arguments.length == 1
-                        && RetroBootstrap.handleClientCommand("/e4steam " + arguments[0])) {
+                if (arguments.length <= 1
+                        && RetroBootstrap.handleClientCommand(arguments.length == 0
+                        ? "/e4steam" : "/e4steam " + arguments[0])) {
                     return;
                 }
                 E4steamForgeLegacyClient.this.showMessage(getCommandUsage(sender));
             }
 
             @Override public int getRequiredPermissionLevel() { return 0; }
+
+            @SuppressWarnings("rawtypes")
+            @Override public List addTabCompletionOptions(
+                    ICommandSender sender,
+                    String[] arguments
+            ) {
+                if (arguments.length == 1) {
+                    return CommandBase.getListOfStringsFromIterableMatchingLastWord(
+                            arguments, RetroBootstrap.clientCommandNames());
+                }
+                return java.util.Collections.emptyList();
+            }
 
             @Override public int compareTo(Object other) {
                 return other == this ? 0 : getCommandName().compareTo(String.valueOf(other));
@@ -72,11 +87,10 @@ public final class E4steamForgeLegacyClient implements RetroPlatform {
     @Override public void execute(Runnable action) { clientTasks.add(action); }
 
     @Override public void connect(InetSocketAddress localAddress, String displayName) {
-        Minecraft minecraft = Minecraft.getMinecraft();
         String endpoint = localAddress.getAddress().getHostAddress() + ':' + localAddress.getPort();
-        minecraft.displayGuiScreen(new GuiConnecting(
-                new GuiMultiplayer(new GuiMainMenu()), minecraft,
-                new ServerData(displayName, endpoint)));
+        FMLClientHandler.instance().connectToServer(
+                new GuiMultiplayer(new GuiMainMenu()),
+                new ServerData(displayName, endpoint));
     }
 
     @Override public void showMessage(String message) {
@@ -84,6 +98,21 @@ public final class E4steamForgeLegacyClient implements RetroPlatform {
         if (minecraft.ingameGUI != null) {
             minecraft.ingameGUI.getChatGUI().printChatMessage(new ChatComponentText(message));
         }
+    }
+
+    @Override public boolean copyToClipboard(String text) {
+        if (text == null || text.isEmpty()) return false;
+        try {
+            GuiScreen.setClipboardString(text);
+            return text.equals(GuiScreen.getClipboardString());
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    @Override public void showTranslatedMessage(String translationKey, String fallback) {
+        String translated = StatCollector.translateToLocal(translationKey);
+        showMessage(translationKey.equals(translated) ? fallback : translated);
     }
 
     @Override public void showSharingReady(String endpoint) {
@@ -95,7 +124,8 @@ public final class E4steamForgeLegacyClient implements RetroPlatform {
         ChatComponentText address = new ChatComponentText(endpoint);
         address.getChatStyle()
                 .setColor(EnumChatFormatting.GREEN)
-                .setChatClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, endpoint))
+                .setChatClickEvent(new ClickEvent(
+                        ClickEvent.Action.RUN_COMMAND, "/e4steam copy"))
                 .setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                         new ChatComponentText(StatCollector.translateToLocal(
                                 "text.e4steam_minecraft.addressCopyHelp"))));

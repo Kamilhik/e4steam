@@ -4,16 +4,16 @@
 
 | Version | Supported |
 | --- | --- |
-| Latest 0.2.x stable | ✅ Yes |
-| 0.3.0 development branch | Testing only; not a published supported release |
-| Older 0.x and alpha builds | ❌ No |
+| Latest 0.3.x stable | ✅ Yes |
+| 0.2.x and older stable releases | ❌ No |
+| Alpha and beta builds | ❌ No |
 
-Security fixes are provided for the latest stable 0.2.x release. The 0.3.0
-branch contains experimental macOS/dedicated implementations and build-only
-retro artifacts; none is a published supported release. 32-bit operating
-systems are unsupported.
+Security fixes are provided for the latest stable 0.3.x release, including its
+listed retro branch artifacts. Linux x64, macOS and dedicated servers are
+experimental, but the core security policy still applies to them. 32-bit
+operating systems are unsupported.
 
-## Threat model for 0.3.0 development
+## Threat model for 0.3.0
 
 - A Steam transport session is not world authorization. The current invite
   secret, social policy, live world and guest limit remain mandatory gates.

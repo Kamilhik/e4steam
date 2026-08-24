@@ -23,7 +23,7 @@ class SteamSessionRequestPolicyTest {
     }
 
     @Test
-    void restartsBrokenSteamSessionOnlyForForgeHandshakeFrames() {
+    void restartsForgeHandshakesAndAlwaysRestartsDedicatedHandshakes() {
         assertTrue(SteamRuntime.autoRestartsBrokenSession(
                 SteamOutboundQueue.Kind.OPEN,
                 true
@@ -46,6 +46,14 @@ class SteamSessionRequestPolicyTest {
         ));
         assertFalse(SteamRuntime.autoRestartsBrokenSession(
                 SteamOutboundQueue.Kind.OPEN,
+                false
+        ));
+        assertTrue(SteamRuntime.autoRestartsBrokenSession(
+                SteamOutboundQueue.Kind.DEDICATED_OPEN,
+                false
+        ));
+        assertTrue(SteamRuntime.autoRestartsBrokenSession(
+                SteamOutboundQueue.Kind.DEDICATED_OPEN_ACK,
                 false
         ));
     }

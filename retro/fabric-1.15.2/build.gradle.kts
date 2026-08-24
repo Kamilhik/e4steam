@@ -12,6 +12,11 @@ unimined.minecraft {
 sourceSets.main {
     java.srcDir(rootProject.file("adapters/fabric-modern/src/main/java"))
     java.srcDir(rootProject.file("adapters/modern-listener/src/main/java"))
+    java.srcDir(rootProject.file("adapters/minecraft-1.14-1.16-login/src/main/java"))
+    java.srcDir(rootProject.file("adapters/minecraft-1.14-1.16-play/src/main/java"))
+    java.srcDir(rootProject.file("adapters/minecraft-1.14-1.16-command/src/main/java"))
+    java.srcDir(rootProject.file("adapters/minecraft-1.14-1.15-ui/src/main/java"))
+    java.srcDir(rootProject.file("adapters/minecraft-1.14-1.15-chat/src/main/java"))
 }
 
 dependencies {

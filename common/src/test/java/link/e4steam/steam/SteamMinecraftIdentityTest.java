@@ -1,5 +1,6 @@
 package link.e4steam.steam;
 
+import com.mojang.authlib.GameProfile;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -39,6 +40,33 @@ class SteamMinecraftIdentityTest {
     }
 
     @Test
+    void minecraftNicknameIsPreservedExactly() {
+        assertEquals("Kamilchik", SteamMinecraftIdentity.preserveMinecraftName("Kamilchik"));
+        assertEquals("TeSt_123", SteamMinecraftIdentity.preserveMinecraftName("TeSt_123"));
+    }
+
+    @Test
+    void readsLegacyAuthlibGameProfileName() {
+        GameProfile profile = new GameProfile(UUID.randomUUID(), "LegacyName");
+
+        assertEquals("LegacyName", SteamMinecraftIdentity.profileName(profile));
+    }
+
+    @Test
+    void readsModernAuthlibRecordStyleName() {
+        assertEquals("ModernName",
+                SteamMinecraftIdentity.profileName(new ModernProfile("ModernName")));
+    }
+
+    @Test
+    void rejectsUnknownGameProfileLayout() {
+        assertThrows(IllegalStateException.class,
+                () -> SteamMinecraftIdentity.profileName(new Object()));
+        assertThrows(IllegalArgumentException.class,
+                () -> SteamMinecraftIdentity.profileName(null));
+    }
+
+    @Test
     void authenticatedGuestCannotReceiveOwnerBypass() {
         assertFalse(SteamMinecraftIdentity.allowSingleplayerOwnerBypass(42L, true));
         assertTrue(SteamMinecraftIdentity.allowSingleplayerOwnerBypass(0L, true));
@@ -49,5 +77,19 @@ class SteamMinecraftIdentityTest {
     void unauthenticatedSteamIdIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> SteamMinecraftIdentity.uuid(0));
         assertThrows(IllegalArgumentException.class, () -> SteamMinecraftIdentity.safeName(0));
+        assertThrows(IllegalArgumentException.class,
+                () -> SteamMinecraftIdentity.preserveMinecraftName(null));
+    }
+
+    public static final class ModernProfile {
+        private final String name;
+
+        private ModernProfile(String name) {
+            this.name = name;
+        }
+
+        public String name() {
+            return name;
+        }
     }
 }

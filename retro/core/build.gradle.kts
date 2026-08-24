@@ -20,12 +20,14 @@ val sharedSteamSources = fileTree(rootProject.file("../common/src/main/java")) {
         "link/e4steam/steam/SteamDedicatedClientBridge.java",
         "link/e4steam/steam/SteamGuestJoinState.java",
         "link/e4steam/steam/SteamInvitationAuthorizer.java",
+        "link/e4steam/steam/SteamKnownPeerSessionGate.java",
         "link/e4steam/steam/SteamLifecycle.java",
         "link/e4steam/steam/SteamLobbyManager.java",
         "link/e4steam/steam/SteamLoopbackAuthentication.java",
         "link/e4steam/steam/SteamMinecraftIdentity.java",
         "link/e4steam/steam/SteamNativeLibraryLoader.java",
         "link/e4steam/steam/SteamNetworkingMessagesTransport.java",
+        "link/e4steam/steam/SteamNetworkingSocketsP2PTransport.java",
         "link/e4steam/steam/SteamOutboundQueue.java",
         "link/e4steam/steam/SteamProcessGuard.java",
         "link/e4steam/steam/SteamPeerPrivacy.java",
@@ -40,6 +42,46 @@ val sharedSteamSources = fileTree(rootProject.file("../common/src/main/java")) {
 
 sourceSets.main {
     java.setSrcDirs(listOf("src/main/java"))
+}
+
+val generatedPreloadResources = layout.buildDirectory.dir("generated/resources/e4steamPreload")
+
+val generateE4steamPreloadList = tasks.register("generateE4steamPreloadList") {
+    dependsOn(tasks.named("compileJava"))
+
+    val classesDirectory = layout.buildDirectory.dir("classes/java/main")
+    val preloadList = generatedPreloadResources.map { directory ->
+        directory.file("e4steam-retro-preload.txt")
+    }
+    inputs.dir(classesDirectory)
+    outputs.file(preloadList)
+
+    doLast {
+        val classesRoot = classesDirectory.get().asFile
+        val outputFile = preloadList.get().asFile
+        val classNames = classesRoot.walkTopDown()
+            .filter { file -> file.isFile && file.extension == "class" }
+            .map { file ->
+                file.relativeTo(classesRoot).invariantSeparatorsPath
+                    .removeSuffix(".class")
+                    .replace('/', '.')
+            }
+            .filter { name -> name.startsWith("link.e4steam.") }
+            .distinct()
+            .sorted()
+            .toList()
+
+        outputFile.parentFile.mkdirs()
+        outputFile.writeText(classNames.joinToString("\n", postfix = "\n"), Charsets.UTF_8)
+    }
+}
+
+sourceSets.main {
+    resources.srcDir(generatedPreloadResources)
+}
+
+tasks.processResources {
+    dependsOn(generateE4steamPreloadList)
 }
 
 tasks.compileJava {

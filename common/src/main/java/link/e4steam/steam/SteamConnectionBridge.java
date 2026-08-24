@@ -13,8 +13,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** Bridges one ordinary local TCP connection to one logical Steam P2P stream. */
-final class SteamConnectionBridge {
+/**
+ * Bridges one ordinary local TCP connection to one logical Steam P2P stream.
+ *
+ * <p>The class is public because Forge 1.13.2's ModLauncher 2 resolves the
+ * concrete lambda argument type through its transforming class loader. A
+ * package-private top-level type can be located in the mod JAR but still be
+ * rejected during that late bootstrap step.</p>
+ */
+public final class SteamConnectionBridge {
     private static final Logger LOGGER = LogManager.getLogger("e4steam");
     // Eight MiB at the current 32 KiB protocol chunk size. This absorbs
     // registry/chunk bursts while remaining bounded for multiple players.

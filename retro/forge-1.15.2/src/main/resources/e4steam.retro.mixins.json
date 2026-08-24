@@ -1,1 +1,17 @@
-{"required":true,"minVersion":"0.8","package":"link.e4steam.retro.mixin","compatibilityLevel":"JAVA_8","client":["ServerConnectionListenerMixin"],"injectors":{"defaultRequire":1}}
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "link.e4steam.retro.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "client": [
+    "ConnectScreenAddressRetroMixin",
+    "ChatScreenCommandSuggestionsMixin",
+    "PauseScreenStringMixin",
+    "ScreenCommandMixin",
+    "ServerGamePacketListenerRetroMixin",
+    "ServerConnectionListenerMixin",
+    "ServerLoginPacketListenerRetroMixin",
+    "ShareToLanScreenStringMixin"
+  ],
+  "injectors": {"defaultRequire": 1}
+}

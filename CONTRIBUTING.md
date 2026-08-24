@@ -76,6 +76,6 @@ variant or infer runtime support from compilation.
 Source contributions are welcome under the repository's Apache License 2.0. A compiled
 JAR bundles Valve Steamworks redistributables that are not covered by that
 license. Stable binaries may be published only after the applicable automated
-and manual verification steps in `RELEASING.md` pass. Unverified macOS,
-dedicated or retro artifacts must not be labeled supported or silently
-included in a stable release.
+and manual verification steps in `RELEASING.md` pass. Unverified Linux, macOS
+or dedicated combinations must be labeled experimental. Never describe a
+combination as manually verified without recorded evidence.

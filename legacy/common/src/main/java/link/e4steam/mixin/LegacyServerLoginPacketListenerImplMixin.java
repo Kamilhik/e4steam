@@ -55,20 +55,17 @@ public abstract class LegacyServerLoginPacketListenerImplMixin {
         ci.cancel();
     }
 
-    /**
-     * Legacy versions create their offline profile at the beginning of
-     * handleAcceptedLogin(). Bind the complete profile first so vanilla does
-     * not replace it with a UUID derived from the client-supplied name.
-     */
+    /** Binds the UUID to Steam while preserving the Minecraft nickname. */
     @Inject(method = "handleAcceptedLogin", at = @At("HEAD"))
     private void e4steam$bindLegacyProfileToSteamIdentity(CallbackInfo ci) {
         long authenticatedSteamId = e4steam$authenticatedSteamId();
         if (authenticatedSteamId == 0) {
             return;
         }
+        String minecraftName = gameProfile.getName();
         gameProfile = new GameProfile(
                 SteamMinecraftIdentity.uuid(authenticatedSteamId),
-                SteamMinecraftIdentity.safeName(authenticatedSteamId)
+                SteamMinecraftIdentity.preserveMinecraftName(minecraftName)
         );
     }
 

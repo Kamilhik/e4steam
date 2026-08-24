@@ -5,6 +5,7 @@
   "minVersion": "0.8",
   "mixins": [
     "LegacyServerLoginPacketListenerImplMixin",
+    "LegacyServerGamePacketListenerImplMixin",
     "ServerConnectionListenerMixin"
   ],
   "injectors": {

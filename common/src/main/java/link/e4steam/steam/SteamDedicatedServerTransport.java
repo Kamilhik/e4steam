@@ -204,6 +204,7 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
         SteamBridgeRegistry.Key key = new SteamBridgeRegistry.Key(remoteSteamId, frame.connectionId());
         switch (frame.type()) {
             case SteamProtocol.DEDICATED_OPEN:
+                LOGGER.info("Received a dedicated Steam authentication handshake");
                 handleOpen(remoteSteamId, key, frame.payload());
                 return;
             case SteamProtocol.ADDON_HELLO:

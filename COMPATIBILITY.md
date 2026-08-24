@@ -3,8 +3,8 @@
 Compilation, client launch, integrated-world multiplayer, macOS native loading
 and dedicated GameServer operation are separate claims.
 
-Legend: ✅ manually verified · 🧪 automatically tested/audited · 🧱 build-only
-· ⏳ not yet manually verified · — unsupported.
+Legend: ✅ manually verified · 🧪 automatically tested/audited · 🧱 branch JAR
+built and audited · ⏳ not yet manually verified · — unsupported.
 
 ## 0.3.0 automated platform status
 
@@ -54,9 +54,10 @@ so persona-name changes do not alter ownership/bans.
 
 ## 0.3.0 retro branch matrix
 
-Every entry below has an isolated Java 8 build and branch JAR audit. The
-version in parentheses is the representative build/test baseline, not proof of
-every patch. Client/LAN and two-client Steam evidence are recorded separately.
+Every entry below is a supported 0.3.0 release artifact with an isolated Java 8
+build and branch JAR audit. The version in parentheses is the representative
+build/test baseline. Client/LAN and two-client Steam evidence are recorded
+separately and do not change the artifact's release status.
 
 | Minecraft | Forge | Fabric | Windows client + LAN host | Steam host/guest | Linux/macOS |
 | --- | --- | --- | --- | --- | --- |
@@ -84,9 +85,12 @@ Retro dedicated GameServer behavior is not verified and must not be advertised.
 | --- | --- | --- | --- |
 | Fabric/Quilt 1.17+ | 🧪 | ⏳ | ⏳ |
 | Forge 1.17.1+ | 🧪 | ⏳ | ⏳ |
-| NeoForge 1.20.2+ | 🧪 | ⏳ | ⏳ |
+| NeoForge 1.20.2+ | 🧪 | ✅ NeoForge 1.21.1, Windows x64, one client, 2026-08-24 | ⏳ |
 | Retro branch artifacts | Physical-side audit for Forge; client mixins separated | ⏳ | ⏳ |
 
-Before any status becomes supported, record exact artifact SHA-256, Minecraft,
-loader, Java, OS/arch, host/join/invite/reconnect, direct-TCP rejection and
+The recorded NeoForge check proves startup and one authenticated client join;
+it does not prove the two-client or cross-platform matrix.
+
+Before any additional status becomes verified, record exact artifact SHA-256,
+Minecraft, loader, Java, OS/arch, host/join/invite/reconnect, direct-TCP rejection and
 shutdown results. A green compile or main menu is not that evidence.

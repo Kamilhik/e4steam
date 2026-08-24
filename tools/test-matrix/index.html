@@ -259,7 +259,7 @@
       <div class="notice"><span>⚠</span><span><strong>Важно:</strong> одна строка проверяет выбранную основную версию. Успех на 1.16.5 подтверждает именно 1.16.5, но не автоматически каждый патч ветки 1.16.x.</span></div>
       <div class="machine-grid">
         <div class="machine"><label for="hostName">ПК хоста</label><input id="hostName" value="Основной ПК" autocomplete="off"></div>
-        <div class="machine"><label for="guestName">ПК гостя</label><input id="guestName" value="Серверный ПК · 192.168.1.10" autocomplete="off"></div>
+        <div class="machine"><label for="guestName">ПК гостя</label><input id="guestName" value="Серверный ПК · 192.168.1.2" autocomplete="off"></div>
       </div>
     </section>
 
@@ -337,7 +337,7 @@
     let data = load();
 
     function emptyData() {
-      return {schemaVersion:1, modVersion:"0.3.0", machines:{host:"Основной ПК",guest:"Серверный ПК · 192.168.1.10"}, results:{}, updatedAt:null};
+      return {schemaVersion:1, modVersion:"0.3.0", machines:{host:"Основной ПК",guest:"Серверный ПК · 192.168.1.2"}, results:{}, updatedAt:null};
     }
     function load() {
       try {

@@ -3,6 +3,7 @@ package link.e4steam.retro.forge;
 import link.e4steam.retro.RetroBootstrap;
 import link.e4steam.retro.RetroPlatform;
 import link.e4steam.retro.RetroVersion;
+import link.e4steam.retro.ui.RetroModernChatControls;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -45,5 +46,24 @@ public final class E4steamForgeModernClient implements RetroPlatform {
     @Override public void showMessage(String message) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.gui != null) minecraft.gui.getChat().addMessage(new TextComponent(message));
+    }
+
+    @Override public boolean copyToClipboard(String text) {
+        if (text == null || text.isEmpty()) return false;
+        try {
+            Minecraft minecraft = Minecraft.getInstance();
+            minecraft.keyboardHandler.setClipboard(text);
+            return text.equals(minecraft.keyboardHandler.getClipboard());
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    @Override public void showTranslatedMessage(String translationKey, String fallback) {
+        RetroModernChatControls.showTranslatedMessage(translationKey, fallback);
+    }
+
+    @Override public void showSharingReady(String endpoint) {
+        RetroModernChatControls.showSharingReady(endpoint);
     }
 }

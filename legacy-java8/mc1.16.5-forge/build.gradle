@@ -1,0 +1,86 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net' }
+        mavenCentral()
+    }
+    dependencies {
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '4.1.+'
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'java'
+
+version = project.mod_version
+group = 'link.e4steam'
+archivesBaseName = 'e4steam-forge-mc1.16.5'
+
+sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+
+minecraft {
+    mappings channel: 'official', version: '1.16.5'
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.console.level', 'debug'
+            mods { e4steam { source sourceSets.main } }
+        }
+    }
+}
+
+repositories { mavenCentral() }
+
+configurations {
+    embed
+    implementation.extendsFrom(embed)
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.16.5-36.2.42'
+    embed('com.code-disaster.steamworks4j:steamworks4j:1.10.0') { transitive = false }
+    embed 'net.java.dev.jna:jna:5.10.0'
+}
+
+def repositoryRoot = project.hasProperty('e4steamRoot')
+        ? file(project.property('e4steamRoot'))
+        : file('../..')
+def sharedRoot = new File(repositoryRoot, 'common/src/main/java')
+def generatedCore = file("$buildDir/generated/sources/e4steamJava8")
+
+tasks.register('prepareJava8Core', Sync) {
+    from(new File(sharedRoot, 'link/e4steam/HexCodec.java')) {
+        into 'link/e4steam'
+    }
+    from(new File(sharedRoot, 'link/e4steam/steam')) {
+        into 'link/e4steam/steam'
+        exclude 'SteamSession.java'
+    }
+    into generatedCore
+}
+
+sourceSets.main.java.srcDir(generatedCore)
+compileJava.dependsOn tasks.named('prepareJava8Core')
+compileJava.options.encoding = 'UTF-8'
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/mods.toml') { expand version: project.version }
+}
+
+jar {
+    from(new File(repositoryRoot, 'LICENSE')) {
+        into 'META-INF'
+        rename { 'LICENSE-e4steam.txt' }
+    }
+    from(new File(repositoryRoot, 'THIRD_PARTY_NOTICES.md')) { into 'META-INF' }
+    from(new File(repositoryRoot, 'NOTICE')) { into 'META-INF'; rename { 'NOTICE-e4steam.txt' } }
+    from(new File(repositoryRoot, 'common/src/main/resources/assets')) { into 'assets' }
+    from {
+        configurations.embed.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest { attributes(['Specification-Title': 'e4steam', 'Implementation-Version': project.version]) }
+}
+
+jar.finalizedBy('reobfJar')

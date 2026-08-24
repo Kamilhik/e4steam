@@ -508,6 +508,45 @@ tasks.register("releaseJars") {
                             "${variant.label} does not support the Minecraft 26.x multiplayer options screen"
                     )
                 }
+                ["PauseScreenMixin", "ShareToLanScreenMixin"].each { uiMixin ->
+                    if (!mixinsConfig.contains('"' + uiMixin + '"')) {
+                        throw new GradleException(
+                                "${variant.label} does not enable required UI hook ${uiMixin}"
+                        )
+                    }
+                    if (zip.getEntry("link/e4steam/mixin/${uiMixin}.class") == null) {
+                        throw new GradleException(
+                                "${variant.label} is missing required UI class ${uiMixin}"
+                        )
+                    }
+                }
+                String commandEntrypoint
+                if (variant.label.startsWith("Fabric/Quilt 1.17")) {
+                    commandEntrypoint =
+                            "link/e4steam/fabric/E4steamClientFabricLegacy.class"
+                } else if (variant.label.startsWith("Fabric/Quilt")) {
+                    commandEntrypoint = "link/e4steam/fabric/E4steamClientFabric.class"
+                } else if (variant.label == "NeoForge") {
+                    commandEntrypoint =
+                            "link/e4steam/neoforge/E4steamClientNeoForge.class"
+                } else {
+                    commandEntrypoint = "link/e4steam/forge/E4steamClientForge.class"
+                }
+                def commandEntry = zip.getEntry(commandEntrypoint)
+                if (commandEntry == null) {
+                    throw new GradleException(
+                            "${variant.label} is missing its command registration entrypoint"
+                    )
+                }
+                String commandConstants = new String(
+                        zip.getInputStream(commandEntry).readAllBytes(),
+                        java.nio.charset.StandardCharsets.ISO_8859_1
+                )
+                if (!commandConstants.contains("registerCommands")) {
+                    throw new GradleException(
+                            "${variant.label} does not register the e4steam command tree"
+                    )
+                }
                 if (zip.getEntry("assets/e4steam_minecraft/icon.png") == null) {
                     throw new GradleException("${variant.label} is missing the e4steam mod icon")
                 }
@@ -540,6 +579,36 @@ tasks.register("releaseJars") {
                     throw new GradleException(
                             "${variant.label} is missing authenticated offline-launcher support"
                     )
+                }
+                if (variant.loginMixin == "ServerLoginPacketListenerImplMixin") {
+                    String loginConstants = new String(
+                            zip.getInputStream(zip.getEntry(loginMixinEntry)).readAllBytes(),
+                            java.nio.charset.StandardCharsets.ISO_8859_1
+                    )
+                    if (loginConstants.contains("getName")) {
+                        throw new GradleException(
+                                "${variant.label} directly links the Authlib 6 GameProfile.getName accessor"
+                        )
+                    }
+                    def identityEntry = zip.getEntry(
+                            "link/e4steam/steam/SteamMinecraftIdentity.class"
+                    )
+                    if (identityEntry == null) {
+                        throw new GradleException(
+                                "${variant.label} is missing the Authlib compatibility bridge"
+                        )
+                    }
+                    String identityConstants = new String(
+                            zip.getInputStream(identityEntry).readAllBytes(),
+                            java.nio.charset.StandardCharsets.ISO_8859_1
+                    )
+                    if (!identityConstants.contains("profileName")
+                            || !identityConstants.contains("getName")
+                            || !identityConstants.contains("name")) {
+                        throw new GradleException(
+                                "${variant.label} cannot read both legacy and record-style GameProfile names"
+                        )
+                    }
                 }
                 if (zip.getEntry("link/e4steam/mixin/MultiplayerOptionsScreenMixin.class") == null) {
                     throw new GradleException(
@@ -595,8 +664,11 @@ tasks.register("releaseJars") {
                 )
                 if (!protocolConstants.contains("encodeDatagram")
                         || !protocolConstants.contains("encodeOpenAck")
+                        || !protocolConstants.contains("encodeBridgeReady")
                         || !configConstants.contains("voiceChatPort")) {
-                    throw new GradleException("${variant.label} does not expose the UDP voice tunnel")
+                    throw new GradleException(
+                            "${variant.label} is missing the UDP tunnel or first-join handshake"
+                    )
                 }
 
                 variant.metadata.each { path, expectedFragments ->

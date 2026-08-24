@@ -7,6 +7,7 @@ import link.e4steam.steam.SteamAccessMode;
 import link.e4steam.steam.SteamSession;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiMultiplayer;
@@ -19,6 +20,7 @@ import net.minecraft.event.ClickEvent;
 import net.minecraft.event.HoverEvent;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.BlockPos;
 import net.minecraft.util.StatCollector;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.event.GuiScreenEvent;
@@ -28,6 +30,7 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /** Loaded reflectively only on the physical client. */
@@ -45,18 +48,31 @@ public final class E4steamForgeClient implements RetroPlatform {
             @Override public String getCommandName() { return "e4steam"; }
 
             @Override public String getCommandUsage(ICommandSender sender) {
-                return "/e4steam <invite|stop>";
+                return "/e4steam <start|stop|restart|invite|doctor|addon|help>";
             }
 
             @Override public void processCommand(ICommandSender sender, String[] arguments) {
-                if (arguments.length == 1
-                        && RetroBootstrap.handleClientCommand("/e4steam " + arguments[0])) {
+                if (arguments.length <= 1
+                        && RetroBootstrap.handleClientCommand(arguments.length == 0
+                        ? "/e4steam" : "/e4steam " + arguments[0])) {
                     return;
                 }
                 E4steamForgeClient.this.showMessage(getCommandUsage(sender));
             }
 
             @Override public int getRequiredPermissionLevel() { return 0; }
+
+            @Override public List<String> addTabCompletionOptions(
+                    ICommandSender sender,
+                    String[] arguments,
+                    BlockPos position
+            ) {
+                if (arguments.length == 1) {
+                    return CommandBase.getListOfStringsMatchingLastWord(
+                            arguments, RetroBootstrap.clientCommandNames());
+                }
+                return java.util.Collections.emptyList();
+            }
         });
     }
 
@@ -83,6 +99,21 @@ public final class E4steamForgeClient implements RetroPlatform {
         }
     }
 
+    @Override public boolean copyToClipboard(String text) {
+        if (text == null || text.isEmpty()) return false;
+        try {
+            GuiScreen.setClipboardString(text);
+            return text.equals(GuiScreen.getClipboardString());
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    @Override public void showTranslatedMessage(String translationKey, String fallback) {
+        String translated = StatCollector.translateToLocal(translationKey);
+        showMessage(translationKey.equals(translated) ? fallback : translated);
+    }
+
     @Override public void showSharingReady(String endpoint) {
         Minecraft minecraft = Minecraft.getMinecraft();
         if (minecraft.ingameGUI == null) return;
@@ -92,7 +123,8 @@ public final class E4steamForgeClient implements RetroPlatform {
         ChatComponentText address = new ChatComponentText(endpoint);
         address.getChatStyle()
                 .setColor(EnumChatFormatting.GREEN)
-                .setChatClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, endpoint))
+                .setChatClickEvent(new ClickEvent(
+                        ClickEvent.Action.RUN_COMMAND, "/e4steam copy"))
                 .setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                         new ChatComponentText(StatCollector.translateToLocal(
                                 "text.e4steam_minecraft.addressCopyHelp"))));

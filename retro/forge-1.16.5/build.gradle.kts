@@ -15,6 +15,11 @@ unimined.minecraft {
 sourceSets.main {
     java.srcDir(rootProject.file("adapters/forge-modern/src/main/java"))
     java.srcDir(rootProject.file("adapters/modern-listener/src/main/java"))
+    java.srcDir(rootProject.file("adapters/minecraft-1.14-1.16-login/src/main/java"))
+    java.srcDir(rootProject.file("adapters/minecraft-1.14-1.16-play/src/main/java"))
+    java.srcDir(rootProject.file("adapters/minecraft-1.14-1.16-command/src/main/java"))
+    java.srcDir(rootProject.file("adapters/minecraft-1.16-ui/src/main/java"))
+    java.srcDir(rootProject.file("adapters/minecraft-1.16-chat/src/main/java"))
 }
 
 dependencies { compileOnly("org.spongepowered:mixin:0.8.5") }

@@ -8,12 +8,12 @@
   "license": "Apache-2.0",
   "environment": "client",
   "entrypoints": {
-    "client": ["link.e4steam.retro.fabric.E4steamFabric"]
+    "client": ["link.e4steam.retro.fabric.E4steamFabric114"]
   },
   "mixins": ["e4steam.retro.mixins.json"],
   "depends": {
     "fabricloader": ">=0.16.0",
-    "fabric-api": "*",
+    "fabric": "*",
     "minecraft": ">=1.14 <1.15",
     "java": ">=8"
   }

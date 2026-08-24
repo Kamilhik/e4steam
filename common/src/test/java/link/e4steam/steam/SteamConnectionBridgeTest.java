@@ -20,11 +20,37 @@ class SteamConnectionBridgeTest {
     }
 
     @Test
-    void forgeDataWaitsForReadyButHasABoundedCompatibilityFallback() {
+    void everyLoaderWaitsForReadyButHasABoundedCompatibilityFallback() {
         assertTrue(SteamConnectionBridge.isPeerReadyOrFallbackReached(0, false, 1));
         assertFalse(SteamConnectionBridge.isPeerReadyOrFallbackReached(200, false, 199));
         assertTrue(SteamConnectionBridge.isPeerReadyOrFallbackReached(200, true, 199));
         assertTrue(SteamConnectionBridge.isPeerReadyOrFallbackReached(200, false, 200));
+    }
+
+    @Test
+    void clientHandshakeDataWaitsForTheMatchingOpenAcknowledgement() {
+        SteamConnectionBridge bridge = new SteamConnectionBridge(
+                new FakeRuntime(), 77L, 42, new Socket(), false, null
+        );
+        bridge.waitForPeerReadyUntil(200L);
+
+        assertFalse(bridge.isOutboundDataReady(199L));
+        bridge.markPeerReady();
+        assertTrue(bridge.isOutboundDataReady(199L));
+        bridge.close(false);
+    }
+
+    @Test
+    void hostResponseWaitsForTheMatchingBridgeReadyConfirmation() {
+        SteamConnectionBridge bridge = new SteamConnectionBridge(
+                new FakeRuntime(), 77L, 42, new Socket(), true, null
+        );
+        bridge.waitForPeerReadyUntil(200L);
+
+        assertFalse(bridge.isOutboundDataReady(199L));
+        bridge.markPeerReady();
+        assertTrue(bridge.isOutboundDataReady(199L));
+        bridge.close(false);
     }
 
     @Test

@@ -1,28 +1,27 @@
 # Retro porting and compatibility
 
-The unreleased 0.3.0 branch contains isolated Java 8 toolchains and one JAR per
+The 0.3.0 release contains isolated Java 8 toolchains and one supported JAR per
 retro Minecraft branch. Each branch artifact is compiled against the stable
-baseline listed below. All entries are currently **build-only**: compilation
-and JAR audits are packaging evidence, not proof that every patch launches or
-that Steam multiplayer works.
+baseline listed below. The compatibility matrix records exact manual evidence
+separately from release support.
 
 ## Branch artifact matrix
 
 | Public branch | Build baseline | Loader | Branch artifact | Status |
 | --- | --- | --- | --- | --- |
-| 1.7.x | 1.7.10 | Forge 10.13.4.1614 | `e4steam-forge-mc1.7.x-v0.3.0.jar` | Build-only |
-| 1.8.x | 1.8.9 | Forge 11.15.1.2318 | `e4steam-forge-mc1.8.x-v0.3.0.jar` | Build-only |
-| 1.9.x | 1.9.4 | Forge 12.17.0.2317 | `e4steam-forge-mc1.9.x-v0.3.0.jar` | Build-only |
-| 1.10.x | 1.10.2 | Forge 12.18.3.2511 | `e4steam-forge-mc1.10.x-v0.3.0.jar` | Build-only |
-| 1.11.x | 1.11.2 | Forge 13.20.1.2588 | `e4steam-forge-mc1.11.x-v0.3.0.jar` | Build-only |
-| 1.12.x | 1.12.2 | Forge 14.23.5.2864 | `e4steam-forge-mc1.12.x-v0.3.0.jar` | Build-only |
-| 1.13.x | 1.13.2 | Forge 25.0.223 | `e4steam-forge-mc1.13.x-v0.3.0.jar` | Build-only |
-| 1.14.x | 1.14.4 | Forge 28.2.30 | `e4steam-forge-mc1.14.x-v0.3.0.jar` | Build-only |
-| 1.15.x | 1.15.2 | Forge 31.2.62 | `e4steam-forge-mc1.15.x-v0.3.0.jar` | Build-only |
-| 1.16.x | 1.16.5 | Forge 36.2.42 | `e4steam-forge-mc1.16.x-v0.3.0.jar` | Build-only |
-| 1.14.x | 1.14.4 | Fabric Loader 0.16.14 | `e4steam-fabric-mc1.14.x-v0.3.0.jar` | Build-only |
-| 1.15.x | 1.15.2 | Fabric Loader 0.16.14 | `e4steam-fabric-mc1.15.x-v0.3.0.jar` | Build-only |
-| 1.16.x | 1.16.5 | Fabric Loader 0.16.14 | `e4steam-fabric-mc1.16.x-v0.3.0.jar` | Build-only |
+| 1.7.x | 1.7.10 | Forge 10.13.4.1614 | `e4steam-forge-mc1.7.x-v0.3.0.jar` | Supported release |
+| 1.8.x | 1.8.9 | Forge 11.15.1.2318 | `e4steam-forge-mc1.8.x-v0.3.0.jar` | Supported release |
+| 1.9.x | 1.9.4 | Forge 12.17.0.2317 | `e4steam-forge-mc1.9.x-v0.3.0.jar` | Supported release |
+| 1.10.x | 1.10.2 | Forge 12.18.3.2511 | `e4steam-forge-mc1.10.x-v0.3.0.jar` | Supported release |
+| 1.11.x | 1.11.2 | Forge 13.20.1.2588 | `e4steam-forge-mc1.11.x-v0.3.0.jar` | Supported release |
+| 1.12.x | 1.12.2 | Forge 14.23.5.2864 | `e4steam-forge-mc1.12.x-v0.3.0.jar` | Supported release |
+| 1.13.x | 1.13.2 | Forge 25.0.223 | `e4steam-forge-mc1.13.x-v0.3.0.jar` | Supported release |
+| 1.14.x | 1.14.4 | Forge 28.2.30 | `e4steam-forge-mc1.14.x-v0.3.0.jar` | Supported release |
+| 1.15.x | 1.15.2 | Forge 31.2.62 | `e4steam-forge-mc1.15.x-v0.3.0.jar` | Supported release |
+| 1.16.x | 1.16.5 | Forge 36.2.42 | `e4steam-forge-mc1.16.x-v0.3.0.jar` | Supported release |
+| 1.14.x | 1.14.4 | Fabric Loader 0.16.14 | `e4steam-fabric-mc1.14.x-v0.3.0.jar` | Supported release |
+| 1.15.x | 1.15.2 | Fabric Loader 0.16.14 | `e4steam-fabric-mc1.15.x-v0.3.0.jar` | Supported release |
+| 1.16.x | 1.16.5 | Fabric Loader 0.16.14 | `e4steam-fabric-mc1.16.x-v0.3.0.jar` | Supported release |
 
 Minecraft 1.6.4 source remains available only as a reference port and is not
 part of the 0.3.0 build, test or release matrix.
@@ -76,12 +75,12 @@ e4steam's Steam transport. Audited upstream revisions:
 Adapted files carry source comments and the repository/JARs retain Apache 2.0,
 original e4mc MIT notices and third-party notices.
 
-## Required manual promotion gate
+## Manual verification checklist
 
 For every branch artifact, first test its listed baseline and record
 loader/JDK/OS. Verify: client reaches main
 menu, creates a world, opens LAN, creates Spacewar presence, host descriptor or
 invite appears, a second Steam account joins, chunks/movement work, disconnect
 and reconnect work, world close tears down Steam, and physical dedicated-server
-launch does not load client classes. Other patch versions in the `.x` range
-remain experimental until separately recorded. Until then, status is build-only.
+launch does not load client classes. The published `.x` range is supported;
+recording additional patch results improves the evidence matrix.

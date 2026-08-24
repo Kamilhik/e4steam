@@ -47,7 +47,18 @@ public final class E4steamClient {
     }
 
     public static void acceptDirectSteamInvite(String endpoint, String hostName) {
-        acceptSteamInvite(endpoint, hostName);
+        final Optional<SteamAddress> parsed = SteamAddress.tryParse(endpoint);
+        if (!parsed.isPresent()) {
+            showSteamJoinFailure("Invalid Steam address");
+            return;
+        }
+
+        // A copied address is the fallback for friends-only sharing and is
+        // intentionally not backed by a lobby invitation. World access is
+        // still authorized by the host using the secret token and Steam
+        // friendship policy when the OPEN frame arrives.
+        SteamRuntime.get().cancelGuestJoin();
+        openSteamBridgeAsync(parsed.get(), hostName);
     }
 
     public static void acceptSteamInvite(final String endpoint, final String hostName) {
@@ -63,18 +74,35 @@ public final class E4steamClient {
                         ? "Steam invitation rejected" : failure.getMessage());
                 return;
             }
-            try {
-                final InetSocketAddress local = SteamClientBridge.open(parsed.get());
-                final RetroPlatform current = requirePlatform();
-                current.execute(new Runnable() {
-                    @Override public void run() {
-                        current.connect(local, safeDisplayName(hostName));
-                    }
-                });
-            } catch (Throwable throwable) {
-                showSteamJoinFailure(throwable.getMessage());
-            }
+            openSteamBridge(parsed.get(), hostName);
         });
+    }
+
+    private static void openSteamBridge(SteamAddress address, final String hostName) {
+        try {
+            final InetSocketAddress local = SteamClientBridge.open(address);
+            final RetroPlatform current = requirePlatform();
+            current.execute(new Runnable() {
+                @Override public void run() {
+                    current.connect(local, safeDisplayName(hostName));
+                }
+            });
+        } catch (Throwable throwable) {
+            showSteamJoinFailure(throwable.getMessage());
+        }
+    }
+
+    private static void openSteamBridgeAsync(
+            final SteamAddress address,
+            final String hostName
+    ) {
+        Thread worker = new Thread(new Runnable() {
+            @Override public void run() {
+                openSteamBridge(address, hostName);
+            }
+        }, "e4steam-retro-direct-connect");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     public static void showSteamJoinFailure(Object detail) {

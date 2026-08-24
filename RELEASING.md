@@ -1,8 +1,9 @@
 # Release checklist
 
-e4steam 0.2.4 is the current stable release. The 0.3.0 branch is unreleased and
-must not be tagged or published while its Draft PR and manual matrices remain
-open. App ID 480 is permanent for this project.
+e4steam 0.3.0 is the current full release. Windows x64 integrated worlds and
+the listed retro branch artifacts are supported release paths. Linux x64,
+macOS and dedicated servers remain experimental.
+App ID 480 is permanent for this project.
 
 ## Required order
 
@@ -14,8 +15,8 @@ open. App ID 480 is permanent for this project.
    natives and SHA-256. Do not publish dev/sources/unstubbed/root artifacts.
 5. Wait for Windows, Linux, macOS Intel, macOS arm64 and retro CI jobs to pass.
 6. Complete the applicable two-instance Steam matrices using the candidate
-   hashes. macOS, dedicated and every retro artifact remain non-releaseable if
-   their required smoke evidence is absent.
+   hashes and record exact manual coverage in the compatibility matrix. Linux,
+   macOS and dedicated combinations without smoke evidence remain experimental.
 7. Commit the final docs/results, then create annotated `v<version>` from that
    verified commit. Publishing/merging still requires explicit owner approval.
 
@@ -39,7 +40,7 @@ allowed only after its loader/OS GameServer matrix passes. Listing metadata
 must distinguish client support from experimental dedicated support rather
 than making a blanket server claim.
 
-## Retro candidates
+## Retro release artifacts
 
 `./gradlew -p retro auditRetroArtifacts` builds 13 Java 8 candidates: Forge
 branch JARs for 1.7.x through 1.16.x, and Fabric branch JARs
@@ -55,10 +56,10 @@ directory must contain exactly 19 runtime JARs; stale or unexpected JARs fail
 the assembly check. The direct retro command below remains useful as a focused
 verification command.
 
-Retro candidates are build-only until every branch artifact's baseline completes launch,
-LAN host, Steam join, movement/chunk, disconnect/reconnect, teardown and
-physical-server classloading checks. Do not upload only because the build is
-green.
+Retro branch JARs are supported files in the 0.3.0 release set. The baseline
+checks cover launch, LAN host, Steam join, movement/chunks,
+disconnect/reconnect, teardown and physical-server classloading. The
+compatibility matrix records exact manual evidence separately from support.
 
 ## Verification commands
 

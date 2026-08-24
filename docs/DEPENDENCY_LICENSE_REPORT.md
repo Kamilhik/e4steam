@@ -60,4 +60,4 @@ to a single e4steam license statement.
 - No release may proceed until the maintainer confirms the applicable current
   Steamworks redistribution agreement and all manual gates in `RELEASING.md`.
 
-Report baseline: e4steam 0.3.0 development branch, 2026-08-12.
+Report baseline: e4steam 0.3.0 release, 2026-08-25.

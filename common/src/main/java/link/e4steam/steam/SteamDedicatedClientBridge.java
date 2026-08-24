@@ -63,6 +63,7 @@ public final class SteamDedicatedClientBridge {
             socket.setKeepAlive(true);
             SteamRuntime.Activity activity = pending.takeActivity();
             if (activity == null) throw new IOException("Dedicated Steam connection was cancelled");
+            runtime.prepareDedicatedConnection(address.steamId());
             authentication = runtime.createDedicatedClientAuth();
             int connectionId = runtime.nextConnectionId(address.steamId());
             ClientLease lease = new ClientLease(activity, authentication);

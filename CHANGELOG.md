@@ -3,7 +3,7 @@
 All notable changes to e4steam are documented here. Version numbers below
 belong to this fork and are independent of upstream e4mc releases.
 
-## 0.3.0 - Unreleased
+## 0.3.0 - 2026-08-25
 
 ### English
 
@@ -20,7 +20,8 @@ belong to this fork and are independent of upstream e4mc releases.
   process locks, absolute-path loading and redacted failures.
 - Added loader-independent Java 8 Addon API `1.0.0`, typed services, Javadocs,
   a deterministic testkit, a compile-tested example, API JAR purity/classfile
-  audits and a canonical binary-surface check.
+  audits and a canonical binary-surface check. The API is published on Maven
+  Central as `io.github.kamilhik:e4steam-api:1.0.0`.
 - Implemented loader-native addon discovery and deterministic lifecycle with
   API/dependency/cycle validation, scoped capabilities, callback isolation,
   registration freeze and reverse-order resource cleanup. Core never scans or
@@ -52,13 +53,13 @@ belong to this fork and are independent of upstream e4mc releases.
 - Split modern and retro physical server entrypoints from client bootstrap and
   added transitive headless class-graph/JAR audits for Minecraft client, AWT,
   overlay and client Steam runtime leakage.
-- Added Java 8 build-only retro branch artifacts: Forge `1.7.x` through
+- Added supported Java 8 retro branch artifacts: Forge `1.7.x` through
   `1.16.x`, and Fabric `1.14.x` through `1.16.x`. Each branch
   is built on a documented representative patch and detects the actual running
   Minecraft version. Pre-1.14 Fabric-family ports are now described correctly
   as future Legacy Fabric or Ornithe targets (and Rift on 1.13.2), rather than
-  regular Fabric/Quilt. No such artifact, all-retro JAR, retro Quilt or
-  non-Steam tunnel backend is included yet.
+  regular Fabric/Quilt. There is no all-retro JAR, retro Quilt, pre-1.14
+  Fabric-family artifact or non-Steam tunnel backend.
 - Updated the retro Forge baselines to the latest official builds for 1.12.2
   (`14.23.5.2864`), 1.14.4 (`28.2.30`), 1.15.2 (`31.2.62`) and 1.16.5
   (`36.2.42`). Forge 1.7.x-1.12.x JARs now contain both uppercase and lowercase
@@ -80,8 +81,9 @@ belong to this fork and are independent of upstream e4mc releases.
   JARs in `release/0.3.0` beside the six modern JARs, and rejects a release
   directory that is missing a candidate or contains an unexpected JAR.
 - Expanded non-publishing SHA-pinned CI to Windows, Linux, macOS Intel, macOS
-  arm64 and the retro branch artifact matrix. Manual macOS, dedicated two-client
-  and per-retro Minecraft/Steam smoke tests remain release blockers.
+  arm64 and the retro branch artifact matrix. Retro branch JARs are regular
+  supported release files; the compatibility matrix still records which exact
+  baselines have received manual multiplayer checks.
 
 ### Русский
 
@@ -97,7 +99,8 @@ belong to this fork and are independent of upstream e4mc releases.
   межпроцессной блокировкой, absolute-path загрузкой и редактированием ошибок.
 - Реализован независимый от loader Java 8 Addon API `1.0.0`: typed services,
   Javadocs, детерминированный testkit, проверяемый пример, аудит чистоты и
-  classfile API JAR, а также контроль бинарной поверхности.
+  classfile API JAR, а также контроль бинарной поверхности. API опубликован в
+  Maven Central как `io.github.kamilhik:e4steam-api:1.0.0`.
 - Добавлены обнаружение аддонов обычными загрузчиками и детерминированный
   lifecycle с проверкой API/dependencies/cycles, scoped capabilities,
   изоляцией callback, заморозкой регистраций и обратным закрытием ресурсов.
@@ -130,13 +133,13 @@ belong to this fork and are independent of upstream e4mc releases.
 - Современные и retro physical-server entrypoints отделены от client bootstrap;
   добавлен транзитивный headless аудит class graph/JAR на утечки Minecraft
   client, AWT, overlay и клиентского Steam runtime.
-- Добавлены build-only Java 8 retro JAR по веткам: Forge от `1.7.x` до
+- Добавлены поддерживаемые Java 8 retro JAR по веткам: Forge от `1.7.x` до
   `1.16.x` и Fabric от `1.14.x` до `1.16.x`. Каждая ветка
   собирается на документированной основной patch-версии, а мод определяет
   реальную запущенную версию Minecraft. Возможные порты до 1.14 теперь правильно
   названы отдельными целями Legacy Fabric или Ornithe, а для 1.13.2 также Rift,
-  а не обычным Fabric/Quilt. Эти JAR пока не собираются; также нет единого
-  all-retro JAR, retro Quilt и не-Steam tunnel backend.
+  а не обычным Fabric/Quilt. Единого all-retro JAR, retro Quilt, Fabric-family
+  артефактов до 1.14 и не-Steam tunnel backend нет.
 - Основные Forge-версии обновлены до последних официальных сборок: 1.12.2
   (`14.23.5.2864`), 1.14.4 (`28.2.30`), 1.15.2 (`31.2.62`) и 1.16.5
   (`36.2.42`). В Forge JAR для 1.7.x-1.12.x теперь входят оба варианта имён
@@ -159,8 +162,9 @@ belong to this fork and are independent of upstream e4mc releases.
   веточных retro JAR в `release/0.3.0` рядом с шестью современными JAR. Неполный
   набор или посторонний JAR в этой папке приводит к ошибке сборки.
 - Непубликующий CI с actions по SHA расширен на Windows, Linux, macOS Intel,
-  macOS arm64 и матрицу веточных retro JAR. Ручные проверки macOS, dedicated с двумя
-  клиентами и каждой retro-сборки остаются обязательными перед релизом.
+  macOS arm64 и матрицу веточных retro JAR. Веточные retro JAR являются обычными
+  поддерживаемыми файлами релиза; матрица совместимости отдельно показывает,
+  какие основные версии вручную проверены в мультиплеере.
 
 ## 0.2.4 - 2026-08-09
 

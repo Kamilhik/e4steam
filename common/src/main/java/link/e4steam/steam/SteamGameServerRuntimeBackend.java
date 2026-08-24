@@ -58,7 +58,7 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
     private volatile SteamProcessGuard.Lease processLease;
     private volatile SteamNativeLibraryLoader nativeLoader;
     private volatile SteamGameServer gameServer;
-    private volatile SteamNetworkingMessagesTransport transport;
+    private volatile SteamNetworkingSocketsP2PTransport transport;
     private volatile Thread callbackThread;
     private volatile long startupDeadline;
     private volatile PeerListener peerListener = PeerListener.REJECT_ALL;
@@ -177,23 +177,23 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
 
     public boolean send(long remoteSteamId, ByteBuffer payload, boolean unreliable, int channel)
             throws IOException {
-        SteamNetworkingMessagesTransport active = requireTransport();
-        return active.send(remoteSteamId, payload, unreliable, channel);
+        SteamNetworkingSocketsP2PTransport active = requireTransport();
+        return active.send(remoteSteamId, payload, unreliable);
     }
 
     public int availablePacketSize(int channel) throws IOException {
-        return requireTransport().availablePacketSize(channel);
+        return requireTransport().availablePacketSize();
     }
 
     public ReceivedPacket receive(ByteBuffer target, int channel) throws IOException {
-        SteamNetworkingMessagesTransport.Received received =
-                requireTransport().receive(target, channel);
+        SteamNetworkingSocketsP2PTransport.Received received =
+                requireTransport().receive(target);
         return new ReceivedPacket(received.remoteSteamId(), received.size());
     }
 
     public void closePeer(long remoteSteamId) {
         endAuthentication(remoteSteamId);
-        SteamNetworkingMessagesTransport active = transport;
+        SteamNetworkingSocketsP2PTransport active = transport;
         if (active != null) active.closePeer(remoteSteamId);
     }
 
@@ -247,8 +247,8 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
         try {
             SteamNativeLibraryLoader loader = nativeLoader;
             if (loader == null) throw new IOException("Native loader is unavailable");
-            SteamNetworkingMessagesTransport created =
-                    SteamNetworkingMessagesTransport.openGameServer(
+            SteamNetworkingSocketsP2PTransport created =
+                    SteamNetworkingSocketsP2PTransport.openGameServer(
                             loader.steamApiPath(),
                             new TransportListener()
                     );
@@ -272,6 +272,8 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
             while (!stopRequested.get()) {
                 try {
                     SteamGameServerAPI.runCallbacks();
+                    SteamNetworkingSocketsP2PTransport activeTransport = transport;
+                    if (activeTransport != null) activeTransport.runCallbacks();
                     expirePendingAuth();
                     if (state.get() == State.STEAM_LOGGING_ON
                             && System.currentTimeMillis() >= startupDeadline) {
@@ -331,8 +333,8 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
         pending.result.complete(valid);
     }
 
-    private SteamNetworkingMessagesTransport requireTransport() throws IOException {
-        SteamNetworkingMessagesTransport active = transport;
+    private SteamNetworkingSocketsP2PTransport requireTransport() throws IOException {
+        SteamNetworkingSocketsP2PTransport active = transport;
         if (active == null || state.get() != State.TRANSPORT_READY) {
             throw new IOException("Dedicated Steam transport is not ready");
         }
@@ -362,7 +364,7 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
         callbackThread = null;
         if (callbacks != null && callbacks != Thread.currentThread()) callbacks.interrupt();
 
-        SteamNetworkingMessagesTransport activeTransport = transport;
+        SteamNetworkingSocketsP2PTransport activeTransport = transport;
         transport = null;
         if (activeTransport != null) {
             try { activeTransport.close(); } catch (RuntimeException ignored) { }
@@ -474,7 +476,7 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
     }
 
     private final class TransportListener
-            implements SteamNetworkingMessagesTransport.SessionListener {
+            implements SteamNetworkingSocketsP2PTransport.SessionListener {
         @Override public void onSessionRequest(long remoteSteamId) {
             boolean allowed;
             try {
@@ -483,8 +485,14 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
             } catch (RuntimeException failure) {
                 allowed = false;
             }
-            SteamNetworkingMessagesTransport active = transport;
-            if (active == null || !allowed || !active.accept(remoteSteamId)) {
+            SteamNetworkingSocketsP2PTransport active = transport;
+            boolean accepted = active != null && allowed && active.accept(remoteSteamId);
+            LOGGER.info(
+                    accepted
+                            ? "Accepted an incoming dedicated Steam transport session"
+                            : "Rejected an incoming dedicated Steam transport session"
+            );
+            if (!accepted) {
                 if (active != null) active.closePeer(remoteSteamId);
             }
         }

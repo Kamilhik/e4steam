@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "e4steam",
+  "version": "${version}",
+  "name": "e4steam",
+  "description": "Play Minecraft with friends through Steam. Retro build for Minecraft ${minecraftBranch}.",
+  "authors": ["Kamilchik"],
+  "license": "Apache-2.0",
+  "environment": "client",
+  "entrypoints": {"client": ["link.e4steam.retro.fabric.E4steamFabric"]},
+  "mixins": ["e4steam.retro.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "fabric": "*",
+    "minecraft": ">=1.16 <1.17",
+    "java": ">=8"
+  }
+}

@@ -24,7 +24,7 @@ class SteamProtocolTest {
                 SteamProtocol.OPEN_ACK,
                 41,
                 new byte[]{VoiceChatUdpEndpoint.CLIENT_PORT_SAME_AS_SERVER, 0x5f, (byte) 0x86},
-                SteamProtocol.encodeOpenAck(41, endpoint)
+                SteamProtocol.encodeOpenAck(41, endpoint.clientPortMode(), endpoint.hostPort())
         );
         assertFrame(
                 SteamProtocol.BRIDGE_READY,
@@ -39,6 +39,11 @@ class SteamProtocolTest {
         assertFrame(SteamProtocol.DATAGRAM, 55, datagram, SteamProtocol.encodeDatagram(55, datagram));
         assertFrame(SteamProtocol.FIN, 99, new byte[0], SteamProtocol.encodeFin(99));
         assertFrame(SteamProtocol.RESET, 100, new byte[0], SteamProtocol.encodeReset(100));
+        byte[] addon = "addon-wire".getBytes();
+        assertFrame(SteamProtocol.ADDON_HELLO, 101, addon,
+                SteamProtocol.encodeAddonHello(101, addon));
+        assertFrame(SteamProtocol.ADDON_DATA, 101, addon,
+                SteamProtocol.encodeAddonData(101, addon));
     }
 
     @Test
@@ -86,6 +91,35 @@ class SteamProtocolTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> SteamProtocol.encodeDatagram(1, new byte[SteamProtocol.MAX_DATAGRAM_SIZE + 1])
+        );
+    }
+
+    @Test
+    void rejectsInvalidAddonFrameLengths() {
+        assertThrows(IllegalArgumentException.class,
+                () -> SteamProtocol.encodeAddonHello(1, new byte[0]));
+        assertThrows(IllegalArgumentException.class,
+                () -> SteamProtocol.encodeAddonData(1,
+                        new byte[SteamProtocol.DATA_CHUNK_SIZE + 1]));
+    }
+
+    @Test
+    void dedicatedOpenRoundTripsWithoutExposingCredentials() {
+        byte[] nonce = new byte[32];
+        byte[] ticket = new byte[]{1, 2, 3, 4};
+        byte[] encoded = SteamProtocol.encodeDedicatedOpen(88, 991L, nonce, ticket);
+        SteamProtocol.Frame frame = SteamProtocol.decode(ByteBuffer.wrap(encoded));
+        assertEquals(SteamProtocol.DEDICATED_OPEN, frame.type());
+        SteamProtocol.DedicatedOpen open = SteamProtocol.decodeDedicatedOpen(frame.payload());
+        assertEquals(991L, open.generation());
+        assertArrayEquals(nonce, open.nonce());
+        assertArrayEquals(ticket, open.takeTicket());
+        assertEquals("DedicatedOpen{generation=991, credentials=redacted}", open.toString());
+        assertFrame(
+                SteamProtocol.DEDICATED_OPEN_ACK,
+                88,
+                ByteBuffer.allocate(Long.BYTES).putLong(991L).array(),
+                SteamProtocol.encodeDedicatedOpenAck(88, 991L)
         );
     }
 

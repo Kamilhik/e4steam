@@ -1,0 +1,60 @@
+package link.e4steam.retro.mixin;
+
+import com.mojang.authlib.GameProfile;
+import link.e4steam.steam.SteamMinecraftIdentity;
+import link.e4steam.steam.SteamRuntime;
+import net.minecraft.network.NetworkManager;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.NetHandlerLoginServer;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+/**
+ * Skips Mojang session verification only for the exact localhost connection
+ * that the Steam host bridge authenticated. Ordinary LAN connections keep the
+ * vanilla 1.7.10 login path.
+ */
+@Mixin(NetHandlerLoginServer.class)
+public abstract class NetHandlerLoginServerMixin {
+    @Shadow @Final public NetworkManager networkManager;
+    @Shadow private GameProfile loginGameProfile;
+
+    private long e4steam$authenticatedSteamId;
+
+    private long e4steam$authenticatedSteamId() {
+        long current = e4steam$authenticatedSteamId;
+        if (current != 0L) return current;
+        current = SteamRuntime.get().authenticatedMinecraftPeer(
+                networkManager.getRemoteAddress());
+        if (current != 0L) e4steam$authenticatedSteamId = current;
+        return current;
+    }
+
+    @Redirect(
+            method = "processLoginStart",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/server/MinecraftServer;isServerInOnlineMode()Z"
+            )
+    )
+    private boolean e4steam$useMojangAuthentication(MinecraftServer server) {
+        return e4steam$authenticatedSteamId() == 0L
+                && server.isServerInOnlineMode();
+    }
+
+    @Inject(method = "func_147326_c", at = @At("HEAD"))
+    private void e4steam$bindSteamIdentity(CallbackInfo info) {
+        long authenticatedSteamId = e4steam$authenticatedSteamId();
+        if (authenticatedSteamId == 0L || loginGameProfile == null) return;
+        loginGameProfile = new GameProfile(
+                SteamMinecraftIdentity.uuid(authenticatedSteamId),
+                SteamMinecraftIdentity.preserveMinecraftName(
+                        loginGameProfile.getName())
+        );
+    }
+}

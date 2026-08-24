@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class SteamOutboundQueueTest {
     @Test
     void rejectsOverflowWithoutStealingAnotherCategoryCapacity() {
-        SteamOutboundQueue<String> queue = new SteamOutboundQueue<>(5, 2, 1, 1, 1);
+        SteamOutboundQueue<String> queue = new SteamOutboundQueue<>(5, 2, 1, 1, 1, 1);
 
         assertTrue(queue.offerData(1, 1, new byte[]{1}, "bridge"));
         assertTrue(queue.offerData(1, 1, new byte[]{2}, "bridge"));
@@ -20,8 +20,21 @@ class SteamOutboundQueueTest {
     }
 
     @Test
+    void addonTrafficHasItsOwnBudgetAndCannotConsumeTerminalReserve() {
+        SteamOutboundQueue<String> queue = new SteamOutboundQueue<>(5, 4, 4, 2, 4, 1);
+
+        assertTrue(queue.offerAddonData(1, 1, new byte[]{1}, false, "bridge"));
+        assertTrue(queue.offerAddonData(1, 1, new byte[]{2}, true, "bridge"));
+        assertFalse(queue.offerAddonData(1, 1, new byte[]{3}, false, "bridge"));
+        assertTrue(queue.offerData(1, 1, new byte[]{4}, "bridge"));
+        assertTrue(queue.offerDatagram(1, 1, new byte[]{5}, "bridge"));
+        assertFalse(queue.offerData(1, 1, new byte[]{6}, "bridge"));
+        assertTrue(queue.offerControl(1, 1, new byte[]{7}, SteamOutboundQueue.Kind.FIN, "bridge"));
+    }
+
+    @Test
     void purgeAndClearReturnCapacityForRestart() {
-        SteamOutboundQueue<String> queue = new SteamOutboundQueue<>(3, 1, 1, 1, 1);
+        SteamOutboundQueue<String> queue = new SteamOutboundQueue<>(3, 1, 1, 1, 1, 1);
         String first = new String("first");
         String second = new String("second");
 
@@ -36,7 +49,7 @@ class SteamOutboundQueueTest {
 
     @Test
     void pollPreservesOrderAndReleasesPermit() {
-        SteamOutboundQueue<String> queue = new SteamOutboundQueue<>(2, 1, 1, 1, 1);
+        SteamOutboundQueue<String> queue = new SteamOutboundQueue<>(2, 1, 1, 1, 1, 1);
         assertTrue(queue.offerData(9, 10, new byte[]{7}, "bridge"));
         SteamOutboundQueue.Packet<String> packet = queue.poll();
         assertNotNull(packet);

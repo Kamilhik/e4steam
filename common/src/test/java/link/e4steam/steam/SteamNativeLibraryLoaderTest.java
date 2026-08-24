@@ -3,15 +3,30 @@ package link.e4steam.steam;
 import com.codedisaster.steamworks.SteamAPI;
 import com.sun.jna.NativeLibrary;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class SteamNativeLibraryLoaderTest {
+    @TempDir
+    Path temporaryDirectory;
+
     @Test
     void selectsWindowsX64Libraries() throws Exception {
         SteamNativeLibraryLoader.NativeNames names =
@@ -20,6 +35,7 @@ class SteamNativeLibraryLoaderTest {
         assertEquals("windows-x64", names.platformDirectory());
         assertEquals("steam_api64.dll", names.steamApi());
         assertEquals("steamworks4j64.dll", names.steamworks4j());
+        assertEquals("steamworks4j-server64.dll", names.steamworks4jServer());
     }
 
     @Test
@@ -30,6 +46,48 @@ class SteamNativeLibraryLoaderTest {
         assertEquals("linux-x64", names.platformDirectory());
         assertEquals("libsteam_api.so", names.steamApi());
         assertEquals("libsteamworks4j.so", names.steamworks4j());
+        assertEquals("libsteamworks4j-server.so", names.steamworks4jServer());
+    }
+
+    @Test
+    void selectsMacIntelAndAppleSiliconUniversalLibraries() throws Exception {
+        SteamNativeLibraryLoader.NativeNames intel =
+                SteamNativeLibraryLoader.nativeNames("Mac OS X", "x86_64");
+        SteamNativeLibraryLoader.NativeNames arm =
+                SteamNativeLibraryLoader.nativeNames("Darwin", "aarch64");
+
+        assertEquals("macos-x64", intel.platformDirectory());
+        assertEquals("macos-arm64", arm.platformDirectory());
+        assertEquals("libsteam_api.dylib", intel.steamApi());
+        assertEquals("libsteamworks4j.dylib", arm.steamworks4j());
+        assertEquals("libsteamworks4j-server.dylib", arm.steamworks4jServer());
+    }
+
+    @Test
+    void bundledMacLibrariesContainBothRequiredSlices() throws Exception {
+        byte[] steamApi;
+        byte[] steamworks;
+        byte[] steamworksServer;
+        try (java.io.InputStream first = SteamNativeLibraryLoaderTest.class
+                .getResourceAsStream("/libsteam_api.dylib");
+             java.io.InputStream second = SteamNativeLibraryLoaderTest.class
+                     .getResourceAsStream("/libsteamworks4j.dylib");
+             java.io.InputStream third = SteamNativeLibraryLoaderTest.class
+                     .getResourceAsStream("/libsteamworks4j-server.dylib")) {
+            assertTrue(first != null);
+            assertTrue(second != null);
+            assertTrue(third != null);
+            steamApi = first.readAllBytes();
+            steamworks = second.readAllBytes();
+            steamworksServer = third.readAllBytes();
+        }
+        for (String architecture : new String[] {"x86_64", "arm64"}) {
+            SteamNativeLibraryLoader.NativeNames names =
+                    SteamNativeLibraryLoader.nativeNames("macOS", architecture);
+            SteamNativeLibraryLoader.validateBundledBinary(names, steamApi);
+            SteamNativeLibraryLoader.validateBundledBinary(names, steamworks);
+            SteamNativeLibraryLoader.validateBundledBinary(names, steamworksServer);
+        }
     }
 
     @Test
@@ -38,6 +96,230 @@ class SteamNativeLibraryLoaderTest {
                 IOException.class,
                 () -> SteamNativeLibraryLoader.nativeNames("Windows 11", "aarch64")
         );
+        assertThrows(
+                IOException.class,
+                () -> SteamNativeLibraryLoader.nativeNames("Linux", "aarch64")
+        );
+    }
+
+    @Test
+    void materializesInCachePathWithSpacesAndUnicode() throws Exception {
+        Path cache = SteamNativeLibraryLoader.createPrivateCacheDirectory(
+                temporaryDirectory,
+                "native cache тест"
+        );
+        byte[] expected = "verified-library".getBytes(StandardCharsets.UTF_8);
+
+        SteamNativeLibraryLoader.VerifiedLibrary library =
+                SteamNativeLibraryLoader.materialize(cache, "steam_api64.dll", expected);
+
+        assertArrayEquals(expected, Files.readAllBytes(library.path()));
+        assertEquals(cache, library.path().getParent());
+    }
+
+    @Test
+    void rejectsPreExistingFileWithWrongHash() throws Exception {
+        Path cache = SteamNativeLibraryLoader.createPrivateCacheDirectory(
+                temporaryDirectory,
+                "cache"
+        );
+        Files.write(cache.resolve("steam_api64.dll"), new byte[]{9, 9, 9});
+
+        assertThrows(
+                IOException.class,
+                () -> SteamNativeLibraryLoader.materialize(
+                        cache,
+                        "steam_api64.dll",
+                        new byte[]{1, 2, 3}
+                )
+        );
+    }
+
+    @Test
+    void rejectsDirectoryWhereRegularNativeFileIsExpected() throws Exception {
+        Path cache = SteamNativeLibraryLoader.createPrivateCacheDirectory(
+                temporaryDirectory,
+                "cache"
+        );
+        Files.createDirectory(cache.resolve("steam_api64.dll"));
+
+        assertThrows(
+                IOException.class,
+                () -> SteamNativeLibraryLoader.materialize(
+                        cache,
+                        "steam_api64.dll",
+                        new byte[]{1, 2, 3}
+                )
+        );
+    }
+
+    @Test
+    void rejectsSymlinkCacheAndSymlinkNativeEntryWhenSupported() throws Exception {
+        Path outside = Files.createDirectory(temporaryDirectory.resolve("outside"));
+        Path cacheLink = temporaryDirectory.resolve("cache-link");
+        try {
+            Files.createSymbolicLink(cacheLink, outside);
+        } catch (UnsupportedOperationException | IOException | SecurityException exception) {
+            assumeTrue(false, "Symbolic links are unavailable for this test account");
+        }
+
+        assertThrows(
+                IOException.class,
+                () -> SteamNativeLibraryLoader.createPrivateCacheDirectory(
+                        temporaryDirectory,
+                        "cache-link"
+                )
+        );
+
+        Path cache = SteamNativeLibraryLoader.createPrivateCacheDirectory(
+                temporaryDirectory,
+                "real-cache"
+        );
+        Path externalFile = Files.write(outside.resolve("external.dll"), new byte[]{1, 2, 3});
+        Files.createSymbolicLink(cache.resolve("steam_api64.dll"), externalFile);
+        assertThrows(
+                IOException.class,
+                () -> SteamNativeLibraryLoader.materialize(
+                        cache,
+                        "steam_api64.dll",
+                        new byte[]{1, 2, 3}
+                )
+        );
+    }
+
+    @Test
+    void rejectsSymlinkMaterializationLockWhenSupported() throws Exception {
+        Path cache = SteamNativeLibraryLoader.createPrivateCacheDirectory(
+                temporaryDirectory,
+                "lock-cache"
+        );
+        Path externalLock = Files.write(
+                temporaryDirectory.resolve("external.lock"),
+                new byte[]{1}
+        );
+        try {
+            Files.createSymbolicLink(cache.resolve("steam_api64.dll.lock"), externalLock);
+        } catch (UnsupportedOperationException | IOException | SecurityException exception) {
+            assumeTrue(false, "Symbolic links are unavailable for this test account");
+        }
+
+        assertThrows(
+                IOException.class,
+                () -> SteamNativeLibraryLoader.materialize(
+                        cache,
+                        "steam_api64.dll",
+                        new byte[]{1, 2, 3}
+                )
+        );
+    }
+
+    @Test
+    void rejectsSymlinkSwapAfterExtractionWhenSupported() throws Exception {
+        Path cache = SteamNativeLibraryLoader.createPrivateCacheDirectory(
+                temporaryDirectory,
+                "swap-cache"
+        );
+        byte[] expected = new byte[]{1, 2, 3};
+        SteamNativeLibraryLoader.VerifiedLibrary library =
+                SteamNativeLibraryLoader.materialize(cache, "steam_api64.dll", expected);
+        Path outside = Files.write(temporaryDirectory.resolve("replacement.dll"), expected);
+        Files.delete(library.path());
+        try {
+            Files.createSymbolicLink(library.path(), outside);
+        } catch (UnsupportedOperationException | IOException | SecurityException exception) {
+            assumeTrue(false, "Symbolic links are unavailable for this test account");
+        }
+
+        assertThrows(
+                IOException.class,
+                () -> SteamNativeLibraryLoader.validateForLoad(library)
+        );
+    }
+
+    @Test
+    void rejectsHardLinkedCacheEntryWhenLinkCountIsAvailable() throws Exception {
+        Path cache = SteamNativeLibraryLoader.createPrivateCacheDirectory(
+                temporaryDirectory,
+                "hardlink-cache"
+        );
+        byte[] expected = new byte[]{1, 2, 3};
+        SteamNativeLibraryLoader.VerifiedLibrary library =
+                SteamNativeLibraryLoader.materialize(cache, "steam_api64.dll", expected);
+        try {
+            Files.createLink(cache.resolve("alias.dll"), library.path());
+            Files.getAttribute(library.path(), "unix:nlink");
+        } catch (UnsupportedOperationException | IllegalArgumentException | IOException exception) {
+            assumeTrue(false, "Hard-link count is unavailable on this filesystem");
+        }
+
+        assertThrows(
+                IOException.class,
+                () -> SteamNativeLibraryLoader.validateForLoad(library)
+        );
+    }
+
+    @Test
+    void concurrentExtractionConvergesOnOneVerifiedFile() throws Exception {
+        Path cache = SteamNativeLibraryLoader.createPrivateCacheDirectory(
+                temporaryDirectory,
+                "concurrent"
+        );
+        byte[] expected = new byte[32 * 1024];
+        for (int index = 0; index < expected.length; index++) {
+            expected[index] = (byte) index;
+        }
+
+        ExecutorService pool = Executors.newFixedThreadPool(6);
+        try {
+            List<Callable<Path>> tasks = new ArrayList<>();
+            for (int index = 0; index < 12; index++) {
+                tasks.add(() -> SteamNativeLibraryLoader.materialize(
+                        cache,
+                        "steam_api64.dll",
+                        expected
+                ).path());
+            }
+            List<Future<Path>> results = pool.invokeAll(tasks);
+            Path first = results.get(0).get();
+            for (Future<Path> result : results) {
+                assertEquals(first, result.get());
+            }
+            assertArrayEquals(expected, Files.readAllBytes(first));
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void staleInterruptedTemporaryFileIsNeverLoaded() throws Exception {
+        Path cache = SteamNativeLibraryLoader.createPrivateCacheDirectory(
+                temporaryDirectory,
+                "interrupted"
+        );
+        Path stale = Files.write(
+                cache.resolve("steam_api64.dll.interrupted.tmp"),
+                "malicious".getBytes(StandardCharsets.UTF_8)
+        );
+        byte[] expected = "expected".getBytes(StandardCharsets.UTF_8);
+
+        SteamNativeLibraryLoader.VerifiedLibrary library =
+                SteamNativeLibraryLoader.materialize(cache, "steam_api64.dll", expected);
+
+        assertArrayEquals(expected, Files.readAllBytes(library.path()));
+        assertTrue(Files.exists(stale));
+    }
+
+    @Test
+    void failureDescriptionHelperDoesNotExposeAbsolutePath() {
+        String sensitivePath = temporaryDirectory.resolve("secret library.dll").toString();
+        IOException safe = SteamNativeLibraryLoader.safeFailure(
+                "Verified native library could not be loaded",
+                new IOException("failed at " + sensitivePath)
+        );
+
+        assertFalse(safe.getMessage().contains(sensitivePath));
+        assertFalse(safe.getMessage().contains(temporaryDirectory.toString()));
+        assertTrue(safe.getMessage().contains("IOException"));
     }
 
     @Test

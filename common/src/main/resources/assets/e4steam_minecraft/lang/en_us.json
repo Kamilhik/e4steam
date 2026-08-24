@@ -5,6 +5,8 @@
   "text.e4steam_minecraft.serverAlreadyClosed": "This world is not being shared through Steam",
   "text.e4steam_minecraft.clickToStop": "Stop sharing",
   "text.e4steam_minecraft.addressCopyHelp": "Click to copy this Steam address",
+  "text.e4steam_minecraft.addressCopied": "Steam address copied",
+  "text.e4steam_minecraft.addressCopyFailed": "Could not copy the Steam address",
   "text.e4steam_minecraft.stopSharingHelp": "Stop sharing this world through Steam",
   "text.e4steam_minecraft.stopConfirmTitle": "Stop Steam sharing?",
   "text.e4steam_minecraft.stopConfirmMessage": "Friends will be disconnected. You can share this world again with /e4steam start.",
@@ -47,5 +49,6 @@
   "text.e4steam_minecraft.joinLobbyClosed": "The Steam lobby was closed or you no longer have access",
   "text.e4steam_minecraft.joinExpired": "This Steam invitation is no longer active",
   "text.e4steam_minecraft.joinAlreadyConnecting": "Finish or cancel the current server connection before accepting a Steam invitation",
-  "text.e4steam_minecraft.joinCancelPending": "Steam is still cancelling the previous attempt. Retry shortly, or leave Multiplayer for a moment and reopen it."
+  "text.e4steam_minecraft.joinCancelPending": "Steam is still cancelling the previous attempt. Retry shortly, or leave Multiplayer for a moment and reopen it.",
+  "text.e4steam_minecraft.command.addon.none": "e4steam addons: no addons loaded"
 }

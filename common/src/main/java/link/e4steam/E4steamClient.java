@@ -4,8 +4,14 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import link.e4steam.steam.SteamAccessMode;
 import link.e4steam.steam.SteamAddress;
+import link.e4steam.steam.SteamDedicatedAddress;
+import link.e4steam.steam.SteamClientApiAdapter;
 import link.e4steam.steam.SteamRuntime;
 import link.e4steam.steam.SteamSession;
+import link.e4steam.internal.addon.AddonCandidate;
+import link.e4steam.internal.api.CoreApiPlatform;
+import link.e4steam.internal.api.RuntimeEnvironment;
+import link.e4steam.api.runtime.RuntimeMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.ConnectScreen;
@@ -22,16 +28,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletionException;
+import java.util.Collections;
+import java.util.List;
 
 public class E4steamClient {
-    public static final String MOD_ID = "e4steam";
+    public static final String MOD_ID = E4steamConstants.MOD_ID;
     public static volatile SteamSession session;
     public static volatile SteamAccessMode selectedAccessMode = SteamAccessMode.FRIENDS_ONLY;
     public static final Logger LOGGER = LoggerFactory.getLogger(E4steamClient.MOD_ID);
 
     public static void init() {
+        init(new RuntimeEnvironment("unknown", "unknown", "unknown", RuntimeMode.CLIENT, true),
+                Collections.emptyList());
+    }
+
+    /** Initializes the stable addon platform from entry points already discovered by the loader. */
+    public static void init(RuntimeEnvironment environment, List<AddonCandidate> addons) {
         Config.INSTANCE.id(); // Touch to initialize for McQoy
         SteamRuntime.preloadCompatibilityClasses();
+        SteamClientApiAdapter.install();
+        CoreApiPlatform.start(environment, addons);
         SteamRuntime.get().startAtGameLaunchAsync();
     }
 
@@ -207,7 +223,8 @@ public class E4steamClient {
     }
 
     private static void acceptSteamInvite(String endpoint, String hostName, boolean lobbyBacked) {
-        if (SteamAddress.tryParse(endpoint).isEmpty()) {
+        if (SteamAddress.tryParse(endpoint).isEmpty()
+                && SteamDedicatedAddress.tryParse(endpoint).isEmpty()) {
             showSteamJoinFailure(Mirror.translatable("text.e4steam_minecraft.joinInvalidAddress"));
             return;
         }

@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>e4steam 0.3.0 — CurseForge description preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #17191c;
+      --panel: #22252a;
+      --panel-soft: #2a2e34;
+      --line: #3a3f46;
+      --text: #f1f2f3;
+      --muted: #b8bcc3;
+      --link: #ff7849;
+      --accent: #f16436;
+      --code: #16181b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 50% -15%, rgba(241, 100, 54, 0.15), transparent 38rem),
+        var(--page);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
+    }
+
+    a { color: var(--link); }
+    a:hover { color: #ff9b78; }
+
+    .preview-bar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      min-height: 48px;
+      padding: 0.65rem max(1rem, calc((100vw - 1050px) / 2));
+      background: rgba(20, 22, 25, 0.94);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .preview-bar strong { color: var(--text); }
+
+    main {
+      width: min(1050px, calc(100% - 2rem));
+      margin: 2rem auto 4rem;
+      padding: clamp(1rem, 3vw, 2.25rem);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 22px 55px rgba(0, 0, 0, 0.28);
+    }
+
+    .hero { text-align: center; }
+    .hero > img {
+      width: 192px;
+      height: 192px;
+      border-radius: 18px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+    }
+
+    .hero h1 {
+      margin: 0.65rem 0 0;
+      font-size: clamp(2.2rem, 6vw, 4rem);
+      line-height: 1;
+    }
+
+    .hero .tagline {
+      margin: 0.75rem auto 1.15rem;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.45rem;
+    }
+
+    .badges a { display: inline-flex; }
+    .badges img { height: 36px; max-width: 100%; }
+    .license { margin-top: 0.75rem; }
+    .license img { height: 20px; }
+
+    h2 {
+      margin-top: 2.2rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--line);
+      font-size: 1.6rem;
+    }
+
+    h3 { margin-top: 1.65rem; }
+    hr { border: 0; border-top: 1px solid var(--line); margin: 2.4rem 0; }
+    ul, ol { padding-left: 1.45rem; }
+    li + li { margin-top: 0.3rem; }
+
+    code {
+      padding: 0.12rem 0.35rem;
+      background: var(--code);
+      border: 1px solid #343941;
+      border-radius: 4px;
+      color: #f6c6b5;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 1rem;
+      background: var(--code);
+      border: 1px solid #343941;
+      border-radius: 7px;
+    }
+
+    pre code { padding: 0; border: 0; }
+
+    blockquote {
+      margin: 1.4rem 0 0;
+      padding: 0.9rem 1rem;
+      border-left: 4px solid var(--accent);
+      background: var(--panel-soft);
+      color: var(--muted);
+    }
+
+    .demo img {
+      display: block;
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 660px;
+    }
+
+    th, td {
+      padding: 0.85rem;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th:last-child, td:last-child { border-right: 0; }
+    tr:last-child td { border-bottom: 0; }
+    th { background: #191b1f; font-size: 0.88rem; }
+    tbody tr:nth-child(odd) { background: #292d32; }
+    td:first-child { width: 92px; text-align: center; }
+    td:first-child img { width: 64px; height: 64px; border-radius: 9px; object-fit: cover; }
+    td small { color: var(--muted); }
+
+    .language-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+
+    .language-title::before {
+      content: "";
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 5px rgba(241, 100, 54, 0.13);
+    }
+
+    @media (max-width: 620px) {
+      main { width: calc(100% - 1rem); margin-top: 0.5rem; border-radius: 8px; }
+      .preview-bar { position: static; }
+      .preview-bar span:last-child { display: none; }
+      .badges img { height: 31px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-bar">
+    <strong>CurseForge description preview</strong>
+    <span>Локальный предпросмотр — финальный рендер CurseForge может немного отличаться</span>
+  </div>
+
+  <main>
+    <header class="hero">
+      <img src="https://media.forgecdn.net/avatars/thumbnails/1954/891/256/256/639211001772528223.png" alt="e4steam logo">
+      <h1>e4steam</h1>
+      <p class="tagline"><strong>Play in singleplayer Minecraft worlds with friends through Steam.</strong></p>
+      <div class="badges">
+        <a href="https://discord.gg/zFvrHz2ys7"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&amp;logo=discord&amp;logoColor=white" alt="Discord"></a>
+        <a href="https://t.me/K2Studio_Dev"><img src="https://img.shields.io/badge/Telegram-26A5E4?style=for-the-badge&amp;logo=telegram&amp;logoColor=white" alt="Telegram"></a>
+        <a href="https://www.curseforge.com/minecraft/mc-mods/e4steam"><img src="https://img.shields.io/badge/CurseForge-F16436?style=for-the-badge&amp;logo=curseforge&amp;logoColor=white" alt="CurseForge"></a>
+        <a href="https://github.com/Kamilhik/e4steam"><img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&amp;logo=github&amp;logoColor=white" alt="GitHub"></a>
+        <a href="https://modrinth.com/project/SqqdJF90"><img src="https://img.shields.io/badge/Modrinth-00AF5C?style=for-the-badge&amp;logo=modrinth&amp;logoColor=white" alt="Modrinth"></a>
+        <a href="https://youtu.be/KJ1W_eJ2VK4"><img src="https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&amp;logo=youtube&amp;logoColor=white" alt="YouTube"></a>
+      </div>
+      <p class="license"><a href="https://central.sonatype.com/artifact/io.github.kamilhik/e4steam-api/1.0.0"><img src="https://img.shields.io/maven-central/v/io.github.kamilhik/e4steam-api?label=Addon%20API&amp;style=flat-square" alt="Addon API on Maven Central"></a> <a href="https://github.com/Kamilhik/e4steam/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-2ea44f?style=flat-square" alt="Apache License 2.0"></a></p>
+    </header>
+
+    <hr>
+
+    <section class="demo">
+      <h2>Open Server</h2>
+      <img src="https://cdn.modrinth.com/data/cached_images/d6b56bd5c9285ed7c0a56af61a1198657a334028.gif" alt="Opening an e4steam server">
+      <h2>Close Server</h2>
+      <img src="https://cdn.modrinth.com/data/cached_images/6a93fb8208dcdeea1336607e1d75846af7e31cd7.gif" alt="Closing an e4steam server">
+    </section>
+
+    <hr>
+
+    <section lang="en">
+      <h2 class="language-title">English</h2>
+      <p><strong>e4steam 0.3.0</strong> lets you play with friends in your singleplayer Minecraft worlds through Steam—without a dedicated server or router configuration.</p>
+      <p>Open your world to the network, select <strong>Steam Friends</strong> or <strong>Invite Only</strong>, and send an invitation through the Steam overlay. Friends can also join using Minecraft's <strong>Direct Connection</strong> menu and a short <code>s-...steam</code> address.</p>
+
+      <h3>Features</h3>
+      <ul>
+        <li>Play together in a regular singleplayer world</li>
+        <li>Invite friends through the Steam overlay with <strong>Shift + Tab</strong></li>
+        <li>Choose between <strong>Steam Friends</strong> and <strong>Invite Only</strong> access modes</li>
+        <li>Join using a short direct-connection address</li>
+        <li>Copy the address, invite friends, or close the connection using colored chat buttons</li>
+        <li>Confirm before closing an active connection</li>
+        <li>Automatically close the connection when the host leaves the world</li>
+        <li>Reopen the connection using <code>/e4steam start</code></li>
+        <li>Use the mod in multiple languages</li>
+        <li>Extend the mod with the stable <strong>e4steam Addon API 1.0</strong></li>
+        <li>Run an optional dedicated server (currently experimental)</li>
+      </ul>
+
+      <h3>Add-ons</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Icon</th><th>Add-on</th><th>Description</th></tr></thead>
+          <tbody><tr>
+            <td><img src="https://raw.githubusercontent.com/K2-Studio-Development/e4steam-Friends/main/src/client/resources/assets/e4steam_friends/icon.png" alt="e4steam Friends icon"><br><img src="https://img.shields.io/badge/CLIENT-5865F2?style=flat-square" alt="Client add-on" style="width:auto;height:20px;border-radius:0"></td>
+            <td><a href="https://github.com/K2-Studio-Development/e4steam-Friends"><strong>e4steam Friends</strong></a><br><small>Minecraft 26.2 · Fabric / NeoForge</small></td>
+            <td>A Minecraft-style Steam friends screen with presence, search, invitations, joining, and join requests.</td>
+          </tr></tbody>
+        </table>
+      </div>
+
+      <h3>Addon API for developers</h3>
+      <p>The stable <strong>e4steam Addon API 1.0.0</strong> is published on <a href="https://central.sonatype.com/artifact/io.github.kamilhik/e4steam-api/1.0.0">Maven Central</a>. No custom Maven repository is required:</p>
+      <pre><code>dependencies {
+    compileOnly("io.github.kamilhik:e4steam-api:1.0.0")
+}</code></pre>
+      <p><a href="https://github.com/Kamilhik/e4steam/blob/main/docs/ADDON_API.md">Full Addon API documentation</a></p>
+
+      <h3>How to play</h3>
+      <ol>
+        <li>Start Steam and sign in to your account.</li>
+        <li>Launch Minecraft and enter a singleplayer world.</li>
+        <li>Open the pause menu and select <strong>Open to LAN</strong>.</li>
+        <li>Choose <strong>Steam Friends</strong> or <strong>Invite Only</strong>.</li>
+        <li>Invite a friend using the blue chat button or the Steam overlay.</li>
+      </ol>
+      <p>Your friend can also copy the provided <code>s-...steam</code> address, open <strong>Multiplayer → Direct Connection</strong>, and paste it into the server address field.</p>
+      <blockquote>Steam and e4steam must be running for both the host and every joining player. The Minecraft version, mod loader, and e4steam version must match.</blockquote>
+
+      <h3>Commands</h3>
+      <ul>
+        <li><code>/e4steam start</code> — reopen the connection</li>
+        <li><code>/e4steam invite</code> — open the friend invitation interface</li>
+        <li><code>/e4steam restart</code> — restart the connection</li>
+        <li><code>/e4steam doctor</code> — check whether Steam and the mod are ready</li>
+      </ul>
+      <blockquote><strong>e4steam 0.3.0 is a full release.</strong> Windows x64 is the primary supported platform. Linux x64, macOS, and dedicated servers are currently experimental. Addon API 1.0 is stable. The project is created and maintained by <strong>Kamilchik</strong> and is a separate, unofficial fork of e4mc.</blockquote>
+    </section>
+
+    <hr>
+
+    <section lang="ru">
+      <h2 class="language-title">Русский</h2>
+      <p><strong>e4steam 0.3.0</strong> позволяет играть с друзьями в одиночных мирах Minecraft через Steam — без выделенного сервера и настройки роутера.</p>
+      <p>Откройте мир для сети, выберите режим <strong>«Для друзей Steam»</strong> или <strong>«Только по приглашению»</strong> и отправьте приглашение через оверлей Steam. Друг также может подключиться через меню <strong>«Прямое подключение»</strong>, используя короткий адрес <code>s-...steam</code>.</p>
+
+      <h3>Возможности</h3>
+      <ul>
+        <li>Игра с друзьями в обычном одиночном мире</li>
+        <li>Приглашения через оверлей Steam по сочетанию <strong>Shift + Tab</strong></li>
+        <li>Режимы доступа <strong>«Для друзей Steam»</strong> и <strong>«Только по приглашению»</strong></li>
+        <li>Короткий адрес для прямого подключения</li>
+        <li>Цветные кнопки в чате для копирования адреса, приглашения друзей и закрытия соединения</li>
+        <li>Подтверждение перед закрытием активного соединения</li>
+        <li>Автоматическое закрытие соединения при выходе владельца из мира</li>
+        <li>Повторный запуск соединения командой <code>/e4steam start</code></li>
+        <li>Поддержка нескольких языков</li>
+        <li>Расширение возможностей мода через стабильный <strong>e4steam Addon API 1.0</strong></li>
+        <li>Возможность запустить выделенный сервер (пока экспериментально)</li>
+      </ul>
+
+      <h3>Аддоны</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Иконка</th><th>Аддон</th><th>Описание</th></tr></thead>
+          <tbody><tr>
+            <td><img src="https://raw.githubusercontent.com/K2-Studio-Development/e4steam-Friends/main/src/client/resources/assets/e4steam_friends/icon.png" alt="Иконка e4steam Friends"><br><img src="https://img.shields.io/badge/CLIENT-5865F2?style=flat-square" alt="Клиентский аддон" style="width:auto;height:20px;border-radius:0"></td>
+            <td><a href="https://github.com/K2-Studio-Development/e4steam-Friends"><strong>e4steam Friends</strong></a><br><small>Minecraft 26.2 · Fabric / NeoForge</small></td>
+            <td>Экран друзей Steam в стиле Minecraft: статусы, поиск, приглашения, подключение и запросы на вход.</td>
+          </tr></tbody>
+        </table>
+      </div>
+
+      <h3>Addon API для разработчиков</h3>
+      <p>Стабильный <strong>e4steam Addon API 1.0.0</strong> опубликован в <a href="https://central.sonatype.com/artifact/io.github.kamilhik/e4steam-api/1.0.0">Maven Central</a>. Сторонний Maven-репозиторий добавлять не нужно:</p>
+      <pre><code>dependencies {
+    compileOnly("io.github.kamilhik:e4steam-api:1.0.0")
+}</code></pre>
+      <p><a href="https://github.com/Kamilhik/e4steam/blob/main/docs/ADDON_API_RU.md">Полная документация Addon API</a></p>
+
+      <h3>Как начать игру</h3>
+      <ol>
+        <li>Запустите Steam и войдите в свой аккаунт.</li>
+        <li>Запустите Minecraft и зайдите в одиночный мир.</li>
+        <li>Откройте меню паузы и нажмите <strong>«Открыть для сети»</strong>.</li>
+        <li>Выберите <strong>«Для друзей Steam»</strong> или <strong>«Только по приглашению»</strong>.</li>
+        <li>Пригласите друга через синюю кнопку в чате или оверлей Steam.</li>
+      </ol>
+      <p>Друг также может скопировать полученный адрес <code>s-...steam</code>, открыть <strong>«Сетевая игра» → «Прямое подключение»</strong> и вставить его в поле адреса сервера.</p>
+      <blockquote>У владельца мира и всех подключающихся игроков должны быть запущены Steam и e4steam. Версии Minecraft, загрузчика модов и e4steam должны совпадать.</blockquote>
+
+      <h3>Команды</h3>
+      <ul>
+        <li><code>/e4steam start</code> — повторно открыть соединение</li>
+        <li><code>/e4steam invite</code> — открыть интерфейс приглашения друзей</li>
+        <li><code>/e4steam restart</code> — перезапустить соединение</li>
+        <li><code>/e4steam doctor</code> — проверить готовность Steam и мода</li>
+      </ul>
+      <blockquote><strong>e4steam 0.3.0 — полноценный релиз.</strong> Основная поддерживаемая платформа — Windows x64. Linux x64, macOS и выделенные серверы пока имеют экспериментальный статус. Addon API 1.0 стабилен. Проект создан и поддерживается <strong>Kamilchik</strong> и является отдельным неофициальным форком e4mc.</blockquote>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,183 @@
+name: e4steam CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e4steam-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-java8:
+    name: Java 8 API contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 8 compiler
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "8"
+
+      - name: Compile public API with Java 8
+        shell: bash
+        run: |
+          mkdir -p build/ci-api-java8
+          find api/src/main/java -name '*.java' -print0 \
+            | xargs -0 javac -encoding UTF-8 -source 8 -target 8 \
+                -Xlint:all -Werror -d build/ci-api-java8
+
+  verify:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-15-intel
+          - macos-15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+
+      - name: Set up Java 21 build JDK
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+
+      - name: Make Gradle wrapper executable
+        if: runner.os != 'Windows'
+        run: chmod +x gradlew
+
+      - name: Record macOS native architecture
+        if: runner.os == 'macOS'
+        run: uname -m
+
+      - name: Verify API, runtime tests and headless graph on Unix
+        if: runner.os != 'Windows'
+        run: ./gradlew --no-daemon --stacktrace clean apiChecks test headlessEntrypointAudit
+
+      - name: Verify API, runtime tests and headless graph on Windows
+        if: runner.os == 'Windows'
+        run: .\gradlew.bat --no-daemon --stacktrace clean apiChecks test headlessEntrypointAudit
+
+      - name: Audit universal Steam dylibs on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dependency_root="$HOME/.gradle/caches/modules-2/files-2.1/com.code-disaster.steamworks4j/steamworks4j/1.10.0"
+          server_dependency_root="$HOME/.gradle/caches/modules-2/files-2.1/com.code-disaster.steamworks4j/steamworks4j-server/1.10.0"
+          steamworks_jar="$(find "$dependency_root" -type f -name 'steamworks4j-1.10.0.jar' -print -quit)"
+          server_jar="$(find "$server_dependency_root" -type f -name 'steamworks4j-server-1.10.0.jar' -print -quit)"
+          test -n "$steamworks_jar"
+          test -n "$server_jar"
+          audit_dir="$RUNNER_TEMP/e4steam-macos-native-audit"
+          mkdir -p "$audit_dir"
+          cd "$audit_dir"
+          jar xf "$steamworks_jar" libsteam_api.dylib libsteamworks4j.dylib
+          jar xf "$server_jar" libsteamworks4j-server.dylib
+          for library in libsteam_api.dylib libsteamworks4j.dylib libsteamworks4j-server.dylib; do
+            architectures="$(lipo -archs "$library")"
+            printf '%s: %s\n' "$library" "$architectures"
+            grep -qw x86_64 <<<"$architectures"
+            grep -qw arm64 <<<"$architectures"
+            dependencies="$(otool -L "$library")"
+            printf '%s\n' "$dependencies"
+            if grep -E '/Users/|/home/|[A-Za-z]:\\\\' <<<"$dependencies"; then
+              echo "Developer-local dylib dependency detected in $library" >&2
+              exit 1
+            fi
+            codesign --verify --verbose=2 "$library" || echo "$library is an unsigned Steam redistributable; no signature is claimed."
+          done
+
+  release-audit:
+    name: Complete 19-artifact release directory
+    needs:
+      - api-java8
+      - verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+
+      - name: Set up Java 21 build JDK
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+
+      - name: Build, audit and collect all modern and retro runtime artifacts
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace --max-workers=1 \
+            -Dorg.gradle.jvmargs=-Xmx3G \
+            clean dependencyLicenseAudit releaseJars
+
+  retro-artifacts:
+    name: Retro branch artifact matrix
+    needs:
+      - api-java8
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+
+      - name: Set up Java 21 orchestration JDK
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+
+      - name: Build and inspect all retro branch artifacts
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace -p retro auditRetroArtifacts

@@ -14,7 +14,7 @@ body:
     id: mod-version
     attributes:
       label: Mod version
-      placeholder: 0.2.0
+      placeholder: 0.2.4 or 0.3.0 development commit SHA
     validations:
       required: true
   - type: input
@@ -40,6 +40,14 @@ body:
     id: loader-version
     attributes:
       label: Loader version
+    validations:
+      required: true
+  - type: input
+    id: addons
+    attributes:
+      label: Installed e4steam addons
+      description: Use "None" for the core mod alone; never attach an unreviewed addon JAR.
+      placeholder: None
     validations:
       required: true
   - type: input
@@ -93,6 +101,8 @@ body:
         - label: Both players use the same mod release and a compatible game/loader combination.
           required: true
         - label: I removed complete join addresses, tokens, and private Steam data.
+          required: true
+        - label: I understand that Linux, macOS, and dedicated servers are experimental in 0.3.0.
           required: true
         - label: This is not a security vulnerability.
           required: true

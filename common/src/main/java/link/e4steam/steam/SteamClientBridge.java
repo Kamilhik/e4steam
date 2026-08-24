@@ -100,6 +100,7 @@ public final class SteamClientBridge {
             if (!runtime.sendOpen(bridge, address.token())) {
                 throw new IOException("Steam outbound queue is unavailable");
             }
+            SteamAddonHooks.bridgeReady(bridge);
             bridge.start();
             handedOff = true;
             E4steamClient.LOGGER.info(

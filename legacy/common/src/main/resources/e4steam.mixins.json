@@ -3,20 +3,23 @@
   "package": "link.e4steam.mixin",
   "compatibilityLevel": "JAVA_16",
   "minVersion": "0.8",
-  "mixins": [],
+  "mixins": [
+    "LegacyServerLoginPacketListenerImplMixin",
+    "LegacyServerGamePacketListenerImplMixin",
+    "ServerConnectionListenerMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   },
   "client": [
     "BanListCommandsMixin",
+    "IntegratedServerConnectionListenerMixin",
     "BanPlayerCommandsMixin",
     "ConnectScreenMixin",
     "JoinMultiplayerScreenMixin",
     "MultiplayerOptionsScreenMixin",
     "PardonCommandMixin",
     "PauseScreenMixin",
-    "ServerLoginPacketListenerImplMixin",
-    "ServerConnectionListenerMixin",
     "ShareToLanScreenMixin",
     "WhitelistCommandMixin",
     "PlayerListMixin",

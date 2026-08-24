@@ -1,0 +1,6 @@
+{
+  "pack": {
+    "pack_format": ${resourcePackFormat},
+    "description": "e4steam language resources"
+  }
+}

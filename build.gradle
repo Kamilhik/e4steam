@@ -8,8 +8,11 @@ architectury {
     minecraft = rootProject.minecraft_version
 }
 
-subprojects {
+def minecraftProjectNames = ["common", "fabric", "forge", "neoforge"] as Set
+
+configure(subprojects.findAll { minecraftProjectNames.contains(it.name) }) {
     apply plugin: "dev.architectury.loom"
+    apply plugin: "architectury-plugin"
 
     loom {
         silentMojangMappingsLicense()
@@ -26,7 +29,6 @@ subprojects {
 
 allprojects {
     apply plugin: "java"
-    apply plugin: "architectury-plugin"
     base {
         archivesName = rootProject.archives_base_name + "-" + project.name
     }
@@ -55,6 +57,18 @@ allprojects {
     java {
         withSourcesJar()
     }
+}
+
+tasks.register("apiChecks") {
+    group = "verification"
+    description = "Compile and audit the Java 8 addon API, testkit, and example addon."
+    dependsOn(
+            ":api:check",
+            ":api:apiJarAudit",
+            ":api:javadoc",
+            ":api-testkit:check",
+            ":example-addon:check"
+    )
 }
 
 ext.getLatestChangelog = {
@@ -86,12 +100,185 @@ tasks.register("legacyReleaseJars", GradleBuild) {
     tasks = ["clean", "releaseJars"]
 }
 
+tasks.register("retroReleaseJars", GradleBuild) {
+    group = "build"
+    description = "Build and audit all thirteen Java 8 retro branch variants."
+    dir = file("retro")
+    tasks = ["clean", "auditRetroArtifacts"]
+}
+
+tasks.register("headlessEntrypointAudit") {
+    group = "verification"
+    description = "Reject client/UI class references reachable from dedicated server entrypoints."
+    dependsOn(
+            ":common:classes",
+            ":fabric:classes",
+            ":forge:classes",
+            ":neoforge:classes"
+    )
+
+    doLast {
+        List<File> roots = [
+                file("common/build/classes/java/main"),
+                file("fabric/build/classes/java/main"),
+                file("forge/build/classes/java/main"),
+                file("neoforge/build/classes/java/main"),
+                file("api/build/classes/java/main")
+        ].findAll { it.isDirectory() }
+        Map<String, byte[]> classes = [:]
+        roots.each { root ->
+            fileTree(root) { include "**/*.class" }.files.each { classFile ->
+                String relative = root.toPath().relativize(classFile.toPath()).toString()
+                        .replace(File.separatorChar, '/' as char)
+                classes[relative.substring(0, relative.length() - ".class".length())] =
+                        classFile.bytes
+            }
+        }
+
+        List<String> entrypoints = [
+                "link/e4steam/fabric/E4steamFabric",
+                "link/e4steam/forge/E4steamForge",
+                "link/e4steam/neoforge/E4steamNeoForge",
+                "link/e4steam/mixin/ServerConnectionListenerMixin",
+                "link/e4steam/mixin/ServerLoginPacketListenerImplMixin"
+        ]
+        List<String> forbidden = [
+                "net/minecraft/client/",
+                "java/awt/",
+                "javax/swing/",
+                "javafx/",
+                "link/e4steam/E4steamClient",
+                "link/e4steam/MinecraftUiCompat",
+                "link/e4steam/Mirror",
+                "link/e4steam/Doctor",
+                "link/e4steam/steam/SteamRuntime",
+                "link/e4steam/steam/SteamLobbyManager",
+                "link/e4steam/steam/SteamSession"
+        ]
+        def references = { byte[] bytes ->
+            String constants = new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+            LinkedHashSet<String> found = new LinkedHashSet<>()
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile('(?:\\[L)?([a-zA-Z_$][a-zA-Z0-9_$]*(?:/[a-zA-Z0-9_$]+)+)')
+                    .matcher(constants)
+            while (matcher.find()) found.add(matcher.group(1))
+            return found
+        }
+
+        entrypoints.each { entrypoint ->
+            if (!classes.containsKey(entrypoint)) {
+                throw new GradleException("Missing headless entrypoint class ${entrypoint}")
+            }
+            LinkedHashSet<String> visited = new LinkedHashSet<>()
+            ArrayDeque<String> pending = new ArrayDeque<>()
+            Map<String, String> parent = [:]
+            pending.add(entrypoint)
+            while (!pending.isEmpty()) {
+                String name = pending.removeFirst()
+                if (!visited.add(name)) continue
+                byte[] bytes = classes[name]
+                if (bytes == null) continue
+                references(bytes).each { reference ->
+                    String violation = forbidden.find { prefix ->
+                        prefix.endsWith('/')
+                                ? reference.startsWith(prefix)
+                                : reference == prefix || reference.startsWith(prefix + '$')
+                    }
+                    if (violation != null) {
+                        List<String> path = [name, reference]
+                        String cursor = name
+                        while (parent.containsKey(cursor)) {
+                            cursor = parent[cursor]
+                            path.add(0, cursor)
+                        }
+                        throw new GradleException("Headless client reference via ${path.join(' -> ')}")
+                    }
+                    if (classes.containsKey(reference) && !visited.contains(reference)) {
+                        parent.putIfAbsent(reference, name)
+                        pending.addLast(reference)
+                    }
+                }
+            }
+            println("Headless graph audit passed for ${entrypoint} (${visited.size()} local classes).")
+        }
+
+        [
+                file("common/src/main/resources/e4steam.mixins.json"),
+                file("legacy/common/src/main/resources/e4steam.mixins.json")
+        ].each { mixinFile ->
+            Map parsed = new groovy.json.JsonSlurper().parse(mixinFile) as Map
+            List commonMixins = (parsed.mixins ?: []) as List
+            commonMixins.each { name ->
+                File source = file("common/src/main/java/link/e4steam/mixin/${name}.java")
+                if (!source.isFile()) {
+                    source = file("legacy/common/src/main/java/link/e4steam/mixin/${name}.java")
+                }
+                if (source.isFile()) {
+                    String text = source.getText("UTF-8")
+                    if (text.contains("net.minecraft.client")
+                            || text.contains("E4steamClient")
+                            || text.contains("MinecraftUiCompat")) {
+                        throw new GradleException(
+                                "Client-only Mixin ${name} is listed in the common/server section"
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.register("dependencyLicenseAudit") {
+    group = "verification"
+    description = "Verify the checked-in dependency/license inventory and mandatory notices."
+
+    doLast {
+        def requiredText = [
+                (file("NOTICE")): ["e4mc-retro", "Apache License"],
+                (file("THIRD_PARTY_NOTICES.md")): [
+                        "steamworks4j 1.10.0",
+                        "Kaleido Config 0.3.3+1.3.2",
+                        "Valve Steamworks redistributables",
+                        "xhyrom/e4mc-retro"
+                ],
+                (file("docs/DEPENDENCY_LICENSE_REPORT.md")): [
+                        "steamworks4j | 1.10.0",
+                        "steamworks4j-server | 1.10.0",
+                        "Kaleido Config | 0.3.3+1.3.2",
+                        "UniMixins 0.1.20",
+                        "exactly nine selected 64-bit Steam native files"
+                ]
+        ]
+        requiredText.each { document, fragments ->
+            if (!document.isFile()) {
+                throw new GradleException("Missing dependency/license document: ${document}")
+            }
+            String content = document.getText("UTF-8")
+            fragments.each { fragment ->
+                if (!content.contains(fragment)) {
+                    throw new GradleException("${document} is missing dependency/license entry: ${fragment}")
+                }
+            }
+        }
+        if (rootProject.steamworks4j_version != "1.10.0") {
+            throw new GradleException(
+                    "Update the dependency/license report for steamworks4j ${rootProject.steamworks4j_version}"
+            )
+        }
+    }
+}
+
 tasks.register("releaseJars") {
     group = "build"
-    description = "Build and test all six public runtime JAR variants."
+    description = "Build, audit and collect all six modern and thirteen retro runtime JAR variants."
     dependsOn(
             legacyReleaseJars,
+            retroReleaseJars,
+            headlessEntrypointAudit,
+            dependencyLicenseAudit,
             ":common:test",
+            ":api:jar",
+            ":api:sourcesJar",
             ":fabric:remapJar",
             ":fabric:modernRemapJar",
             ":forge:remapJar",
@@ -106,6 +293,7 @@ tasks.register("releaseJars") {
                         publicName: "e4steam-fabric-quilt-mc1.17-1.18.2-v${version}.jar",
                         file: file("legacy/fabric/build/libs/e4steam-fabric-${version}-mc1.17-1.18.2.jar"),
                         major: 60,
+                        loginMixin: "LegacyServerLoginPacketListenerImplMixin",
                         metadata: ["fabric.mod.json": [
                                 '"id": "e4steam"',
                                 '"icon": "assets/e4steam_minecraft/icon.png"',
@@ -118,6 +306,7 @@ tasks.register("releaseJars") {
                         publicName: "e4steam-forge-mc1.17.1-1.18.1-v${version}.jar",
                         file: file("legacy/forge/build/libs/e4steam-forge-${version}-legacy17.jar"),
                         major: 60,
+                        loginMixin: "LegacyServerLoginPacketListenerImplMixin",
                         metadata: ["META-INF/mods.toml": [
                                 'modId = "e4steam"',
                                 'logoFile = "assets/e4steam_minecraft/icon.png"',
@@ -129,6 +318,7 @@ tasks.register("releaseJars") {
                         publicName: "e4steam-fabric-quilt-mc1.19-1.21.11-v${version}.jar",
                         file: file("fabric/build/libs/e4steam-fabric-${version}.jar"),
                         major: 61,
+                        loginMixin: "ServerLoginPacketListenerImplMixin",
                         metadata: ["fabric.mod.json": [
                                 '"id": "e4steam"',
                                 '"icon": "assets/e4steam_minecraft/icon.png"',
@@ -141,6 +331,7 @@ tasks.register("releaseJars") {
                         publicName: "e4steam-fabric-quilt-mc26.1-26.2-v${version}.jar",
                         file: file("fabric/build/libs/e4steam-fabric-${version}-modern.jar"),
                         major: 61,
+                        loginMixin: "ServerLoginPacketListenerImplMixin",
                         metadata: ["fabric.mod.json": [
                                 '"id": "e4steam"',
                                 '"icon": "assets/e4steam_minecraft/icon.png"',
@@ -153,6 +344,7 @@ tasks.register("releaseJars") {
                         publicName: "e4steam-forge-mc1.18.2-1.20.2-v${version}.jar",
                         file: file("forge/build/libs/e4steam-forge-${version}.jar"),
                         major: 61,
+                        loginMixin: "ServerLoginPacketListenerImplMixin",
                         metadata: ["META-INF/mods.toml": [
                                 'modId = "e4steam"',
                                 'logoFile = "assets/e4steam_minecraft/icon.png"',
@@ -164,6 +356,7 @@ tasks.register("releaseJars") {
                         publicName: "e4steam-neoforge-mc1.20.2-26.2-v${version}.jar",
                         file: file("neoforge/build/libs/e4steam-neoforge-${version}.jar"),
                         major: 61,
+                        loginMixin: "ServerLoginPacketListenerImplMixin",
                         metadata: [
                                 "META-INF/mods.toml": [
                                         'modId = "e4steam"',
@@ -178,17 +371,77 @@ tasks.register("releaseJars") {
                         ]
                 ]
         ]
+        def retroVariants = [
+                [project: "forge-1.7.10", branch: "1.7.x"],
+                [project: "forge-1.8.9", branch: "1.8.x"],
+                [project: "forge-1.9.4", branch: "1.9.x"],
+                [project: "forge-1.10.2", branch: "1.10.x"],
+                [project: "forge-1.11.2", branch: "1.11.x"],
+                [project: "forge-1.12.2", branch: "1.12.x"],
+                [project: "forge-1.13.2", branch: "1.13.x"],
+                [project: "forge-1.14.4", branch: "1.14.x"],
+                [project: "forge-1.15.2", branch: "1.15.x"],
+                [project: "forge-1.16.5", branch: "1.16.x"],
+                [project: "fabric-1.14.4", branch: "1.14.x"],
+                [project: "fabric-1.15.2", branch: "1.15.x"],
+                [project: "fabric-1.16.5", branch: "1.16.x"]
+        ].collect { target ->
+            String projectName = target.project
+            String loader = projectName.substring(0, projectName.indexOf('-'))
+            String minecraftVersion = projectName.substring(projectName.indexOf('-') + 1)
+            String publicName = "e4steam-${loader}-mc${target.branch}-v${version}.jar"
+            return [
+                    label: "Retro ${loader} ${target.branch} (built on ${minecraftVersion})",
+                    publicName: publicName,
+                    file: file("retro/${projectName}/build/libs/${publicName}")
+            ]
+        }
         def requiredNatives = [
-                "steam_api64.dll",
-                "steamworks4j64.dll",
-                "libsteam_api.so",
-                "libsteamworks4j.so"
+                "steam_api64.dll": [
+                        size: 319584L,
+                        sha256: "e082bf5c9f881c822b1540a76b74f9d15e18019a73ebd206a559595badcb7f65"
+                ],
+                "steamworks4j64.dll": [
+                        size: 310784L,
+                        sha256: "5b7e1860775001b47efcd0378c3de8dec4d633967b1c70b5e469f7488539deaa"
+                ],
+                "steamworks4j-server64.dll": [
+                        size: 152064L,
+                        sha256: "0c7e676870bcf33d4a4b5269931d670bed2890e39e115656dfbd680533ec4b29"
+                ],
+                "libsteam_api.so": [
+                        size: 388288L,
+                        sha256: "0f2c41c20644503c17e13498203986493332fc8296dbd78493bc1fed352ec0cc"
+                ],
+                "libsteamworks4j.so": [
+                        size: 310528L,
+                        sha256: "4d255292c9ee257087053f8b1c0f0ab5a8f831193d3e6f37a10e5c046d6e1886"
+                ],
+                "libsteamworks4j-server.so": [
+                        size: 92704L,
+                        sha256: "268d16c2fac4beda0f649ac5809a557cce50fd7662ad3de5733f8bd84a12afab"
+                ],
+                "libsteam_api.dylib": [
+                        size: 415344L,
+                        sha256: "d828cbd6365daa2b16d3bd7dc2969c60e97f497c0996a6def0b7b174a7e19953"
+                ],
+                "libsteamworks4j.dylib": [
+                        size: 681280L,
+                        sha256: "f596487a0edce464c21c551c1a29a29aedaf4965d0a21b6d58ab3a55bce5c97e"
+                ],
+                "libsteamworks4j-server.dylib": [
+                        size: 251248L,
+                        sha256: "2204191a95ca5d9a9da3f46cb420fc9cec9a68c92d7184e7d9e77ecf9807fad7"
+                ]
         ]
         def forbiddenNatives = [
                 "steam_api.dll",
                 "steamworks4j.dll",
-                "libsteam_api.dylib",
-                "libsteamworks4j.dylib"
+                "steamworks4j-server.dll",
+                "steamworks4j-encryptedappticket.dll",
+                "steamworks4j-encryptedappticket64.dll",
+                "libsteamworks4j-encryptedappticket.so",
+                "libsteamworks4j-encryptedappticket.dylib"
         ]
 
         variants.each { variant ->
@@ -199,9 +452,32 @@ tasks.register("releaseJars") {
 
             def zip = new java.util.zip.ZipFile(jarFile)
             try {
-                requiredNatives.each { name ->
-                    if (zip.getEntry(name) == null) {
+                requiredNatives.each { name, manifest ->
+                    def entries = Collections.list(zip.entries()).findAll {
+                        it.name == name
+                    }
+                    if (entries.size() != 1) {
                         throw new GradleException("${variant.label} is missing bundled native ${name}")
+                    }
+                    def entry = entries[0]
+                    if (entry.size != manifest.size) {
+                        throw new GradleException(
+                                "${variant.label} native ${name} has an unexpected size"
+                        )
+                    }
+                    def digest = java.security.MessageDigest.getInstance("SHA-256")
+                    zip.getInputStream(entry).withCloseable { input ->
+                        byte[] buffer = new byte[8192]
+                        int read
+                        while ((read = input.read(buffer)) >= 0) {
+                            if (read > 0) digest.update(buffer, 0, read)
+                        }
+                    }
+                    String actualHash = digest.digest().encodeHex().toString()
+                    if (actualHash != manifest.sha256) {
+                        throw new GradleException(
+                                "${variant.label} native ${name} does not match the pinned SHA-256"
+                        )
                     }
                 }
                 forbiddenNatives.each { name ->
@@ -222,7 +498,7 @@ tasks.register("releaseJars") {
                     throw new GradleException("${variant.label} is missing e4steam.mixins.json")
                 }
                 String mixinsConfig = zip.getInputStream(mixinsEntry).getText("UTF-8")
-                if (!mixinsConfig.contains("ServerLoginPacketListenerImplMixin")) {
+                if (!mixinsConfig.contains('"' + variant.loginMixin + '"')) {
                     throw new GradleException(
                             "${variant.label} does not enable authenticated offline-launcher login"
                     )
@@ -230,6 +506,45 @@ tasks.register("releaseJars") {
                 if (!mixinsConfig.contains("MultiplayerOptionsScreenMixin")) {
                     throw new GradleException(
                             "${variant.label} does not support the Minecraft 26.x multiplayer options screen"
+                    )
+                }
+                ["PauseScreenMixin", "ShareToLanScreenMixin"].each { uiMixin ->
+                    if (!mixinsConfig.contains('"' + uiMixin + '"')) {
+                        throw new GradleException(
+                                "${variant.label} does not enable required UI hook ${uiMixin}"
+                        )
+                    }
+                    if (zip.getEntry("link/e4steam/mixin/${uiMixin}.class") == null) {
+                        throw new GradleException(
+                                "${variant.label} is missing required UI class ${uiMixin}"
+                        )
+                    }
+                }
+                String commandEntrypoint
+                if (variant.label.startsWith("Fabric/Quilt 1.17")) {
+                    commandEntrypoint =
+                            "link/e4steam/fabric/E4steamClientFabricLegacy.class"
+                } else if (variant.label.startsWith("Fabric/Quilt")) {
+                    commandEntrypoint = "link/e4steam/fabric/E4steamClientFabric.class"
+                } else if (variant.label == "NeoForge") {
+                    commandEntrypoint =
+                            "link/e4steam/neoforge/E4steamClientNeoForge.class"
+                } else {
+                    commandEntrypoint = "link/e4steam/forge/E4steamClientForge.class"
+                }
+                def commandEntry = zip.getEntry(commandEntrypoint)
+                if (commandEntry == null) {
+                    throw new GradleException(
+                            "${variant.label} is missing its command registration entrypoint"
+                    )
+                }
+                String commandConstants = new String(
+                        zip.getInputStream(commandEntry).readAllBytes(),
+                        java.nio.charset.StandardCharsets.ISO_8859_1
+                )
+                if (!commandConstants.contains("registerCommands")) {
+                    throw new GradleException(
+                            "${variant.label} does not register the e4steam command tree"
                     )
                 }
                 if (zip.getEntry("assets/e4steam_minecraft/icon.png") == null) {
@@ -259,10 +574,41 @@ tasks.register("releaseJars") {
                             "${variant.label} still contains the deprecated ISteamNetworking transport"
                     )
                 }
-                if (zip.getEntry("link/e4steam/mixin/ServerLoginPacketListenerImplMixin.class") == null) {
+                String loginMixinEntry = "link/e4steam/mixin/${variant.loginMixin}.class"
+                if (zip.getEntry(loginMixinEntry) == null) {
                     throw new GradleException(
                             "${variant.label} is missing authenticated offline-launcher support"
                     )
+                }
+                if (variant.loginMixin == "ServerLoginPacketListenerImplMixin") {
+                    String loginConstants = new String(
+                            zip.getInputStream(zip.getEntry(loginMixinEntry)).readAllBytes(),
+                            java.nio.charset.StandardCharsets.ISO_8859_1
+                    )
+                    if (loginConstants.contains("getName")) {
+                        throw new GradleException(
+                                "${variant.label} directly links the Authlib 6 GameProfile.getName accessor"
+                        )
+                    }
+                    def identityEntry = zip.getEntry(
+                            "link/e4steam/steam/SteamMinecraftIdentity.class"
+                    )
+                    if (identityEntry == null) {
+                        throw new GradleException(
+                                "${variant.label} is missing the Authlib compatibility bridge"
+                        )
+                    }
+                    String identityConstants = new String(
+                            zip.getInputStream(identityEntry).readAllBytes(),
+                            java.nio.charset.StandardCharsets.ISO_8859_1
+                    )
+                    if (!identityConstants.contains("profileName")
+                            || !identityConstants.contains("getName")
+                            || !identityConstants.contains("name")) {
+                        throw new GradleException(
+                                "${variant.label} cannot read both legacy and record-style GameProfile names"
+                        )
+                    }
                 }
                 if (zip.getEntry("link/e4steam/mixin/MultiplayerOptionsScreenMixin.class") == null) {
                     throw new GradleException(
@@ -318,8 +664,11 @@ tasks.register("releaseJars") {
                 )
                 if (!protocolConstants.contains("encodeDatagram")
                         || !protocolConstants.contains("encodeOpenAck")
+                        || !protocolConstants.contains("encodeBridgeReady")
                         || !configConstants.contains("voiceChatPort")) {
-                    throw new GradleException("${variant.label} does not expose the UDP voice tunnel")
+                    throw new GradleException(
+                            "${variant.label} is missing the UDP tunnel or first-join handshake"
+                    )
                 }
 
                 variant.metadata.each { path, expectedFragments ->
@@ -345,6 +694,31 @@ tasks.register("releaseJars") {
                 zip.close()
             }
         }
+        retroVariants.each { variant ->
+            if (!variant.file.isFile()) {
+                throw new GradleException("Missing ${variant.label} runtime JAR: ${variant.file}")
+            }
+        }
+        [
+                file("api/build/libs/e4steam-api-${api_version}.jar"),
+                file("api/build/libs/e4steam-api-${api_version}-sources.jar")
+        ].each { apiArtifact ->
+            if (!apiArtifact.isFile()) {
+                throw new GradleException("Missing API artifact for native isolation audit: ${apiArtifact}")
+            }
+            def zip = new java.util.zip.ZipFile(apiArtifact)
+            try {
+                requiredNatives.keySet().each { name ->
+                    if (zip.getEntry(name) != null) {
+                        throw new GradleException(
+                                "${apiArtifact.name} must not contain runtime native ${name}"
+                        )
+                    }
+                }
+            } finally {
+                zip.close()
+            }
+        }
         File publicDirectory = file("release/${version}")
         delete(fileTree(publicDirectory) { include "*.jar" })
         variants.each { variant ->
@@ -354,9 +728,23 @@ tasks.register("releaseJars") {
                 rename { variant.publicName }
             }
         }
-        if (fileTree(publicDirectory) { include "*.jar" }.files.size() != variants.size()) {
-            throw new GradleException("Could not assemble all public release JARs in ${publicDirectory}")
+        retroVariants.each { variant ->
+            copy {
+                from variant.file
+                into publicDirectory
+                rename { variant.publicName }
+            }
         }
-        println("Artifact audit passed for all six runtime JAR variants.")
+        Set<String> expectedNames = (variants + retroVariants)
+                .collect { it.publicName } as Set<String>
+        Set<String> actualNames = fileTree(publicDirectory) { include "*.jar" }
+                .files.collect { it.name } as Set<String>
+        if (actualNames != expectedNames) {
+            throw new GradleException(
+                    "Could not assemble the complete public release set in ${publicDirectory}; "
+                            + "missing=${expectedNames - actualNames}, unexpected=${actualNames - expectedNames}"
+            )
+        }
+        println("Artifact audit passed and collected all 19 runtime JAR variants in ${publicDirectory}.")
     }
 }

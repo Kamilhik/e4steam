@@ -4,6 +4,8 @@ import com.mojang.authlib.GameProfile;
 import link.e4steam.Config;
 import link.e4steam.E4steamClient;
 import link.e4steam.Mirror;
+import link.e4steam.steam.SteamMinecraftIdentity;
+import link.e4steam.steam.SteamRuntime;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.players.PlayerList;
@@ -47,7 +49,12 @@ public abstract class PlayerListMixin {
 
     @Inject(method = "/^(canPlayerLogin|method_14586|checkCanJoin|m_6418_)$/", at = @At("HEAD"), cancellable = true)
     public void allowOwnerLogin(SocketAddress socketAddress, @Coerce Object gameProfile, CallbackInfoReturnable<Component> cir) {
-        if (Mirror.isSingleplayerOwnerObj(getServer(), gameProfile)) {
+        long authenticatedSteamId = SteamRuntime.get().authenticatedMinecraftPeer(socketAddress);
+        boolean vanillaOwnerMatch = Mirror.isSingleplayerOwnerObj(getServer(), gameProfile);
+        if (SteamMinecraftIdentity.allowSingleplayerOwnerBypass(
+                authenticatedSteamId,
+                vanillaOwnerMatch
+        )) {
             cir.setReturnValue(null);
         }
     }

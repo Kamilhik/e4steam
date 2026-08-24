@@ -1,6 +1,6 @@
 package link.e4steam.forge;
 
-import link.e4steam.E4steamClient;
+import link.e4steam.E4steamConstants;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.fml.loading.FMLPaths;
@@ -17,7 +17,7 @@ public class AgnosImpl {
     }
 
     public static Path jarPath() {
-        return FMLLoader.getLoadingModList().getMods().stream().filter(modInfo -> modInfo.getModId().equals(E4steamClient.MOD_ID)).findAny().get().getOwningFile().getFile().getFilePath();
+        return FMLLoader.getLoadingModList().getMods().stream().filter(modInfo -> modInfo.getModId().equals(E4steamConstants.MOD_ID)).findAny().get().getOwningFile().getFile().getFilePath();
     }
 
     public static boolean proactivelyAcceptSteamPeerSessions() {

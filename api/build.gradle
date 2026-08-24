@@ -1,0 +1,349 @@
+plugins {
+    id "java-library"
+    id "maven-publish"
+    id "signing"
+}
+
+version = rootProject.api_version
+base.archivesName = "e4steam-api"
+
+def centralGroupId = "io.github.kamilhik"
+def centralArtifactId = "e4steam-api"
+def centralVersion = rootProject.api_version.toString()
+def centralStagingDirectory = layout.buildDirectory.dir("central-staging")
+def centralArtifactDirectory = centralStagingDirectory.map {
+    it.dir("${centralGroupId.replace('.', '/')}/${centralArtifactId}/${centralVersion}")
+}
+
+java {
+    withJavadocJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+    options.compilerArgs += ["-Xlint:all", "-Xlint:-options", "-Werror"]
+}
+
+dependencies {
+    testImplementation platform("org.junit:junit-bom:5.10.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+javadoc {
+    options.encoding = "UTF-8"
+    options.charSet = "UTF-8"
+    options.addStringOption("Xdoclint:all,-missing", "-quiet")
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+tasks.named("jar", Jar) {
+    from(rootProject.file("LICENSE")) {
+        into("META-INF")
+    }
+    from(rootProject.file("NOTICE")) {
+        into("META-INF")
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId = centralGroupId
+            artifactId = centralArtifactId
+            version = centralVersion
+
+            pom {
+                name = "e4steam Addon API"
+                description = "Loader-independent Java API for developing e4steam addons."
+                url = "https://github.com/Kamilhik/e4steam"
+
+                licenses {
+                    license {
+                        name = "The Apache License, Version 2.0"
+                        url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                        distribution = "repo"
+                    }
+                }
+                developers {
+                    developer {
+                        id = "Kamilchik"
+                        name = "Kamilchik"
+                        email = "Kamilhik@users.noreply.github.com"
+                        url = "https://github.com/Kamilhik"
+                        organization = "K2 Studio Development"
+                        organizationUrl = "https://github.com/K2-Studio-Development"
+                    }
+                }
+                scm {
+                    connection = "scm:git:https://github.com/Kamilhik/e4steam.git"
+                    developerConnection = "scm:git:ssh://git@github.com/Kamilhik/e4steam.git"
+                    url = "https://github.com/Kamilhik/e4steam"
+                }
+                issueManagement {
+                    system = "GitHub Issues"
+                    url = "https://github.com/Kamilhik/e4steam/issues"
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "centralBundle"
+            url = centralStagingDirectory
+        }
+    }
+}
+
+// Maven Central requires PGP signatures. Prefer an in-memory key in CI, while
+// local Windows builds can use the GnuPG executable bundled with Git for Windows.
+def inMemorySigningKey = providers.gradleProperty("signingKey").orNull
+def inMemorySigningPassword = providers.gradleProperty("signingPassword").orNull
+if (inMemorySigningKey == null
+        && !providers.gradleProperty("signing.gnupg.executable").isPresent()) {
+    File gitForWindowsGpg = file("C:/Program Files/Git/usr/bin/gpg.exe")
+    if (gitForWindowsGpg.isFile()) {
+        ext.set("signing.gnupg.executable", gitForWindowsGpg.absolutePath)
+    }
+}
+
+signing {
+    if (inMemorySigningKey != null) {
+        useInMemoryPgpKeys(inMemorySigningKey, inMemorySigningPassword)
+    } else {
+        useGpgCmd()
+    }
+    sign publishing.publications.mavenJava
+}
+
+// Gradle module metadata is unnecessary for this pure Java API and would add
+// files beyond the minimal Maven Central component.
+tasks.withType(GenerateModuleMetadata).configureEach {
+    enabled = false
+}
+
+def cleanCentralBundleStaging = tasks.register("cleanCentralBundleStaging", Delete) {
+    group = "publishing"
+    description = "Remove stale files before assembling the Maven Central bundle."
+    delete centralStagingDirectory
+}
+
+def publishCentralBundleRepository = tasks.named(
+        "publishMavenJavaPublicationToCentralBundleRepository"
+) {
+    dependsOn cleanCentralBundleStaging
+}
+
+def generateCentralBundleChecksums = tasks.register("generateCentralBundleChecksums") {
+    group = "publishing"
+    description = "Generate the checksums required by Maven Central."
+    dependsOn publishCentralBundleRepository
+    // The publishing task creates this repository directory during the same
+    // invocation, so it must not be validated as a pre-existing task input.
+    doLast {
+        File artifactDirectory = centralArtifactDirectory.get().asFile
+        def artifactNames = [
+                "${centralArtifactId}-${centralVersion}.pom",
+                "${centralArtifactId}-${centralVersion}.jar",
+                "${centralArtifactId}-${centralVersion}-sources.jar",
+                "${centralArtifactId}-${centralVersion}-javadoc.jar"
+        ]
+        def algorithms = [
+                "md5": "MD5",
+                "sha1": "SHA-1",
+                "sha256": "SHA-256",
+                "sha512": "SHA-512"
+        ]
+        artifactNames.each { artifactName ->
+            File artifact = new File(artifactDirectory, artifactName)
+            if (!artifact.isFile()) {
+                throw new GradleException("Missing Maven Central artifact: ${artifact}")
+            }
+            byte[] bytes = artifact.bytes
+            algorithms.each { extension, algorithm ->
+                byte[] digest = java.security.MessageDigest.getInstance(algorithm).digest(bytes)
+                String value = digest.collect { String.format("%02x", it & 0xff) }.join()
+                new File(artifactDirectory, "${artifactName}.${extension}")
+                        .setText(value, "US-ASCII")
+            }
+        }
+    }
+}
+
+tasks.register("centralBundle", Zip) {
+    group = "publishing"
+    description = "Build the signed Maven Central upload bundle for e4steam API."
+    dependsOn generateCentralBundleChecksums
+    from centralStagingDirectory
+    destinationDirectory = layout.buildDirectory.dir("central-bundle")
+    archiveFileName = "e4steam-api-${centralVersion}-central-bundle.zip"
+    exclude(
+            "**/*.module",
+            "**/*.module.*",
+            "**/maven-metadata.xml",
+            "**/maven-metadata.xml.*",
+            "**/*.asc.md5",
+            "**/*.asc.sha1",
+            "**/*.asc.sha256",
+            "**/*.asc.sha512"
+    )
+    doFirst {
+        File artifactDirectory = centralArtifactDirectory.get().asFile
+        def artifactNames = [
+                "${centralArtifactId}-${centralVersion}.pom",
+                "${centralArtifactId}-${centralVersion}.jar",
+                "${centralArtifactId}-${centralVersion}-sources.jar",
+                "${centralArtifactId}-${centralVersion}-javadoc.jar"
+        ]
+        artifactNames.each { artifactName ->
+            ["", ".asc", ".md5", ".sha1"].each { suffix ->
+                File requiredFile = new File(artifactDirectory, artifactName + suffix)
+                if (!requiredFile.isFile() || requiredFile.length() == 0L) {
+                    throw new GradleException(
+                            "Incomplete Maven Central bundle; missing ${requiredFile}"
+                    )
+                }
+            }
+        }
+    }
+}
+
+tasks.register("apiJarAudit") {
+    group = "verification"
+    description = "Verify Java 8 bytecode and the loader-independent API boundary."
+    dependsOn jar
+    doLast {
+        File artifact = jar.archiveFile.get().asFile
+        def forbiddenConstants = [
+                "net/minecraft/",
+                "net/fabricmc/",
+                "net/minecraftforge/",
+                "net/neoforged/",
+                "org/quiltmc/",
+                "com/sun/jna/",
+                "com/codedisaster/steamworks/",
+                "link/e4steam/internal/",
+                "link/e4steam/steam/"
+        ]
+        def zip = new java.util.zip.ZipFile(artifact)
+        try {
+            zip.entries().each { entry ->
+                if (!entry.name.endsWith(".class")) {
+                    return
+                }
+                if (!entry.name.startsWith("link/e4steam/api/")) {
+                    throw new GradleException("API JAR exposes a class outside link.e4steam.api: ${entry.name}")
+                }
+                byte[] bytes = zip.getInputStream(entry).readAllBytes()
+                def stream = new DataInputStream(new ByteArrayInputStream(bytes))
+                try {
+                    if (Integer.toUnsignedLong(stream.readInt()) != 3405691582L) {
+                        throw new GradleException("Invalid class in API JAR: ${entry.name}")
+                    }
+                    stream.readUnsignedShort()
+                    int major = stream.readUnsignedShort()
+                    if (major != 52) {
+                        throw new GradleException("${entry.name} uses classfile major ${major}; expected Java 8 (52)")
+                    }
+                } finally {
+                    stream.close()
+                }
+                String constants = new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+                forbiddenConstants.each { forbidden ->
+                    if (constants.contains(forbidden)) {
+                        throw new GradleException("${entry.name} references forbidden API dependency ${forbidden}")
+                    }
+                }
+            }
+        } finally {
+            zip.close()
+        }
+    }
+}
+
+def computeApiSurfaceHash = {
+    File artifact = jar.archiveFile.get().asFile
+    def classNames = []
+    def zip = new java.util.zip.ZipFile(artifact)
+    try {
+        zip.entries().each { entry ->
+            if (entry.name.startsWith("link/e4steam/api/") && entry.name.endsWith(".class")) {
+                classNames.add(entry.name.substring(0, entry.name.length() - 6).replace('/', '.'))
+            }
+        }
+    } finally {
+        zip.close()
+    }
+    def signatures = []
+    def loader = new URLClassLoader([artifact.toURI().toURL()] as URL[], (ClassLoader) null)
+    try {
+        classNames.sort().each { name ->
+            Class<?> type = Class.forName(name, false, loader)
+            if (!java.lang.reflect.Modifier.isPublic(type.modifiers)) return
+            signatures.add("TYPE " + type.toGenericString())
+            type.declaredConstructors.findAll {
+                !it.synthetic && (java.lang.reflect.Modifier.isPublic(it.modifiers)
+                        || java.lang.reflect.Modifier.isProtected(it.modifiers))
+            }.each { signatures.add("CTOR " + it.toGenericString()) }
+            type.declaredMethods.findAll {
+                !it.synthetic && !it.bridge && (java.lang.reflect.Modifier.isPublic(it.modifiers)
+                        || java.lang.reflect.Modifier.isProtected(it.modifiers))
+            }.each { signatures.add("METHOD " + it.toGenericString()) }
+            type.declaredFields.findAll {
+                !it.synthetic && (java.lang.reflect.Modifier.isPublic(it.modifiers)
+                        || java.lang.reflect.Modifier.isProtected(it.modifiers))
+            }.each { signatures.add("FIELD " + it.toGenericString()) }
+        }
+    } finally {
+        loader.close()
+    }
+    signatures.sort()
+    def digest = java.security.MessageDigest.getInstance("SHA-256")
+    signatures.each {
+        digest.update(it.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+        digest.update((byte) 10)
+    }
+    return digest.digest().collect { String.format("%02x", it & 0xff) }.join()
+}
+
+tasks.register("printApiSurfaceHash") {
+    group = "help"
+    description = "Print the canonical public API surface hash for an intentional baseline update."
+    dependsOn jar
+    doLast {
+        println(computeApiSurfaceHash())
+    }
+}
+
+tasks.register("apiBinaryCompatibilityCheck") {
+    group = "verification"
+    description = "Reject accidental public API surface changes against the 1.0.0 baseline."
+    dependsOn jar
+    doLast {
+        File baseline = file("api-surface.sha256")
+        if (!baseline.isFile()) {
+            throw new GradleException("Missing first public API surface baseline")
+        }
+        String expected = baseline.readLines("UTF-8")
+                .find { !it.trim().isEmpty() && !it.trim().startsWith("#") }
+                ?.trim()
+        String actual = computeApiSurfaceHash()
+        if (expected != actual) {
+            throw new GradleException(
+                    "Public API changed: expected ${expected}, actual ${actual}. "
+                            + "Use a compatible service extension or intentionally bump the API baseline."
+            )
+        }
+    }
+}
+
+check.dependsOn(apiJarAudit, apiBinaryCompatibilityCheck, javadoc)

@@ -1,0 +1,30 @@
+plugins {
+    id "java-library"
+}
+
+version = rootProject.api_version
+base.archivesName = "e4steam-api-testkit"
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+    options.compilerArgs += ["-Xlint:all", "-Xlint:-options", "-Werror"]
+}
+
+dependencies {
+    api project(":api")
+    testImplementation platform("org.junit:junit-bom:5.10.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+javadoc {
+    options.encoding = "UTF-8"
+    options.charSet = "UTF-8"
+    options.addStringOption("Xdoclint:all,-missing", "-quiet")
+}
+
+check.dependsOn(javadoc)

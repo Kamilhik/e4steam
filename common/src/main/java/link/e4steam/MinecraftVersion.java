@@ -5,9 +5,12 @@ import net.minecraft.SharedConstants;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Resolves the running game version without binding to one WorldVersion API. */
 public final class MinecraftVersion {
+    private static final Logger LOGGER = LoggerFactory.getLogger("e4steam");
     private static final Pattern RELEASE_NAME = Pattern.compile(
             "^(?:1\\.\\d+(?:\\.\\d+)?|\\d{2}\\.\\d+(?:\\.\\d+)?)$"
     );
@@ -34,7 +37,7 @@ public final class MinecraftVersion {
                 // Try the next mapping/version-specific accessor.
             }
         }
-        E4steamClient.LOGGER.warn("Could not determine the running Minecraft version");
+        LOGGER.warn("Could not determine the running Minecraft version");
         return "unknown";
     }
 

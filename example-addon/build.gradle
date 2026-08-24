@@ -1,0 +1,25 @@
+plugins {
+    id "java-library"
+}
+
+version = rootProject.api_version
+base.archivesName = "e4steam-example-addon"
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+    options.compilerArgs += ["-Xlint:all", "-Xlint:-options", "-Werror"]
+}
+
+dependencies {
+    implementation project(":api")
+    testImplementation project(":api-testkit")
+    testImplementation platform("org.junit:junit-bom:5.10.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+check.dependsOn(test)

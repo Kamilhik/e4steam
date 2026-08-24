@@ -3,6 +3,7 @@ architectury {
 }
 
 dependencies {
+    api project(":api")
     // We depend on fabric loader here to use the fabric @Environment annotations and get the mixin dependencies
     // Do NOT use other classes from fabric loader
     modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
@@ -10,10 +11,14 @@ dependencies {
     implementation("com.code-disaster.steamworks4j:steamworks4j:${rootProject.steamworks4j_version}") {
         transitive = false
     }
+    implementation("com.code-disaster.steamworks4j:steamworks4j-server:${rootProject.steamworks4j_version}") {
+        transitive = false
+    }
     // Minecraft provides JNA at runtime (5.10.0 or newer in every supported line).
     compileOnly "net.java.dev.jna:jna:5.10.0"
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation project(":api-testkit")
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 

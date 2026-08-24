@@ -148,7 +148,9 @@ jobs:
       - name: Build, audit and collect all modern and retro runtime artifacts
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --stacktrace clean dependencyLicenseAudit releaseJars
+          ./gradlew --no-daemon --stacktrace --max-workers=1 \
+            -Dorg.gradle.jvmargs=-Xmx3G \
+            clean dependencyLicenseAudit releaseJars
 
   retro-artifacts:
     name: Retro branch artifact matrix

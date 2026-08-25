@@ -13,7 +13,7 @@ public final class SteamMinecraftAuthentication {
         long dedicated = E4steamDedicated.authenticatedMinecraftPeer(remoteAddress);
         return dedicated != 0L
                 ? dedicated
-                : SteamClientApiBridge.authenticatedMinecraftPeer(remoteAddress);
+                : SteamRuntime.get().authenticatedMinecraftPeer(remoteAddress);
     }
 
     public static boolean rejectUntrustedDedicatedIngress(SocketAddress remoteAddress) {

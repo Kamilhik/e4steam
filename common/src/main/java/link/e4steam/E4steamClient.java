@@ -5,7 +5,6 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import link.e4steam.steam.SteamAccessMode;
 import link.e4steam.steam.SteamAddress;
 import link.e4steam.steam.SteamDedicatedAddress;
-import link.e4steam.steam.SteamClientApiAdapter;
 import link.e4steam.steam.SteamRuntime;
 import link.e4steam.steam.SteamSession;
 import link.e4steam.internal.addon.AddonCandidate;
@@ -46,7 +45,6 @@ public class E4steamClient {
     public static void init(RuntimeEnvironment environment, List<AddonCandidate> addons) {
         Config.INSTANCE.id(); // Touch to initialize for McQoy
         SteamRuntime.preloadCompatibilityClasses();
-        SteamClientApiAdapter.install();
         CoreApiPlatform.start(environment, addons);
         SteamRuntime.get().startAtGameLaunchAsync();
     }

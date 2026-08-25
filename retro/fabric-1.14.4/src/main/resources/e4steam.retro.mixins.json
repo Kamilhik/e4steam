@@ -5,9 +5,9 @@
   "compatibilityLevel": "JAVA_8",
   "client": [
     "ConnectScreenAddressRetroMixin",
-    "ChatScreenCommandSuggestions114Mixin",
+    "ChatScreenCommandSuggestionsMixin",
     "PauseScreenStringMixin",
-    "ScreenCommand114Mixin",
+    "ScreenCommandMixin",
     "ServerGamePacketListenerRetroMixin",
     "ServerConnectionListenerMixin",
     "ServerLoginPacketListenerRetroMixin",

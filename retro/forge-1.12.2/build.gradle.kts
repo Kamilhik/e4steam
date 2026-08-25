@@ -15,6 +15,7 @@ unimined.minecraft {
 
 sourceSets.main {
     java.srcDir(rootProject.file("adapters/forge-1.9-1.12/src/main/java"))
+    java.srcDir(rootProject.file("adapters/forge-1.8-1.12-login/src/main/java"))
     java.srcDir(rootProject.file("adapters/netty-endpoint/src/main/java"))
 }
 

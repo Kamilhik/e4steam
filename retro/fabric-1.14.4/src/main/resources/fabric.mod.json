@@ -8,7 +8,7 @@
   "license": "Apache-2.0",
   "environment": "client",
   "entrypoints": {
-    "client": ["link.e4steam.retro.fabric.E4steamFabric114"]
+    "client": ["link.e4steam.retro.fabric.E4steamFabric"]
   },
   "mixins": ["e4steam.retro.mixins.json"],
   "depends": {

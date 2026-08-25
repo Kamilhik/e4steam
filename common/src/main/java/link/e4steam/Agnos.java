@@ -20,9 +20,8 @@ public class Agnos {
         return null;
     }
 
-    @ExpectPlatform
     public static boolean proactivelyAcceptSteamPeerSessions() {
-        return false;
+        return true;
     }
 
     @ExpectPlatform

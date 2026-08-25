@@ -1,6 +1,7 @@
 package link.e4steam.internal.api;
 
 import link.e4steam.Agnos;
+import link.e4steam.HexCodec;
 import link.e4steam.api.ApiErrorCode;
 import link.e4steam.api.ApiLimits;
 import link.e4steam.api.ApiResult;
@@ -303,11 +304,8 @@ final class CoreStorageService implements StorageService {
 
     private static String fileName(StorageKey key) {
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(key.value().getBytes(StandardCharsets.UTF_8));
-            StringBuilder value = new StringBuilder(68);
-            for (byte item : digest) value.append(String.format(java.util.Locale.ROOT, "%02x", item & 0xff));
-            return value.append(".e4s").toString();
+            return HexCodec.encode(MessageDigest.getInstance("SHA-256")
+                    .digest(key.value().getBytes(StandardCharsets.UTF_8))) + ".e4s";
         } catch (NoSuchAlgorithmException impossible) {
             throw new IllegalStateException("SHA-256 is unavailable", impossible);
         }

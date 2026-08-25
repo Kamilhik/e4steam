@@ -1,6 +1,7 @@
 package link.e4steam.internal.api;
 
 import link.e4steam.Agnos;
+import link.e4steam.HexCodec;
 import link.e4steam.api.ApiErrorCode;
 import link.e4steam.api.ApiResult;
 import link.e4steam.api.addon.AddonId;
@@ -253,12 +254,8 @@ final class CoreConfigService implements ConfigService {
 
     private static String digest(String value) {
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder text = new StringBuilder(64);
-            for (byte item : digest) text.append(String.format(
-                    java.util.Locale.ROOT, "%02x", item & 0xff));
-            return text.toString();
+            return HexCodec.encode(MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException impossible) {
             throw new IllegalStateException("SHA-256 is unavailable", impossible);
         }

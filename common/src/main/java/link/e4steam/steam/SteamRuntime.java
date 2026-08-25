@@ -107,7 +107,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
     private static final Duration STEAM_TASK_TIMEOUT = Duration.ofSeconds(10);
     private static final long RUNTIME_IDLE_SHUTDOWN_MILLIS = 1_000;
 
-    private static final SteamRuntime INSTANCE = new SteamRuntime(new SteamworksApi(), true);
+    private static final SteamRuntime INSTANCE = new SteamRuntime();
 
     private final Object lifecycleLock = new Object();
     private final Object peerSessionLock = new Object();
@@ -171,12 +171,10 @@ public final class SteamRuntime implements SteamBridgeRuntime {
     private final AtomicBoolean launchStartRequested = new AtomicBoolean();
     private volatile Activity launchActivity;
 
-    SteamRuntime(SteamApi api, boolean installShutdownHook) {
-        steamLifecycle = new SteamLifecycle(api);
-        if (installShutdownHook) {
-            Thread shutdownHook = new Thread(this::shutdown, "e4steam-steam-shutdown");
-            Runtime.getRuntime().addShutdownHook(shutdownHook);
-        }
+    SteamRuntime() {
+        steamLifecycle = new SteamLifecycle(new SteamworksApi());
+        Thread shutdownHook = new Thread(this::shutdown, "e4steam-steam-shutdown");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
 
     public static SteamRuntime get() {

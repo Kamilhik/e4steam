@@ -47,7 +47,7 @@ class SteamLifecycleTest {
         lifecycle.close();
     }
 
-    private static final class FakeSteamApi implements SteamApi {
+    private static final class FakeSteamApi extends SteamworksApi {
         private boolean running = true;
         private int loadCalls;
         private int initCalls;

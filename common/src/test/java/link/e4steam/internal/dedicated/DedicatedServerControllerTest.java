@@ -2,9 +2,10 @@ package link.e4steam.internal.dedicated;
 
 import link.e4steam.api.dedicated.DedicatedServerService.DedicatedAccessMode;
 import link.e4steam.api.dedicated.DedicatedServerService.DedicatedServerState;
-import link.e4steam.steam.SteamRuntimeBackend;
+import link.e4steam.steam.SteamGameServerRuntimeBackend;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
@@ -18,13 +19,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DedicatedServerControllerTest {
     @Test
     void readinessNeedsBothMinecraftSignalsAndIngressRemainsFailClosed() throws Exception {
-        FakeBackend[] backend = new FakeBackend[1];
-        DedicatedServerController controller = new DedicatedServerController(config(), listener -> {
-            backend[0] = new FakeBackend(listener);
-            return backend[0];
-        });
+        FakeBackend backend = new FakeBackend();
+        DedicatedServerController controller = new DedicatedServerController(config(), backend);
 
         controller.minecraftListening(InetAddress.getByName("127.0.0.1"), 25565);
+        controller.backendState(SteamGameServerRuntimeBackend.State.NATIVES_READY, "");
+        controller.backendState(SteamGameServerRuntimeBackend.State.STEAM_INITIALIZING, "");
+        controller.backendState(SteamGameServerRuntimeBackend.State.STEAM_LOGGING_ON, "");
+        controller.backendState(SteamGameServerRuntimeBackend.State.TRANSPORT_READY, "");
         assertFalse(controller.accepting());
         controller.minecraftReady();
 
@@ -36,7 +38,7 @@ class DedicatedServerControllerTest {
                 controller.service().snapshot().value().orElseThrow().state());
 
         controller.minecraftStopped();
-        assertTrue(backend[0].stopped.get());
+        assertTrue(backend.stopped.get());
         assertFalse(controller.accepting());
         assertEquals(DedicatedServerState.STOPPED,
                 controller.service().snapshot().value().orElseThrow().state());
@@ -47,21 +49,14 @@ class DedicatedServerControllerTest {
                 true, DedicatedAccessMode.UNLISTED, 8, 65535, "test server");
     }
 
-    private static final class FakeBackend implements SteamRuntimeBackend {
-        private final StateListener listener;
+    private static final class FakeBackend extends SteamGameServerRuntimeBackend {
         private final AtomicBoolean stopped = new AtomicBoolean();
         private volatile State state = State.OFF;
 
-        private FakeBackend(StateListener listener) { this.listener = listener; }
-
-        @Override public RuntimeKind kind() { return RuntimeKind.DEDICATED_GAME_SERVER; }
+        private FakeBackend() { super(null); }
 
         @Override public CompletionStage<RuntimeReady> start(Config config) {
-            transition(State.CONFIG_VALIDATED);
-            transition(State.NATIVES_READY);
-            transition(State.STEAM_INITIALIZING);
-            transition(State.STEAM_LOGGING_ON);
-            transition(State.TRANSPORT_READY);
+            state = State.TRANSPORT_READY;
             return CompletableFuture.completedFuture(new RuntimeReady(77L, 480L));
         }
 
@@ -69,14 +64,10 @@ class DedicatedServerControllerTest {
 
         @Override public CompletionStage<Void> stop(ShutdownReason reason) {
             stopped.set(true);
-            transition(State.DRAINING);
-            transition(State.STOPPED);
+            state = State.STOPPED;
             return CompletableFuture.completedFuture(null);
         }
 
-        private void transition(State next) {
-            state = next;
-            listener.onState(next, "");
-        }
+        @Override public int availablePacketSize() throws IOException { return 0; }
     }
 }

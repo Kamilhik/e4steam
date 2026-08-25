@@ -7,6 +7,7 @@ unimined.minecraft {
 }
 sourceSets.main {
     java.srcDir(rootProject.file("adapters/forge-modern/src/main/java"))
+    java.srcDir(rootProject.file("adapters/forge-1.13-1.14-hooks/src/main/java"))
     java.srcDir(rootProject.file("adapters/modern-listener/src/main/java"))
     java.srcDir(rootProject.file("adapters/minecraft-1.14-1.16-command/src/main/java"))
     java.srcDir(rootProject.file("adapters/minecraft-1.14-1.15-ui/src/main/java"))

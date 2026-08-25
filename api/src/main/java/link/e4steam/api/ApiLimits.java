@@ -34,8 +34,6 @@ public final class ApiLimits {
     public static final int MAX_SKIN_BYTES = 2 * 1_048_576;
     /** Maximum bounded diagnostics fields. */
     public static final int MAX_DIAGNOSTIC_FIELDS = 256;
-    /** Maximum bounded completion suggestions. */
-    public static final int MAX_COMMAND_SUGGESTIONS = 100;
     /** Maximum registration count per contribution family and addon. */
     public static final int MAX_REGISTRATIONS_PER_FAMILY = 1_000;
     /** Maximum default timeout exposed by public asynchronous operations. */

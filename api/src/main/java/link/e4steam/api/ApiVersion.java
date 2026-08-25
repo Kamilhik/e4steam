@@ -92,11 +92,6 @@ public final class ApiVersion implements Comparable<ApiVersion> {
     /** Returns whether this version has no pre-release label. */
     public boolean isStable() { return preRelease.isEmpty(); }
 
-    /** Returns whether this version has the same major compatibility line. */
-    public boolean isSameMajor(ApiVersion other) {
-        return other != null && major == other.major;
-    }
-
     @Override
     public int compareTo(ApiVersion other) {
         Objects.requireNonNull(other, "other");

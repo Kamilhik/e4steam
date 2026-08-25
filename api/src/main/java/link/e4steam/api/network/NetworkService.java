@@ -7,9 +7,6 @@ import link.e4steam.api.Registration;
 import link.e4steam.api.identity.IdentityService.PeerId;
 import link.e4steam.api.session.SessionService.SessionId;
 
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.Charset;
-import java.nio.charset.CodingErrorAction;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
 import java.util.regex.Pattern;
@@ -117,69 +114,5 @@ public interface NetworkService {
         /** Returns negotiation/lifecycle state. */ ChannelState state();
         /** Sends a defensive payload after direction and negotiation checks. */
         CompletionStage<ApiResult<SendStatus>> send(SessionId sessionId, PeerId peerId, byte[] payload);
-    }
-
-    /** Safe bounded writer for addon schemas. */
-    final class MessageWriter {
-        private static final Charset UTF8 = Charset.forName("UTF-8");
-        private final ByteArrayOutputStream output = new ByteArrayOutputStream();
-        private final int limit;
-        /** Creates a writer with a strict maximum. */ public MessageWriter(int limit) {
-            if (limit < 1 || limit > ApiLimits.MAX_CHANNEL_MESSAGE_BYTES) throw new IllegalArgumentException("invalid limit");
-            this.limit = limit;
-        }
-        /** Writes an unsigned bounded varint. */ public MessageWriter writeVarInt(int value) {
-            if (value < 0) throw new IllegalArgumentException("value must be non-negative");
-            int current = value;
-            do { ensure(1); int bits = current & 0x7f; current >>>= 7; output.write(current == 0 ? bits : bits | 0x80); } while (current != 0);
-            return this;
-        }
-        /** Writes bounded UTF-8 text. */ public MessageWriter writeUtf8(String value, int maximumChars) {
-            String checked = ApiValidation.text(value, "value", maximumChars);
-            byte[] bytes = checked.getBytes(UTF8); writeVarInt(bytes.length); ensure(bytes.length); output.write(bytes, 0, bytes.length); return this;
-        }
-        /** Writes a bounded byte array. */ public MessageWriter writeBytes(byte[] value, int maximumBytes) {
-            byte[] copy = ApiValidation.bytes(value, maximumBytes, "value"); writeVarInt(copy.length); ensure(copy.length); output.write(copy, 0, copy.length); return this;
-        }
-        /** Returns a defensive encoded payload. */ public byte[] toByteArray() { return output.toByteArray(); }
-        private void ensure(int size) { if (size < 0 || output.size() > limit - size) throw new IllegalStateException("message size limit exceeded"); }
-    }
-
-    /** Safe bounded reader that checks lengths before allocating. */
-    final class MessageReader {
-        private static final Charset UTF8 = Charset.forName("UTF-8");
-        private final byte[] input;
-        private int position;
-        /** Creates a defensive reader. */ public MessageReader(byte[] input, int maximumBytes) { this.input = ApiValidation.bytes(input, maximumBytes, "input"); }
-        /** Reads a non-negative varint with overflow protection. */ public int readVarInt() {
-            int value = 0;
-            for (int index = 0; index < 5; index++) {
-                int next = readUnsignedByte();
-                if (index == 4 && (next & 0xf8) != 0) {
-                    throw new IllegalArgumentException("varint overflow");
-                }
-                value |= (next & 0x7f) << (index * 7);
-                if ((next & 0x80) == 0) {
-                    if (index > 0 && next == 0) {
-                        throw new IllegalArgumentException("non-canonical varint");
-                    }
-                    return value;
-                }
-            }
-            throw new IllegalArgumentException("varint overflow");
-        }
-        /** Reads a bounded byte array. */ public byte[] readBytes(int maximumBytes) {
-            int size = readVarInt(); if (size < 0 || size > maximumBytes || size > remaining()) throw new IllegalArgumentException("invalid byte length");
-            byte[] value = new byte[size]; System.arraycopy(input, position, value, 0, size); position += size; return value;
-        }
-        /** Reads strictly valid bounded UTF-8. */ public String readUtf8(int maximumChars, int maximumBytes) {
-            byte[] bytes = readBytes(maximumBytes);
-            try {
-                String value = UTF8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(java.nio.ByteBuffer.wrap(bytes)).toString();
-                return ApiValidation.text(value, "utf8", maximumChars);
-            } catch (java.nio.charset.CharacterCodingException exception) { throw new IllegalArgumentException("invalid UTF-8"); }
-        }
-        /** Returns unread bytes. */ public int remaining() { return input.length - position; }
-        private int readUnsignedByte() { if (position >= input.length) throw new IllegalArgumentException("truncated message"); return input[position++] & 0xff; }
     }
 }

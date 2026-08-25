@@ -1,5 +1,7 @@
 package link.e4steam.api.runtime;
 
+import link.e4steam.api.ApiValidation;
+
 import java.util.Objects;
 
 /** Immutable Minecraft loader id and version snapshot. */
@@ -9,8 +11,8 @@ public final class LoaderInfo {
 
     /** Creates one sanitized loader snapshot. */
     public LoaderInfo(String id, String version) {
-        this.id = safe(id, "loader id", 32);
-        this.version = safe(version, "loader version", 64);
+        this.id = ApiValidation.text(id, "loader id", 32);
+        this.version = ApiValidation.text(version, "loader version", 64);
     }
 
     /** Returns the lowercase loader id. */
@@ -32,13 +34,4 @@ public final class LoaderInfo {
 
     @Override
     public String toString() { return id + '-' + version; }
-
-    private static String safe(String value, String field, int max) {
-        if (value == null) throw new NullPointerException(field);
-        String checked = value.trim();
-        if (checked.isEmpty() || checked.length() > max) {
-            throw new IllegalArgumentException(field + " has an invalid length");
-        }
-        return checked;
-    }
 }

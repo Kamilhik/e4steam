@@ -1,6 +1,6 @@
 package link.e4steam.api.capability;
 
-import link.e4steam.api.ApiLimits;
+import link.e4steam.api.ApiValidation;
 
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -14,14 +14,7 @@ public final class CapabilityId implements Comparable<CapabilityId> {
 
     /** Creates and validates one capability id. */
     public CapabilityId(String value) {
-        if (value == null) throw new NullPointerException("value");
-        String checked = value.trim();
-        if (checked.isEmpty()
-                || checked.length() > ApiLimits.MAX_IDENTIFIER_LENGTH
-                || !PATTERN.matcher(checked).matches()) {
-            throw new IllegalArgumentException("Invalid capability id");
-        }
-        this.value = checked;
+        this.value = ApiValidation.identifier(value, "capabilityId", PATTERN);
     }
 
     /** Returns the canonical dotted identifier. */

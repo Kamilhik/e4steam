@@ -24,15 +24,15 @@ sourceSets {
 
 dependencies {
     modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
-    implementation "folk.sisby:kaleido-config:0.3.3+1.3.2"
+    implementation libs.kaleido.config
     implementation("com.code-disaster.steamworks4j:steamworks4j:${rootProject.steamworks4j_version}") {
         transitive = false
     }
     implementation("com.code-disaster.steamworks4j:steamworks4j-server:${rootProject.steamworks4j_version}") {
         transitive = false
     }
-    compileOnly "net.java.dev.jna:jna:5.10.0"
-    testImplementation platform("org.junit:junit-bom:5.10.2")
+    compileOnly libs.jna
+    testImplementation platform(libs.junit.bom)
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }

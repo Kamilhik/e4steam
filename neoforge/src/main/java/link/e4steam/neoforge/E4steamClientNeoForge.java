@@ -1,9 +1,7 @@
 package link.e4steam.neoforge;
 
 import link.e4steam.E4steamClient;
-import link.e4steam.MinecraftVersion;
-import link.e4steam.api.runtime.RuntimeMode;
-import link.e4steam.internal.api.RuntimeEnvironment;
+import link.e4steam.LoaderSupport;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -12,9 +10,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 public final class E4steamClientNeoForge {
     private E4steamClientNeoForge(String loaderVersion) {
         E4steamClient.init(
-                new RuntimeEnvironment("neoforge", loaderVersion, MinecraftVersion.current(),
-                        RuntimeMode.CLIENT, !System.getProperty("os.name", "")
-                        .toLowerCase(java.util.Locale.ROOT).contains("windows")),
+                LoaderSupport.clientEnvironment("neoforge", loaderVersion),
                 link.e4steam.internal.addon.AddonDiscoverySupport.serviceLoader(
                         getClass().getClassLoader())
         );

@@ -1,7 +1,0 @@
-pluginManagement {
-    repositories {
-        gradlePluginPortal()
-        maven { url = 'https://maven.minecraftforge.net' }
-    }
-}
-rootProject.name = 'e4steam-forge-mc1.16.5'

@@ -66,12 +66,7 @@ class DedicatedRuntimeConfigTest {
                 "max-peers = 12",
                 "query-port = 65535",
                 "server-name = \"Private test world\"",
-                "whitelist = [\"76561198000000001\", \"76561198000000002\"]",
-                "auth-mode = \"ANONYMOUS\"",
-                "publication = false",
-                "ingress-guard = \"STEAM_ONLY\"",
-                "diagnostics-level = \"BASIC\"",
-                "relay-policy = \"OFFICIAL_AUTOMATIC\""
+                "whitelist = [\"76561198000000001\", \"76561198000000002\"]"
         ), StandardCharsets.UTF_8);
         Properties overrides = new Properties();
         overrides.setProperty("e4steam.dedicated.maxPeers", "6");

@@ -25,16 +25,10 @@ has not completed the two-client matrix.
    query-port = 65535
    server-name = "e4steam Minecraft server"
    whitelist = ["76561198000000001"]
-   auth-mode = "ANONYMOUS"
-   publication = false
-   ingress-guard = "STEAM_ONLY"
-   diagnostics-level = "BASIC"
-   relay-policy = "OFFICIAL_AUTOMATIC"
    ```
 
 The file is an intentionally strict bounded TOML subset. Unknown/duplicate
-fields, symlinks, unsafe values, public publication, disabled ingress or a
-non-anonymous login mode fail startup. `E4STEAM_DEDICATED_*` environment values
+fields, symlinks and unsafe values fail startup. `E4STEAM_DEDICATED_*` environment values
 and `-De4steam.dedicated.*` properties can override ordinary non-secret fields;
 do not pass credentials through either mechanism. This backend has no GSLT
 input at all.

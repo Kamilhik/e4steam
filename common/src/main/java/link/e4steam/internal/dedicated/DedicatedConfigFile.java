@@ -20,8 +20,7 @@ final class DedicatedConfigFile {
     private static final int MAX_LINES = 256;
     private static final Set<String> ALLOWED = new HashSet<>(Arrays.asList(
             "schema-version", "enabled", "access-mode", "max-peers", "query-port",
-            "server-name", "whitelist", "auth-mode", "publication",
-            "ingress-guard", "diagnostics-level", "relay-policy"
+            "server-name", "whitelist"
     ));
 
     private DedicatedConfigFile() {
@@ -177,27 +176,6 @@ final class DedicatedConfigFile {
         if (schema == null || !Integer.toString(SCHEMA_VERSION).equals(schema)) {
             throw invalid("schema-version must be " + SCHEMA_VERSION);
         }
-        require(values, "auth-mode", "ANONYMOUS");
-        require(values, "publication", "false");
-        require(values, "ingress-guard", "STEAM_ONLY");
-        requireOneOf(values, "diagnostics-level", "OFF", "BASIC");
-        require(values, "relay-policy", "OFFICIAL_AUTOMATIC");
-    }
-
-    private static void require(Map<String, String> values, String key, String expected) {
-        String value = values.get(key);
-        if (value != null && !expected.equalsIgnoreCase(value)) {
-            throw invalid(key + " cannot disable the security baseline");
-        }
-    }
-
-    private static void requireOneOf(Map<String, String> values, String key, String... allowed) {
-        String value = values.get(key);
-        if (value == null) return;
-        for (String candidate : allowed) {
-            if (candidate.equalsIgnoreCase(value)) return;
-        }
-        throw invalid("unsupported " + key);
     }
 
     private static void copy(Map<String, String> parsed, Properties target,

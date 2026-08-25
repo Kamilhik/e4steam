@@ -139,7 +139,7 @@ class AddonManagerTest {
                 new TestServiceRegistry()
         );
         return new AddonManager(ApiConstants.API_VERSION, new BuiltinCapabilityPolicy(denied),
-                factory, executor, timeout);
+                factory, executor, timeout, handle -> { });
     }
 
     private static AddonCandidate candidate(String id, List<AddonDependency> dependencies, E4steamAddon addon) {

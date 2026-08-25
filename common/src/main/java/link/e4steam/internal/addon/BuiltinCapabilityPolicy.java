@@ -10,7 +10,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /** Known 1.0 capabilities with an optional deny set supplied by local configuration. */
-public final class BuiltinCapabilityPolicy implements CapabilityGrantPolicy {
+public final class BuiltinCapabilityPolicy {
     private static final Set<CapabilityId> KNOWN = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(
             Capabilities.SESSION_OBSERVE,
             Capabilities.SESSION_CONTROL,
@@ -47,9 +47,9 @@ public final class BuiltinCapabilityPolicy implements CapabilityGrantPolicy {
         this.denied = Collections.unmodifiableSet(new LinkedHashSet<>(denied));
     }
 
-    @Override public Set<CapabilityId> knownCapabilities() { return KNOWN; }
+    public Set<CapabilityId> knownCapabilities() { return KNOWN; }
 
-    @Override public boolean isAllowed(AddonDescriptor descriptor, CapabilityId capability) {
+    public boolean isAllowed(AddonDescriptor descriptor, CapabilityId capability) {
         return KNOWN.contains(capability) && !denied.contains(capability);
     }
 }

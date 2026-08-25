@@ -6,7 +6,7 @@ import java.util.zip.ZipFile
 plugins {
     java
     id("xyz.wagyourtail.unimined") version "1.4.2-SNAPSHOT" apply false
-    id("com.github.johnrengelman.shadow") version "8.1.1" apply false
+    id("com.gradleup.shadow") version "8.3.6" apply false
 }
 
 group = "link.e4steam"
@@ -99,7 +99,7 @@ configure(runtimeProjects) {
     val minecraftVersion = name.substringAfter('-')
     val minecraftBranch = retroMinecraftBranch(minecraftVersion)
     apply(plugin = "java")
-    apply(plugin = "com.github.johnrengelman.shadow")
+    apply(plugin = "com.gradleup.shadow")
 
     extensions.configure<SourceSetContainer> {
         named("main") {

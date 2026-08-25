@@ -1,10 +1,8 @@
 package link.e4steam.api.testkit;
 
-import link.e4steam.api.ApiError;
 import link.e4steam.api.ApiErrorCode;
 import link.e4steam.api.ApiLimits;
 import link.e4steam.api.ApiResult;
-import link.e4steam.api.Retryability;
 import link.e4steam.api.storage.StorageService;
 
 import java.util.ArrayList;
@@ -12,8 +10,10 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+
+import static link.e4steam.api.testkit.TestResults.completed;
+import static link.e4steam.api.testkit.TestResults.failure;
 
 /** Pathless quota-bounded in-memory storage backend for addon tests. */
 public final class InMemoryStorageService implements StorageService {
@@ -45,6 +45,4 @@ public final class InMemoryStorageService implements StorageService {
     private Map<StorageKey, StoredValue> map(StorageScope scope) { if (scope == null) throw new NullPointerException("scope"); return data.get(scope); }
     private static long usedBytes(Map<StorageKey, StoredValue> values) { long bytes = 0L; for (StoredValue value : values.values()) bytes += value.size(); return bytes; }
     private static QuotaSnapshot quotaValue(Map<StorageKey, StoredValue> values) { return new QuotaSnapshot(usedBytes(values), MAX_BYTES, values.size(), MAX_ENTRIES); }
-    private static <T> CompletionStage<T> completed(T value) { return CompletableFuture.completedFuture(value); }
-    private static <T> ApiResult<T> failure(ApiErrorCode code, String key, String operation) { return ApiResult.failure(new ApiError(code, "e4steam:" + key, Retryability.PERMANENT, operation, "", "testkit")); }
 }

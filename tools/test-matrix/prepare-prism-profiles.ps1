@@ -8,21 +8,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "common.ps1")
+
 if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
     $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-}
-
-function Assert-ChildPath {
-    param(
-        [Parameter(Mandatory = $true)][string]$Parent,
-        [Parameter(Mandatory = $true)][string]$Child
-    )
-
-    $parentPath = [IO.Path]::GetFullPath($Parent).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
-    $childPath = [IO.Path]::GetFullPath($Child)
-    if (-not $childPath.StartsWith($parentPath, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Refusing to modify a path outside $parentPath`: $childPath"
-    }
 }
 
 function Write-Utf8NoBom {
@@ -169,7 +158,7 @@ if ([int]$manifest.schemaVersion -ne 1) {
 New-Item -ItemType Directory -Path $instancesRoot -Force | Out-Null
 New-Item -ItemType Directory -Path $dependencyCache -Force | Out-Null
 
-$backupRoot = Join-Path $PrismRoot ("e4steam-test-profile-backups\" + [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss"))
+$backupRoot = New-TestProfileBackupRoot -PrismRoot $PrismRoot
 $created = [Collections.Generic.List[object]]::new()
 
 foreach ($profile in $manifest.profiles) {

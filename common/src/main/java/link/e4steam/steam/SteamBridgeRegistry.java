@@ -110,10 +110,6 @@ final class SteamBridgeRegistry<B, U> {
         return bridges.values().stream().anyMatch(predicate);
     }
 
-    long count(Predicate<B> predicate) {
-        return bridges.values().stream().filter(predicate).count();
-    }
-
     boolean isEmpty() {
         return bridges.isEmpty();
     }

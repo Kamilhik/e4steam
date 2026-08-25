@@ -11,7 +11,6 @@ import link.e4steam.steam.SteamSession;
 import link.e4steam.internal.addon.AddonCandidate;
 import link.e4steam.internal.api.CoreApiPlatform;
 import link.e4steam.internal.api.RuntimeEnvironment;
-import link.e4steam.api.runtime.RuntimeMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.ConnectScreen;
@@ -28,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletionException;
-import java.util.Collections;
 import java.util.List;
 
 public class E4steamClient {
@@ -36,11 +34,6 @@ public class E4steamClient {
     public static volatile SteamSession session;
     public static volatile SteamAccessMode selectedAccessMode = SteamAccessMode.FRIENDS_ONLY;
     public static final Logger LOGGER = LoggerFactory.getLogger(E4steamClient.MOD_ID);
-
-    public static void init() {
-        init(new RuntimeEnvironment("unknown", "unknown", "unknown", RuntimeMode.CLIENT, true),
-                Collections.emptyList());
-    }
 
     /** Initializes the stable addon platform from entry points already discovered by the loader. */
     public static void init(RuntimeEnvironment environment, List<AddonCandidate> addons) {

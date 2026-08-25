@@ -73,7 +73,7 @@ final class CoreRuntimeService implements RuntimeService {
             flags.add(CompatibilityFlag.STEAM_CLIENT_BACKEND_AVAILABLE);
         }
         if (environment.mode() == RuntimeMode.DEDICATED_SERVER
-                && steamGameServerBackendAvailable(platform(), architecture())) {
+                && steamClientBackendAvailable(platform(), architecture())) {
             flags.add(CompatibilityFlag.DEDICATED_BACKEND_AVAILABLE);
         }
         if (environment.experimental()) flags.add(CompatibilityFlag.EXPERIMENTAL_COMBINATION);
@@ -119,13 +119,6 @@ final class CoreRuntimeService implements RuntimeService {
         }
         return platform == Platform.MACOS
                 && (architecture == Architecture.X86_64 || architecture == Architecture.ARM64);
-    }
-
-    private static boolean steamGameServerBackendAvailable(
-            Platform platform,
-            Architecture architecture
-    ) {
-        return steamClientBackendAvailable(platform, architecture);
     }
 
     private static SteamRuntimeState dedicatedSteamState(DedicatedServerState state) {

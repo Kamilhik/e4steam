@@ -393,13 +393,13 @@ tasks.register("auditRetroArtifacts") {
                     val mixinText = zip.getInputStream(mixinConfig).use { input ->
                         input.readBytes().toString(Charsets.UTF_8)
                     }
+                    check(Regex("\\\"mixins\\\"\\s*:").containsMatchIn(mixinText)) {
+                        "Retro server/auth hooks must load on a physical dedicated server: ${jar.name}"
+                    }
                     check(Regex("\\\"client\\\"\\s*:").containsMatchIn(mixinText)) {
-                        "Retro runtime hooks must be scoped to the physical client: ${jar.name}"
+                        "Retro UI and connect hooks must stay scoped to the physical client: ${jar.name}"
                     }
-                    check(!Regex("\\\"mixins\\\"\\s*:").containsMatchIn(mixinText)) {
-                        "Retro runtime hooks must not load on a physical dedicated server: ${jar.name}"
-                    }
-                    val requiredUiMixins = when (project.name) {
+                    val requiredMixins = when (project.name) {
                         "forge-1.7.10", "forge-1.8.9", "forge-1.9.4",
                         "forge-1.10.2", "forge-1.11.2", "forge-1.12.2" -> setOf(
                             "GuiConnectingAddressMixin",
@@ -445,12 +445,34 @@ tasks.register("auditRetroArtifacts") {
                         )
                         else -> emptySet()
                     }
-                    requiredUiMixins.forEach { mixin ->
+                    requiredMixins.forEach { mixin ->
                         check("\"$mixin\"" in mixinText) {
                             "${jar.name} does not enable required UI/command hook $mixin"
                         }
                         check("link/e4steam/retro/mixin/$mixin.class" in names) {
                             "${jar.name} is missing required UI/command class $mixin"
+                        }
+                    }
+                    val dedicatedMixins = when (project.name) {
+                        "forge-1.7.10", "forge-1.8.9", "forge-1.9.4",
+                        "forge-1.10.2", "forge-1.11.2", "forge-1.12.2" -> setOf(
+                            "NetHandlerLoginServerMixin",
+                            if (project.name == "forge-1.12.2") "NetworkSystemEndpointMixin"
+                            else "NetworkSystemLanMixin"
+                        )
+                        "forge-1.13.2" -> setOf("NetworkSystemEndpointMixin")
+                        "forge-1.14.4" -> setOf("ServerConnectionListenerMixin")
+                        "forge-1.15.2", "forge-1.16.5",
+                        "fabric-1.14.4", "fabric-1.15.2", "fabric-1.16.5" -> setOf(
+                            "ServerConnectionListenerMixin",
+                            "ServerLoginPacketListenerRetroMixin",
+                            "ServerGamePacketListenerRetroMixin"
+                        )
+                        else -> emptySet()
+                    }
+                    dedicatedMixins.forEach { mixin ->
+                        check("\"mixins\"" in mixinText && "\"$mixin\"" in mixinText) {
+                            "${jar.name} does not enable dedicated-server hook $mixin"
                         }
                     }
                     val protocolEntry = checkNotNull(

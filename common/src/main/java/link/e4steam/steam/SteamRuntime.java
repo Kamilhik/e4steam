@@ -215,6 +215,11 @@ public final class SteamRuntime implements SteamBridgeRuntime {
         starter.start();
     }
 
+    /** Performs the optional Unix overlay relaunch before LWJGL initializes. */
+    public static void relaunchForOverlayIfNeeded() {
+        SteamOverlayRelauncher.relaunchIfNeeded();
+    }
+
     /**
      * Old ModLauncher releases may fail to define a shaded class when that
      * class is first requested from a Steam callback thread. The retro build

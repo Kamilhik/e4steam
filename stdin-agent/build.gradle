@@ -1,0 +1,44 @@
+tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+}
+
+jar {
+    archiveBaseName = "e4steam-stdin-agent"
+    manifest {
+        attributes(
+                "Premain-Class": "link.e4steam.agent.StdinCaptureAgent",
+                "Can-Redefine-Classes": "false",
+                "Can-Retransform-Classes": "false",
+                "Implementation-Title": "e4steam stdin capture agent",
+                "Implementation-Version": project.version
+        )
+    }
+}
+
+tasks.register("agentJarAudit") {
+    group = "verification"
+    dependsOn jar
+    doLast {
+        def archive = jar.archiveFile.get().asFile
+        def zip = new java.util.zip.ZipFile(archive)
+        try {
+            def names = java.util.Collections.list(zip.entries())*.name as Set
+            if (!names.contains("link/e4steam/agent/StdinCaptureAgent.class")
+                    || !names.contains("link/e4steam/agent/StdinCaptureAgent\$BoundedTeeInputStream.class")) {
+                throw new GradleException("stdin-agent JAR is missing its dependency-free classes")
+            }
+            if (names.any { it.startsWith("net/minecraft/") || it.startsWith("link/e4steam/steam/") }) {
+                throw new GradleException("stdin-agent must not contain Minecraft or runtime classes")
+            }
+            byte[] bytes = zip.getInputStream(
+                    zip.getEntry("link/e4steam/agent/StdinCaptureAgent.class")
+            ).readAllBytes()
+            int major = ((bytes[6] & 0xff) << 8) | (bytes[7] & 0xff)
+            if (major != 52) throw new GradleException("stdin-agent must remain Java 8 compatible")
+        } finally {
+            zip.close()
+        }
+    }
+}
+
+check.dependsOn(agentJarAudit)

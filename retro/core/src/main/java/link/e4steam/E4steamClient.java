@@ -3,6 +3,8 @@ package link.e4steam;
 import link.e4steam.retro.RetroPlatform;
 import link.e4steam.steam.SteamAddress;
 import link.e4steam.steam.SteamClientBridge;
+import link.e4steam.steam.SteamDedicatedAddress;
+import link.e4steam.steam.SteamDedicatedClientBridge;
 import link.e4steam.steam.SteamRuntime;
 import link.e4steam.steam.SteamSession;
 import org.apache.logging.log4j.LogManager;
@@ -47,6 +49,12 @@ public final class E4steamClient {
     }
 
     public static void acceptDirectSteamInvite(String endpoint, String hostName) {
+        final Optional<SteamDedicatedAddress> dedicated = SteamDedicatedAddress.tryParse(endpoint);
+        if (dedicated.isPresent()) {
+            SteamRuntime.get().cancelGuestJoin();
+            openDedicatedBridgeAsync(dedicated.get(), hostName);
+            return;
+        }
         final Optional<SteamAddress> parsed = SteamAddress.tryParse(endpoint);
         if (!parsed.isPresent()) {
             showSteamJoinFailure("Invalid Steam address");
@@ -62,6 +70,12 @@ public final class E4steamClient {
     }
 
     public static void acceptSteamInvite(final String endpoint, final String hostName) {
+        final Optional<SteamDedicatedAddress> dedicated = SteamDedicatedAddress.tryParse(endpoint);
+        if (dedicated.isPresent()) {
+            SteamRuntime.get().cancelGuestJoin();
+            openDedicatedBridgeAsync(dedicated.get(), hostName);
+            return;
+        }
         final Optional<SteamAddress> parsed = SteamAddress.tryParse(endpoint);
         if (!parsed.isPresent()) {
             showSteamJoinFailure("Invalid Steam address");
@@ -103,6 +117,41 @@ public final class E4steamClient {
         }, "e4steam-retro-direct-connect");
         worker.setDaemon(true);
         worker.start();
+    }
+
+    private static void openDedicatedBridge(
+            SteamDedicatedAddress address,
+            final String hostName
+    ) {
+        try {
+            final InetSocketAddress local = SteamDedicatedClientBridge.open(address);
+            final RetroPlatform current = requirePlatform();
+            current.execute(new Runnable() {
+                @Override public void run() {
+                    current.connect(local, safeDisplayName(hostName));
+                }
+            });
+        } catch (Throwable throwable) {
+            showSteamJoinFailure(throwable.getMessage());
+        }
+    }
+
+    private static void openDedicatedBridgeAsync(
+            final SteamDedicatedAddress address,
+            final String hostName
+    ) {
+        Thread worker = new Thread(new Runnable() {
+            @Override public void run() {
+                openDedicatedBridge(address, hostName);
+            }
+        }, "e4steam-retro-dedicated-connect");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    public static boolean isSteamEndpoint(String endpoint) {
+        return SteamAddress.tryParse(endpoint).isPresent()
+                || SteamDedicatedAddress.tryParse(endpoint).isPresent();
     }
 
     public static void showSteamJoinFailure(Object detail) {

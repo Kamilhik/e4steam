@@ -1,6 +1,7 @@
 package link.e4steam.retro.forge;
 
 import link.e4steam.retro.RetroClientLoader;
+import link.e4steam.retro.RetroDedicatedBootstrap;
 import link.e4steam.retro.RetroVersion;
 import net.minecraftforge.fml.common.Mod;
 
@@ -12,6 +13,8 @@ public final class E4steamForgeModern {
                     ? "link.e4steam.retro.forge.E4steamForge114Client"
                     : "link.e4steam.retro.forge.E4steamForgeModernClient";
             RetroClientLoader.install(adapter);
+        } else {
+            RetroDedicatedBootstrap.install(RetroVersion.minecraft());
         }
     }
 }

@@ -8,7 +8,7 @@ pluginManagement {
     }
 }
 
-include("api", "api-testkit", "example-addon", "common")
+include("api", "api-testkit", "example-addon", "common", "stdin-agent")
 providers.gradleProperty("enabled_platforms")
         .getOrElse("fabric,forge,neoforge")
         .split(",")

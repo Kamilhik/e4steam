@@ -1,6 +1,6 @@
 package link.e4steam.retro.mixin;
 
-import link.e4steam.steam.SteamRuntime;
+import link.e4steam.steam.RetroSteamAuthentication;
 import net.minecraft.network.Connection;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -24,7 +24,7 @@ public abstract class ServerGamePacketListenerRetroMixin {
             require = 1
     )
     private long e4steam$extendAuthenticatedSteamKeepAlive(long vanillaInterval) {
-        return SteamRuntime.get().authenticatedMinecraftPeer(
+        return RetroSteamAuthentication.authenticatedPeer(
                 connection.getRemoteAddress()) == 0L
                 ? vanillaInterval
                 : E4STEAM_KEEP_ALIVE_INTERVAL_MILLIS;

@@ -6,9 +6,10 @@
   "description": "Play Minecraft with friends through Steam. Retro build for Minecraft ${minecraftBranch}.",
   "authors": ["Kamilchik"],
   "license": "Apache-2.0",
-  "environment": "client",
+  "environment": "*",
   "entrypoints": {
-    "client": ["link.e4steam.retro.fabric.E4steamFabric114"]
+    "client": ["link.e4steam.retro.fabric.E4steamFabric114"],
+    "server": ["link.e4steam.retro.fabric.E4steamFabricDedicated"]
   },
   "mixins": ["e4steam.retro.mixins.json"],
   "depends": {

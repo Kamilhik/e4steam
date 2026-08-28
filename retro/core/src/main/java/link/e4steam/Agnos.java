@@ -5,11 +5,17 @@ import java.nio.file.Paths;
 
 /** Java 8 platform facts used by the isolated retro runtime. */
 public final class Agnos {
+    private static volatile boolean client = true;
+
     private Agnos() {
     }
 
     public static boolean isClient() {
-        return true;
+        return client;
+    }
+
+    public static void installPhysicalSide(boolean physicalClient) {
+        client = physicalClient;
     }
 
     public static Path configDir() {

@@ -7,6 +7,8 @@ val steamworksVersion = "1.10.0"
 val sharedSteamSources = fileTree(rootProject.file("../common/src/main/java")) {
     include(
         "link/e4steam/HexCodec.java",
+        "link/e4steam/internal/dedicated/DedicatedConfigFile.java",
+        "link/e4steam/internal/dedicated/DedicatedServerPropertiesValidator.java",
         "link/e4steam/steam/NativePlatform.java",
         "link/e4steam/steam/SteamAccessMode.java",
         "link/e4steam/steam/SteamAddress.java",
@@ -18,6 +20,8 @@ val sharedSteamSources = fileTree(rootProject.file("../common/src/main/java")) {
         "link/e4steam/steam/SteamConnectionBridge.java",
         "link/e4steam/steam/SteamDedicatedAddress.java",
         "link/e4steam/steam/SteamDedicatedClientBridge.java",
+        "link/e4steam/steam/RetroDedicatedServerTransport.java",
+        "link/e4steam/steam/SteamGameServerRuntimeBackend.java",
         "link/e4steam/steam/SteamGuestJoinState.java",
         "link/e4steam/steam/SteamInvitationAuthorizer.java",
         "link/e4steam/steam/SteamKnownPeerSessionGate.java",
@@ -34,6 +38,7 @@ val sharedSteamSources = fileTree(rootProject.file("../common/src/main/java")) {
         "link/e4steam/steam/SteamProtocol.java",
         "link/e4steam/steam/SteamResetRetryQueue.java",
         "link/e4steam/steam/SteamRuntime.java",
+        "link/e4steam/steam/SteamRuntimeBackend.java",
         "link/e4steam/steam/SteamUdpBridge.java",
         "link/e4steam/steam/SteamworksApi.java",
         "link/e4steam/steam/VoiceChatUdpEndpoint.java"
@@ -90,6 +95,9 @@ tasks.compileJava {
 
 dependencies {
     implementation("com.code-disaster.steamworks4j:steamworks4j:$steamworksVersion") {
+        isTransitive = false
+    }
+    implementation("com.code-disaster.steamworks4j:steamworks4j-server:$steamworksVersion") {
         isTransitive = false
     }
     compileOnly("net.java.dev.jna:jna:5.10.0")

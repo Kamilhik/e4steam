@@ -2,8 +2,9 @@ package link.e4steam.retro.mixin;
 
 import com.mojang.authlib.GameProfile;
 import link.e4steam.steam.SteamMinecraftIdentity;
-import link.e4steam.steam.SteamRuntime;
+import link.e4steam.steam.RetroSteamAuthentication;
 import net.minecraft.network.Connection;
+import net.minecraft.network.chat.TextComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerLoginPacketListenerImpl;
 import org.spongepowered.asm.mixin.Final;
@@ -32,7 +33,7 @@ public abstract class ServerLoginPacketListenerRetroMixin {
     private long e4steam$authenticatedSteamId() {
         long current = e4steam$authenticatedSteamId;
         if (current != 0L) return current;
-        current = SteamRuntime.get().authenticatedMinecraftPeer(
+        current = RetroSteamAuthentication.authenticatedPeer(
                 connection.getRemoteAddress());
         if (current != 0L) e4steam$authenticatedSteamId = current;
         return current;
@@ -48,6 +49,16 @@ public abstract class ServerLoginPacketListenerRetroMixin {
     private boolean e4steam$useMojangAuthentication(MinecraftServer server) {
         return e4steam$authenticatedSteamId() == 0L
                 && server.usesAuthentication();
+    }
+
+    @Inject(method = "handleHello", at = @At("HEAD"), cancellable = true)
+    private void e4steam$rejectDirectDedicatedLogin(CallbackInfo info) {
+        if (e4steam$authenticatedSteamId() != 0L
+                || !RetroSteamAuthentication.rejectUntrustedDedicatedIngress(
+                        connection.getRemoteAddress())) return;
+        connection.disconnect(new TextComponent(
+                "This server requires an authenticated e4steam connection"));
+        info.cancel();
     }
 
     @Inject(method = "handleAcceptedLogin", at = @At("HEAD"))

@@ -47,6 +47,18 @@ class SteamLifecycleTest {
         lifecycle.close();
     }
 
+    @Test
+    void startupFailureExplainsPlatformSpecificProcessMismatch() {
+        assertTrue(SteamLifecycle.initializationFailureMessage("Windows 11")
+                .contains("same privilege level"));
+        assertTrue(SteamLifecycle.initializationFailureMessage("Linux")
+                .contains("sandboxed launcher"));
+        assertTrue(SteamLifecycle.initializationFailureMessage("Mac OS X")
+                .contains("same macOS user"));
+        assertFalse(SteamLifecycle.initializationFailureMessage("Windows 11")
+                .contains("non-Steam game"));
+    }
+
     private static final class FakeSteamApi implements SteamApi {
         private boolean running = true;
         private int loadCalls;

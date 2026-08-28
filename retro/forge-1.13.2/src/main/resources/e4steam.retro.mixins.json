@@ -3,10 +3,12 @@
   "minVersion": "0.7.11",
   "package": "link.e4steam.retro.mixin",
   "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "NetworkSystemEndpointMixin"
+  ],
   "client": [
     "GuiChatCommandSuggestions113Mixin",
-    "GuiScreenCommand113Mixin",
-    "NetworkSystemEndpointMixin"
+    "GuiScreenCommand113Mixin"
   ],
   "injectors": {"defaultRequire": 1}
 }

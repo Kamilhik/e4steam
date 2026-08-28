@@ -14,7 +14,7 @@ import java.util.Properties;
 import java.util.Set;
 
 /** Strict, bounded parser for the server-owned e4steam dedicated TOML subset. */
-final class DedicatedConfigFile {
+public final class DedicatedConfigFile {
     static final int SCHEMA_VERSION = 1;
     private static final long MAX_BYTES = 32L * 1024L;
     private static final int MAX_LINES = 256;
@@ -27,7 +27,7 @@ final class DedicatedConfigFile {
     private DedicatedConfigFile() {
     }
 
-    static Properties load(Path requested) throws IOException {
+    public static Properties load(Path requested) throws IOException {
         Properties result = new Properties();
         if (requested == null) return result;
         Path path = requested.toAbsolutePath().normalize();

@@ -6,8 +6,10 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ServerChannel;
+import link.e4steam.Agnos;
 import link.e4steam.E4steamClient;
 import link.e4steam.retro.RetroBootstrap;
+import link.e4steam.retro.RetroDedicatedBootstrap;
 import net.minecraft.server.network.ServerConnectionListener;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -33,7 +35,7 @@ public abstract class ServerConnectionListenerMixin {
     @Inject(method = "startTcpServerListener", at = @At("HEAD"))
     private void e4steam$addRelay(InetAddress address, int port, CallbackInfo info)
             throws IOException {
-        if (!E4STEAM_ADDING_RELAY.get().booleanValue()) {
+        if (Agnos.isClient() && !E4STEAM_ADDING_RELAY.get().booleanValue()) {
             E4STEAM_ADDING_RELAY.set(Boolean.TRUE);
             try { startTcpServerListener(InetAddress.getLoopbackAddress(), 0); }
             finally { E4STEAM_ADDING_RELAY.set(Boolean.FALSE); }
@@ -44,8 +46,11 @@ public abstract class ServerConnectionListenerMixin {
             "Lio/netty/bootstrap/ServerBootstrap;localAddress(Ljava/net/InetAddress;I)Lio/netty/bootstrap/AbstractBootstrap;"))
     private AbstractBootstrap<ServerBootstrap, ServerChannel> e4steam$loopbackOnly(
             ServerBootstrap bootstrap, InetAddress address, int port) {
-        return E4STEAM_ADDING_RELAY.get().booleanValue()
-                ? bootstrap.localAddress(InetAddress.getLoopbackAddress(), 0)
+        if (E4STEAM_ADDING_RELAY.get().booleanValue()) {
+            return bootstrap.localAddress(InetAddress.getLoopbackAddress(), 0);
+        }
+        return !Agnos.isClient() && RetroDedicatedBootstrap.enabled()
+                ? bootstrap.localAddress(InetAddress.getLoopbackAddress(), port)
                 : bootstrap.localAddress(address, port);
     }
 
@@ -65,10 +70,27 @@ public abstract class ServerConnectionListenerMixin {
                     }
                 }
             });
+        } else if (!Agnos.isClient() && RetroDedicatedBootstrap.enabled()) {
+            future.addListener(new ChannelFutureListener() {
+                @Override public void operationComplete(ChannelFuture completed) {
+                    if (completed.isSuccess()) {
+                        InetSocketAddress local = (InetSocketAddress) completed.channel().localAddress();
+                        RetroDedicatedBootstrap.minecraftListening(
+                                local.getAddress(), local.getPort());
+                        RetroDedicatedBootstrap.minecraftReady();
+                    } else {
+                        E4steamClient.LOGGER.error("Could not bind the e4steam dedicated listener",
+                                completed.cause());
+                    }
+                }
+            });
         }
         return future;
     }
 
     @Inject(method = "stop", at = @At("HEAD"))
-    private void e4steam$closeRelay(CallbackInfo info) { RetroBootstrap.relayClosed(); }
+    private void e4steam$closeRelay(CallbackInfo info) {
+        if (Agnos.isClient()) RetroBootstrap.relayClosed();
+        else RetroDedicatedBootstrap.minecraftStopped();
+    }
 }

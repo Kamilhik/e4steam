@@ -21,4 +21,7 @@ public class Config extends ReflectiveConfig {
 
     @Comment("Fallback UDP port for voice mods and other UDP services; Simple Voice Chat and Plasmo Voice are detected automatically; use 0 to disable the fallback")
     public final TrackedValue<Integer> voiceChatPort = this.value(24454);
+
+    @Comment("On Linux and Intel macOS, relaunch Minecraft before LWJGL starts so Steam can inject its overlay; disabled by default")
+    public final TrackedValue<Boolean> overlayRelaunch = this.value(false);
 }

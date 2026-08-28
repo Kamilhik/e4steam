@@ -36,7 +36,9 @@ final class SteamLifecycle implements AutoCloseable {
                 librariesLoaded = true;
             }
             if (!api.init()) {
-                throw new IOException("SteamAPI_Init failed. Start Steam and sign in before launching Minecraft");
+                throw new IOException(initializationFailureMessage(
+                        System.getProperty("os.name", "")
+                ));
             }
         } catch (IOException exception) {
             processLease = null;
@@ -52,6 +54,25 @@ final class SteamLifecycle implements AutoCloseable {
             close();
             throw new IOException("Steam is not running or the current user is not signed in");
         }
+    }
+
+    static String initializationFailureMessage(String osName) {
+        String normalized = osName == null
+                ? "" : osName.trim().toLowerCase(java.util.Locale.ROOT);
+        String prefix = "SteamAPI_Init failed. Start Steam and sign in before launching Minecraft. ";
+        if (normalized.contains("win")) {
+            return prefix + "Run Steam and Minecraft at the same privilege level; "
+                    + "do not run only one of them as administrator";
+        }
+        if (normalized.contains("linux") || normalized.contains("nix")
+                || normalized.contains("nux")) {
+            return prefix + "Run Steam and the launcher as the same desktop user; "
+                    + "a sandboxed launcher must be allowed to access the Steam installation";
+        }
+        if (normalized.contains("mac") || normalized.contains("darwin")) {
+            return prefix + "Run Steam and the launcher as the same macOS user";
+        }
+        return prefix + "Run Steam and Minecraft as the same operating-system user";
     }
 
     void runCallbacks() {

@@ -3,14 +3,16 @@
   "minVersion": "0.8",
   "package": "link.e4steam.retro.mixin",
   "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "ServerGamePacketListenerRetroMixin",
+    "ServerConnectionListenerMixin",
+    "ServerLoginPacketListenerRetroMixin"
+  ],
   "client": [
     "ConnectScreenAddressRetroMixin",
     "ChatScreenCommandSuggestionsMixin",
     "PauseScreenComponentMixin",
     "ScreenCommandMixin",
-    "ServerGamePacketListenerRetroMixin",
-    "ServerConnectionListenerMixin",
-    "ServerLoginPacketListenerRetroMixin",
     "ShareToLanScreenComponentMixin"
   ],
   "injectors": {"defaultRequire": 1}

@@ -2,9 +2,8 @@ package link.e4steam.retro.forge;
 
 import com.mojang.authlib.GameProfile;
 import link.e4steam.E4steamClient;
-import link.e4steam.steam.SteamAddress;
 import link.e4steam.steam.SteamMinecraftIdentity;
-import link.e4steam.steam.SteamRuntime;
+import link.e4steam.steam.RetroSteamAuthentication;
 import net.minecraft.network.Connection;
 import net.minecraft.server.MinecraftServer;
 
@@ -31,7 +30,7 @@ public final class E4steamForge114Hooks {
      * connector thread. Ordinary Minecraft server addresses are untouched.
      */
     public static boolean acceptDirectSteamAddress(String host) {
-        if (!SteamAddress.tryParse(host).isPresent()) {
+        if (!E4steamClient.isSteamEndpoint(host)) {
             return false;
         }
         E4steamClient.acceptDirectSteamInvite(host, "Steam host");
@@ -88,7 +87,7 @@ public final class E4steamForge114Hooks {
         if (cached != null) {
             return cached.longValue();
         }
-        long steamId = SteamRuntime.get().authenticatedMinecraftPeer(
+        long steamId = RetroSteamAuthentication.authenticatedPeer(
                 connection.getRemoteAddress());
         if (steamId != 0L) {
             AUTHENTICATED_CONNECTIONS.put(connection, Long.valueOf(steamId));

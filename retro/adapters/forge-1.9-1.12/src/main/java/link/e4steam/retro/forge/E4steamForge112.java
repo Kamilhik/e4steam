@@ -2,6 +2,8 @@ package link.e4steam.retro.forge;
 
 import link.e4steam.retro.RetroClientLoader;
 import link.e4steam.retro.RetroBuildMetadata;
+import link.e4steam.retro.RetroDedicatedBootstrap;
+import link.e4steam.retro.RetroVersion;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.relauncher.Side;
@@ -14,6 +16,8 @@ public final class E4steamForge112 {
     public void initialize(FMLInitializationEvent event) {
         if (event.getSide() == Side.CLIENT) {
             RetroClientLoader.install("link.e4steam.retro.forge.E4steamForge112Client");
+        } else {
+            RetroDedicatedBootstrap.install(RetroVersion.minecraft());
         }
     }
 }

@@ -157,12 +157,18 @@ recorded real smoke test is NeoForge 1.21.1 on Windows x64 with one client.
 
 ## If an invitation does not arrive
 
+For `SteamAPI_Init failed`, first follow the
+[Steam startup troubleshooting guide](docs/STEAM_TROUBLESHOOTING.md).
+
 - Confirm both players are Steam friends, online, and using the same e4steam release.
 - Confirm both use the same Minecraft version and compatible loaders.
 - Make sure the Steam desktop client is running and signed in, then restart Minecraft.
 - Ask the host to close and reopen the Steam connection, then send a new invite.
 - For a friends-only lobby, copy the green e4steam address as a fallback.
 - Restart Steam if Spacewar presence or the overlay is stuck.
+- On Linux x64 or Intel macOS, see the optional
+  [Steam overlay relaunch guide](docs/UNIX_OVERLAY.md). Prism/MultiMC require
+  the separate Java 8 stdin agent included under `tools/` in the release.
 
 ## Known limitations
 
@@ -319,12 +325,18 @@ Steam на серверном ПК запускать не нужно. Начн�
 
 ## Если приглашение не приходит
 
+Если появляется `SteamAPI_Init failed`, сначала откройте
+[инструкцию по диагностике запуска Steam](docs/STEAM_TROUBLESHOOTING.md).
+
 - Проверьте, что вы друзья в Steam, оба онлайн и используете одинаковый релиз e4steam.
 - Проверьте совпадение версии Minecraft и совместимость загрузчиков.
 - Убедитесь, что клиент Steam запущен и выполнен вход, затем перезапустите Minecraft.
 - Закройте соединение, откройте его заново и отправьте новое приглашение.
 - В режиме для друзей можно скопировать зелёный адрес как запасной вариант.
 - Перезапустите Steam, если статус Spacewar или оверлей завис.
+- На Linux x64 и Intel macOS можно включить дополнительный
+  [перезапуск для оверлея Steam](docs/UNIX_OVERLAY.md). Для Prism/MultiMC нужен
+  отдельный Java 8 агент из папки `tools/` внутри релиза.
 
 ## Известные ограничения
 

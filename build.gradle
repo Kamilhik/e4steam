@@ -276,6 +276,7 @@ tasks.register("releaseJars") {
             retroReleaseJars,
             headlessEntrypointAudit,
             dependencyLicenseAudit,
+            ":stdin-agent:check",
             ":common:test",
             ":api:jar",
             ":api:sourcesJar",
@@ -721,6 +722,8 @@ tasks.register("releaseJars") {
         }
         File publicDirectory = file("release/${version}")
         delete(fileTree(publicDirectory) { include "*.jar" })
+        File toolsDirectory = new File(publicDirectory, "tools")
+        delete(fileTree(toolsDirectory) { include "*.jar" })
         variants.each { variant ->
             copy {
                 from variant.file
@@ -735,6 +738,12 @@ tasks.register("releaseJars") {
                 rename { variant.publicName }
             }
         }
+        String agentName = "e4steam-stdin-agent-v${version}.jar"
+        copy {
+            from file("stdin-agent/build/libs/e4steam-stdin-agent-${version}.jar")
+            into toolsDirectory
+            rename { agentName }
+        }
         Set<String> expectedNames = (variants + retroVariants)
                 .collect { it.publicName } as Set<String>
         Set<String> actualNames = fileTree(publicDirectory) { include "*.jar" }
@@ -745,6 +754,10 @@ tasks.register("releaseJars") {
                             + "missing=${expectedNames - actualNames}, unexpected=${actualNames - expectedNames}"
             )
         }
-        println("Artifact audit passed and collected all 19 runtime JAR variants in ${publicDirectory}.")
+        File agentArtifact = new File(toolsDirectory, agentName)
+        if (!agentArtifact.isFile()) {
+            throw new GradleException("Missing Unix overlay stdin agent: ${agentArtifact}")
+        }
+        println("Artifact audit passed and collected all 19 runtime JAR variants plus the optional Unix overlay agent in ${publicDirectory}.")
     }
 }

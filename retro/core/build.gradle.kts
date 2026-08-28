@@ -105,6 +105,7 @@ dependencies {
     // runtime against that API prevents linkage to newer fixed-arity overloads
     // that do not exist in the game process.
     compileOnly("org.apache.logging.log4j:log4j-api:2.0-beta9")
+    testRuntimeOnly("org.apache.logging.log4j:log4j-api:2.0-beta9")
     testImplementation("junit:junit:4.13.2")
 }
 

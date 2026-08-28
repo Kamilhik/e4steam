@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadFactory;
@@ -37,7 +38,7 @@ public final class RetroDedicatedServerTransport
     private static final long PROOF_TTL_MILLIS = 120_000L;
     private static final long REJECT_CLOSE_DELAY_MILLIS = 100L;
 
-    private final SteamGameServerRuntimeBackend backend;
+    private final Backend backend;
     private final Host host;
     private final int capacity;
     private final SteamBridgeRegistry<SteamConnectionBridge, AutoCloseable> bridges;
@@ -63,6 +64,14 @@ public final class RetroDedicatedServerTransport
             Host host,
             int capacity
     ) {
+        this(new GameServerBackend(backend), host, capacity);
+    }
+
+    RetroDedicatedServerTransport(
+            Backend backend,
+            Host host,
+            int capacity
+    ) {
         if (backend == null || host == null || capacity < 1 || capacity > 64) {
             throw new IllegalArgumentException("Invalid retro dedicated transport");
         }
@@ -80,7 +89,7 @@ public final class RetroDedicatedServerTransport
 
     public void start() {
         if (!running.compareAndSet(false, true)) return;
-        backend.peerListener(new SteamGameServerRuntimeBackend.PeerListener() {
+        backend.peerListener(new Backend.PeerListener() {
             @Override public boolean onSessionRequest(long remoteSteamId) {
                 long now = System.currentTimeMillis();
                 expire(now);
@@ -136,8 +145,7 @@ public final class RetroDedicatedServerTransport
                 throw new IOException("Invalid dedicated Steam packet size");
             }
             buffer.clear();
-            SteamGameServerRuntimeBackend.ReceivedPacket packet =
-                    backend.receive(buffer, CHANNEL);
+            Backend.ReceivedPacket packet = backend.receive(buffer, CHANNEL);
             if (packet.size() <= 0 || packet.size() > SteamProtocol.MAX_PACKET_SIZE
                     || packet.remoteSteamId() == 0L) continue;
             buffer.flip();
@@ -199,8 +207,7 @@ public final class RetroDedicatedServerTransport
         final ProofKey proof = new ProofKey(remoteSteamId, generation, nonce);
         Arrays.fill(nonce, (byte) 0);
         long proofDeadline = System.currentTimeMillis() + PROOF_TTL_MILLIS;
-        if (proofs.size() >= capacity * 8
-                || proofs.putIfAbsent(proof, Long.valueOf(proofDeadline)) != null) {
+        if (!claimProof(proof, proofDeadline)) {
             Arrays.fill(ticket, (byte) 0);
             reject(remoteSteamId, key.connectionId());
             return;
@@ -392,9 +399,12 @@ public final class RetroDedicatedServerTransport
                 backend.closePeer(entry.getKey().longValue());
             }
         }
-        for (java.util.Map.Entry<ProofKey, Long> entry : proofs.entrySet()) {
-            if (entry.getValue().longValue() <= now) {
-                proofs.remove(entry.getKey(), entry.getValue());
+        synchronized (proofs) {
+            for (java.util.Map.Entry<ProofKey, Long> entry : proofs.entrySet()) {
+                if (entry.getValue().longValue() <= now
+                        && proofs.remove(entry.getKey(), entry.getValue())) {
+                    entry.getKey().destroy();
+                }
             }
         }
     }
@@ -434,7 +444,7 @@ public final class RetroDedicatedServerTransport
         active.clear();
         pending.clear();
         delayedClose.clear();
-        proofs.clear();
+        destroyProofs();
         outbound.clear();
         admissions.shutdownNow();
         host.players(0);
@@ -455,6 +465,24 @@ public final class RetroDedicatedServerTransport
         };
     }
 
+    private boolean claimProof(ProofKey proof, long deadline) {
+        synchronized (proofs) {
+            if (!running.get() || proofs.size() >= capacity * 8
+                    || proofs.putIfAbsent(proof, Long.valueOf(deadline)) != null) {
+                proof.destroy();
+                return false;
+            }
+            return true;
+        }
+    }
+
+    private void destroyProofs() {
+        synchronized (proofs) {
+            for (ProofKey proof : proofs.keySet()) proof.destroy();
+            proofs.clear();
+        }
+    }
+
     public interface Host {
         boolean accepting();
         long generation();
@@ -465,6 +493,100 @@ public final class RetroDedicatedServerTransport
         AutoCloseable registerIngress(int localPort, long steamId, long generation);
         void transportFailed(String category);
         void players(int count);
+    }
+
+    interface Backend {
+        void peerListener(PeerListener listener);
+        CompletionStage<Boolean> authenticate(long steamId, byte[] ticket, long generation);
+        void endAuthentication(long steamId);
+        boolean send(long steamId, ByteBuffer payload, boolean unreliable, int channel)
+                throws IOException;
+        int availablePacketSize(int channel) throws IOException;
+        ReceivedPacket receive(ByteBuffer target, int channel) throws IOException;
+        void closePeer(long steamId);
+
+        interface PeerListener {
+            boolean onSessionRequest(long remoteSteamId);
+            void onSessionFailed(long remoteSteamId, int reason, String detail);
+        }
+
+        final class ReceivedPacket {
+            private final long steamId;
+            private final int size;
+
+            ReceivedPacket(long steamId, int size) {
+                this.steamId = steamId;
+                this.size = size;
+            }
+
+            long remoteSteamId() { return steamId; }
+            int size() { return size; }
+        }
+    }
+
+    private static final class GameServerBackend implements Backend {
+        private final SteamGameServerRuntimeBackend delegate;
+
+        private GameServerBackend(SteamGameServerRuntimeBackend delegate) {
+            if (delegate == null) throw new IllegalArgumentException("backend");
+            this.delegate = delegate;
+        }
+
+        @Override public void peerListener(final PeerListener listener) {
+            if (listener == null) {
+                delegate.peerListener(null);
+                return;
+            }
+            delegate.peerListener(new SteamGameServerRuntimeBackend.PeerListener() {
+                @Override public boolean onSessionRequest(long remoteSteamId) {
+                    return listener.onSessionRequest(remoteSteamId);
+                }
+
+                @Override public void onSessionFailed(
+                        long remoteSteamId,
+                        int reason,
+                        String detail
+                ) {
+                    listener.onSessionFailed(remoteSteamId, reason, detail);
+                }
+            });
+        }
+
+        @Override public CompletionStage<Boolean> authenticate(
+                long steamId,
+                byte[] ticket,
+                long generation
+        ) {
+            return delegate.authenticate(steamId, ticket, generation);
+        }
+
+        @Override public void endAuthentication(long steamId) {
+            delegate.endAuthentication(steamId);
+        }
+
+        @Override public boolean send(
+                long steamId,
+                ByteBuffer payload,
+                boolean unreliable,
+                int channel
+        ) throws IOException {
+            return delegate.send(steamId, payload, unreliable, channel);
+        }
+
+        @Override public int availablePacketSize(int channel) throws IOException {
+            return delegate.availablePacketSize(channel);
+        }
+
+        @Override public ReceivedPacket receive(ByteBuffer target, int channel)
+                throws IOException {
+            SteamGameServerRuntimeBackend.ReceivedPacket received =
+                    delegate.receive(target, channel);
+            return new ReceivedPacket(received.remoteSteamId(), received.size());
+        }
+
+        @Override public void closePeer(long steamId) {
+            delegate.closePeer(steamId);
+        }
     }
 
     private static final class ProofKey {
@@ -490,6 +612,10 @@ public final class RetroDedicatedServerTransport
             ProofKey that = (ProofKey) other;
             return steamId == that.steamId && generation == that.generation
                     && Arrays.equals(nonce, that.nonce);
+        }
+
+        private void destroy() {
+            Arrays.fill(nonce, (byte) 0);
         }
     }
 }

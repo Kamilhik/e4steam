@@ -20,6 +20,11 @@ The 0.3.0 implementation is fail-closed around these invariants:
 - Config, access stores, queues, pending auth and diagnostics are bounded.
   Symlinks/unsafe files and unknown security fields fail startup.
 
+Retro dedicated artifacts use the same Steam GameServer auth, generation,
+capacity, whitelist and loopback-ingress baseline, but do not expose the Addon
+API or negotiate addon channels on that Java 8 path. Absence of addon handling
+cannot bypass the mandatory Steam and Minecraft admission gates.
+
 Passwords, GSLT, tickets, tokens, descriptor internals and native handles are
 not logged or exposed to addons. The current App ID 480 backend intentionally
 supports anonymous GameServer login only; GSLT configuration is rejected

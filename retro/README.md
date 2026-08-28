@@ -13,3 +13,15 @@ Exact reference revisions are recorded in `docs/RETRO_PORTING.md`.
 
 Current status is **build-only** until each artifact completes a manual
 host/join/reconnect smoke test with Steam App ID 480.
+
+Every released retro JAR also contains the physical dedicated-server
+entrypoint. With the strict shared `config/e4steam-dedicated.toml` enabled and
+Minecraft bound to loopback, it starts the anonymous Steam GameServer backend,
+authenticates each guest before Minecraft login and prints a `d-...steam`
+descriptor. These headless paths are built and artifact-audited but still need
+per-version runtime smoke tests; see `docs/DEDICATED_DEPLOYMENT.md`.
+
+The optional Unix overlay JVM relaunch is currently a Java 16+ / Minecraft
+1.17+ feature. Retro Java 8 clients can still invite from the standalone Steam
+friends window and join through copied addresses; Steam P2P itself does not
+depend on overlay injection.

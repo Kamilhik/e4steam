@@ -1,6 +1,6 @@
 # Dedicated server
 
-Status in unreleased 0.3.0: implementation and automated tests exist, but no
+Status for the 0.3.0 release: implementation and automated tests exist, but no
 real two-client Steam GameServer smoke has been recorded. Treat it as
 **experimental**, not supported production hosting.
 
@@ -40,9 +40,13 @@ authorization: GameServer auth and all mandatory gates still run.
 ## Loader scope
 
 The neutral server bootstrap and headless entrypoints are wired for modern
-Fabric/Quilt-compatible Fabric, Forge and NeoForge artifacts. Retro artifacts
-separate physical client/server class loading but their dedicated Steam
-GameServer lifecycle has not been runtime-verified. Exact statuses are in
+Fabric/Quilt-compatible Fabric, Forge and NeoForge artifacts. The released
+retro Forge `1.7.x`–`1.16.x` and Fabric `1.14.x`–`1.16.x` artifacts also have a
+Java 8 headless bootstrap, the same GameServer authentication backend and
+server-side login/listener hooks. Their transport deliberately omits addon
+channel negotiation; the base Minecraft TCP stream remains authenticated and
+bounded. Retro dedicated combinations have been built and artifact-audited but
+not runtime smoke-tested. Exact statuses are in
 [`COMPATIBILITY.md`](../COMPATIBILITY.md).
 
 See [`DEDICATED_DEPLOYMENT.md`](DEDICATED_DEPLOYMENT.md) for configuration and

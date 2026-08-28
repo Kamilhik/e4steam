@@ -3,6 +3,52 @@
 All notable changes to e4steam are documented here. Version numbers below
 belong to this fork and are independent of upstream e4mc releases.
 
+## Unreleased
+
+### English
+
+- Added an opt-in pre-LWJGL Steam Overlay relaunch for Linux x64 and Intel
+  macOS. Prism/MultiMC-style launchers use a separate bounded Java 8 stdin
+  agent so their original launch hand-off can be replayed to the replacement
+  JVM. Failure to find or validate the launcher command, capture file or
+  Valve-installed overlay now safely falls back to the original process.
+- Added Steam-only dedicated-server ingress to every released retro Forge
+  `1.7.x`–`1.16.x` and Fabric `1.14.x`–`1.16.x` artifact. The retro server
+  uses anonymous Steam GameServer login, validates each auth ticket before
+  opening a generation-bound loopback bridge, rejects direct TCP login and
+  prints a `d-...steam` descriptor after readiness.
+- Added replay and authenticated-loopback contract tests for the retro
+  dedicated transport. Retained nonces are bounded, expire, and are zeroed
+  when removed or during shutdown.
+- Improved platform-specific `SteamAPI_Init` diagnostics for privilege-level,
+  sandbox and operating-system user mismatches without changing Minecraft
+  names, profiles or normal login behavior.
+- Made the live Steam Networking Messages smoke test explicitly opt-in, so
+  ordinary unit/CI runs no longer attach to the developer's signed-in Steam
+  client or let native Steam diagnostics print account identity.
+
+### Русский
+
+- Добавлен опциональный перезапуск JVM до инициализации LWJGL для Steam Overlay
+  на Linux x64 и Intel macOS. Для Prism/MultiMC используется отдельный
+  ограниченный Java 8 stdin-agent, который сохраняет и повторяет исходный
+  протокол запуска. Если команда, файл захвата или установленный Valve overlay
+  не проходят проверку, Minecraft безопасно продолжает работу без перезапуска.
+- Steam-only вход выделенного сервера добавлен во все релизные retro JAR:
+  Forge `1.7.x`–`1.16.x` и Fabric `1.14.x`–`1.16.x`. Retro-сервер анонимно
+  входит через Steam GameServer, проверяет auth ticket до создания привязанного
+  к поколению loopback bridge, отклоняет прямой TCP-вход и после готовности
+  печатает адрес `d-...steam`.
+- Добавлены contract-тесты защиты от повторного auth proof и создания
+  авторизованного loopback-соединения в retro dedicated transport. Сохранённые
+  nonce ограничены, истекают и обнуляются при удалении или остановке.
+- Сообщения `SteamAPI_Init` теперь точнее объясняют несовпадение уровня прав,
+  sandbox или пользователя ОС, не меняя ники, профили и обычную авторизацию
+  Minecraft.
+- Live smoke-тест Steam Networking Messages теперь запускается только явно:
+  обычные unit/CI-проверки больше не подключаются к активному Steam разработчика
+  и не позволяют нативной диагностике печатать identity аккаунта.
+
 ## 0.3.0 - 2026-08-25
 
 ### English

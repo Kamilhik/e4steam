@@ -1,6 +1,6 @@
 # macOS
 
-Status in unreleased 0.3.0: native loading and artifact support are implemented
+Status for the 0.3.0 release: native loading and artifact support are implemented
 and CI-tested on Intel and Apple Silicon runners. Real Steam host/join/reconnect
 has not been performed, so both macOS variants remain **experimental**.
 

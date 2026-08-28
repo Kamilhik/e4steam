@@ -5,13 +5,19 @@ window and preload Valve's installed overlay renderer. This is an opt-in
 compatibility mode for **Linux x64** and **Intel macOS x86_64**. Normal Steam
 transport, addresses and invitations do not require it.
 
+The automatic relaunch is currently included in the Java 16+ Minecraft 1.17
+and newer artifacts. Java 8 retro artifacts still use the standalone Steam
+friends window and copied address fallback; their Steam transport and
+dedicated-server mode do not require an injected overlay.
+
 Apple Silicon JVMs are intentionally excluded: Valve's current macOS overlay
 renderer is x86_64 and cannot be injected into an arm64 JVM. Windows uses the
 Steam client's normal overlay injection and does not use this setting.
 
 ## Prism Launcher and MultiMC
 
-1. Take `tools/e4steam-stdin-agent-v0.3.0.jar` from the e4steam release.
+1. Take `tools/e4steam-stdin-agent-v0.3.0.jar` from the e4steam release. The
+   agent is needed only for a 1.17+ e4steam artifact using this optional mode.
 2. In the instance Java arguments, add an absolute path:
 
    ```text
@@ -48,6 +54,9 @@ Only Valve's installed `gameoverlayrenderer.so` or
 Snap locations on Linux and the standard Steam application bundle on macOS.
 The selected path must resolve to a readable regular file. Existing
 `LD_PRELOAD` or `DYLD_INSERT_LIBRARIES` entries are preserved.
+The replacement JVM receives the fixed non-secret `SteamAppId`, `SteamGameId`
+and `SteamOverlayGameId` value `480`, which also avoids losing the App ID at a
+sandbox/relaunch boundary.
 
 e4steam does not disable Gatekeeper, remove quarantine, request `sudo`, modify
 Steam, or install system files. If relaunch fails, disable `overlayRelaunch` and

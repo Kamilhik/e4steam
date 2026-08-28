@@ -348,6 +348,8 @@ class SteamNativeLibraryLoaderTest {
 
     @Test
     void bindsNetworkingMessagesWhenSteamIsAvailable() throws Exception {
+        assumeTrue("1".equals(System.getenv("E4STEAM_STEAM_SMOKE")),
+                "Live Steam smoke test is opt-in");
         SteamNativeLibraryLoader loader = new SteamNativeLibraryLoader();
         assertTrue(SteamAPI.loadLibraries(loader), loader.failureDescription());
         assumeTrue(SteamAPI.init());

@@ -31,6 +31,21 @@ from a separately sandboxed launcher. Grant only the launcher-specific access
 needed to see the user's Steam installation, or use a native package for one
 of the applications. Do not run Steam or Minecraft with `sudo`.
 
+If the log confirms that `steamclient.so` was found but `SteamAPI_Init` still
+fails inside a sandbox, set these non-secret values as **per-instance
+environment variables** in the launcher and restart the instance:
+
+```text
+SteamAppId=480
+SteamGameId=480
+SteamOverlayGameId=480
+```
+
+These values only identify the permanent Spacewar test App ID; they are not a
+Steam login and do not replace the requirement that the normal Steam desktop
+client is running under the same user. Do not put passwords, cookies, tickets
+or API keys in launcher environment variables.
+
 The optional overlay relaunch has separate instructions in
 [UNIX_OVERLAY.md](UNIX_OVERLAY.md). The overlay is not required for copied
 addresses or the Steam transport itself.

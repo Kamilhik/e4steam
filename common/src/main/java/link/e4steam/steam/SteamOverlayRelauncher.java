@@ -83,6 +83,7 @@ final class SteamOverlayRelauncher {
             environment.put(variable, mergeInsertedLibrary(
                     environment.get(variable), overlay.get().toString()
             ));
+            configureSteamAppEnvironment(environment);
             environment.put(MARKER_ENV, "1");
 
             E4steamClient.LOGGER.info(
@@ -127,6 +128,13 @@ final class SteamOverlayRelauncher {
         if (checked.isEmpty()) throw new IllegalArgumentException("overlay");
         if (existing == null || existing.trim().isEmpty()) return checked;
         return existing + File.pathSeparator + checked;
+    }
+
+    static void configureSteamAppEnvironment(Map<String, String> environment) {
+        if (environment == null) throw new IllegalArgumentException("environment");
+        environment.put("SteamAppId", "480");
+        environment.put("SteamGameId", "480");
+        environment.put("SteamOverlayGameId", "480");
     }
 
     static String detectStdinLauncherWrapper(List<String> command) {

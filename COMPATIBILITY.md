@@ -77,7 +77,9 @@ Regular Fabric/Quilt must not be used as the loader name for Minecraft
 versions, and a separate Rift port is possible for 1.13.2, but none of those
 artifacts is built or verified in the current matrix. Retro Quilt remains
 unsupported.
-Retro dedicated GameServer behavior is not verified and must not be advertised.
+Retro dedicated GameServer paths are implemented, built and server-side
+artifact-audited, but not manually runtime-verified. They may be described only
+as experimental until the per-version Steam join matrix is recorded.
 
 ## 0.3.0 dedicated matrix
 
@@ -86,7 +88,7 @@ Retro dedicated GameServer behavior is not verified and must not be advertised.
 | Fabric/Quilt 1.17+ | 🧪 | ⏳ | ⏳ |
 | Forge 1.17.1+ | 🧪 | ⏳ | ⏳ |
 | NeoForge 1.20.2+ | 🧪 | ✅ NeoForge 1.21.1, Windows x64, one client, 2026-08-24 | ⏳ |
-| Retro branch artifacts | Physical-side audit for Forge; client mixins separated | ⏳ | ⏳ |
+| Retro branch artifacts | 🧪 physical-side, listener/login mixin and JAR audit | ⏳ | ⏳ |
 
 The recorded NeoForge check proves startup and one authenticated client join;
 it does not prove the two-client or cross-platform matrix.

@@ -8,7 +8,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -34,6 +36,17 @@ class SteamOverlayRelauncherTest {
                 null, "overlay.so"));
         assertEquals("existing.so" + File.pathSeparator + "overlay.so",
                 SteamOverlayRelauncher.mergeInsertedLibrary("existing.so", "overlay.so"));
+    }
+
+    @Test void configuresPermanentSpacewarEnvironmentForReplacementJvm() {
+        Map<String, String> environment = new HashMap<>();
+        environment.put("SteamAppId", "999");
+
+        SteamOverlayRelauncher.configureSteamAppEnvironment(environment);
+
+        assertEquals("480", environment.get("SteamAppId"));
+        assertEquals("480", environment.get("SteamGameId"));
+        assertEquals("480", environment.get("SteamOverlayGameId"));
     }
 
     @Test void parsesProcSelfCmdlineWithoutShellQuoting() {

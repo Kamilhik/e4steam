@@ -43,9 +43,15 @@ input at all.
 
 - Start the Minecraft server normally; do not start a personal Steam client or
   launch it through Steam.
-- Wait for `state=ACCEPTING`, then use the permission-level-4 console commands:
+- On modern Minecraft, wait for `state=ACCEPTING`, then use the
+  permission-level-4 console commands:
   `e4steam-dedicated status`, `descriptor`, `allow`, `unallow`, `ban`, `unban`
   and `stop`.
+- On a retro Forge `1.7.x`–`1.16.x` or Fabric `1.14.x`–`1.16.x` server, wait
+  for `e4steam retro dedicated state: TRANSPORT_READY` followed by
+  `e4steam retro dedicated address: d-...steam` in the console/log. Retro
+  server console commands and addon-channel negotiation are not present;
+  configure its bounded whitelist in `e4steam-dedicated.toml` before startup.
 - `allow`/`ban` accept SteamID64 or an e4steam-derived UUID and persist to the
   bounded owner-local `config/e4steam-dedicated-access.txt` store.
 - Give the printed `d-...steam` descriptor only to intended players. It contains

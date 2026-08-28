@@ -168,7 +168,9 @@ For `SteamAPI_Init failed`, first follow the
 - Restart Steam if Spacewar presence or the overlay is stuck.
 - On Linux x64 or Intel macOS, see the optional
   [Steam overlay relaunch guide](docs/UNIX_OVERLAY.md). Prism/MultiMC require
-  the separate Java 8 stdin agent included under `tools/` in the release.
+  the separate Java 8 stdin agent included under `tools/` in the release. The
+  automatic relaunch currently applies to Minecraft 1.17+; retro clients use
+  the standalone Steam friends window or a copied address.
 
 ## Known limitations
 
@@ -336,7 +338,9 @@ Steam на серверном ПК запускать не нужно. Начн�
 - Перезапустите Steam, если статус Spacewar или оверлей завис.
 - На Linux x64 и Intel macOS можно включить дополнительный
   [перезапуск для оверлея Steam](docs/UNIX_OVERLAY.md). Для Prism/MultiMC нужен
-  отдельный Java 8 агент из папки `tools/` внутри релиза.
+  отдельный Java 8 агент из папки `tools/` внутри релиза. Автоматический
+  перезапуск сейчас относится к Minecraft 1.17+; retro-клиенты используют
+  отдельное окно друзей Steam или скопированный адрес.
 
 ## Известные ограничения
 

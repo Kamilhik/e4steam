@@ -18,16 +18,6 @@ backend was copied. Exact upstream branches, commit SHAs and adapted files are
 recorded in `docs/RETRO_PORTING.md`. The applicable Apache 2.0 text is the
 repository-root `LICENSE`.
 
-## Unix overlay relaunch contribution
-
-The Unix pre-LWJGL relaunch concept, Steam overlay path discovery and
-Prism/MultiMC stdin hand-off approach were reviewed from the project-owner
-supplied `unixFork 0.3.0` patch archive attributed to **Farbick49** on
-2026-08-18. The integrated e4steam implementation was security-reviewed and
-rewritten around bounded capture, fail-safe fallback, architecture checks and
-tests. No overlay renderer from that archive is redistributed: e4steam only
-references the copy installed by the user's official Steam client.
-
 ## Java Native Access (JNA) 5.10.0
 
 The Java 8 retro runtime JARs include JNA 5.10.0 so Steam Networking Messages

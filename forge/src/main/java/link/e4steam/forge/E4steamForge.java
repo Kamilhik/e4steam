@@ -7,8 +7,6 @@ import link.e4steam.internal.addon.AddonDiscoverySupport;
 import link.e4steam.internal.api.RuntimeEnvironment;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 
@@ -16,6 +14,7 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 @Mod("e4steam")
 public final class E4steamForge {
     public E4steamForge() {
+        ForgeServerLifecycleCompat.register(MinecraftForge.EVENT_BUS);
         MinecraftForge.EVENT_BUS.register(this);
         String loaderVersion = versionOf(net.minecraftforge.fml.loading.FMLLoader.class);
         if (!AgnosImpl.isClient()) {
@@ -27,14 +26,6 @@ public final class E4steamForge {
             return;
         }
         initializeClient(loaderVersion);
-    }
-
-    @SubscribeEvent public void serverStarted(ServerStartedEvent event) {
-        E4steamDedicated.minecraftReady();
-    }
-
-    @SubscribeEvent public void serverStopping(ServerStoppingEvent event) {
-        E4steamDedicated.minecraftStopped();
     }
 
     @SubscribeEvent public void registerCommands(RegisterCommandsEvent event) {

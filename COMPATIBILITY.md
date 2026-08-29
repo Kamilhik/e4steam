@@ -34,6 +34,11 @@ loader-start evidence, not proof that 0.3.0 or multiplayer has been smoke-tested
 | Forge | 1.17.1–1.20.2 | 12/12 ✅ on 0.2.0 |
 | NeoForge | 1.20.2–1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 | 21/21 ✅ on 0.2.0 |
 
+Targeted 0.3.0 client smoke checks on 2026-08-29: the corrected
+`e4steam-forge-mc1.17.1-1.18.1` JAR reached the main menu on Forge 37.1.1 /
+Minecraft 1.17.1 / Java 16 and Forge 39.1.0 / Minecraft 1.18.1 / Java 17,
+both on Windows x64. This verifies client startup, not Steam multiplayer.
+
 ## Historical integrated host/guest evidence
 
 The maintainer manually reconfirmed the 0.2.x integrated-world flow on
@@ -102,7 +107,8 @@ tested Windows dedicated transport path:
 
 | Minecraft / loader | Java | Release JAR SHA-256 |
 | --- | --- | --- |
-| Forge 1.12.2 | 8 | `3A52FDCC4F67ED23F9B1BBB61811C220D18ACB64F2D06D5C133D57D27865A106` |
+| Forge 1.17.1–1.18.1 (client launch) | 16 / 17 | `375D5C434D21B085BAE7E81EE1F63942DD34A5A07CC9ACD37106EBE722CE2D66` |
+| Forge 1.12.2 | 8 | `64BC1F65105141D0E0A0400C4B6F1F3589CCCA24ADE3CF47CC06E447BF5D8D3C` |
 | NeoForge 1.21.1 | 21 | `101545A0ACCF47115CA55CF2C6F398E118F95204D9421103E85E587971662445` |
 | Fabric 26.2 | 25 | `5B732F9937550C7F606C264FF33E33FE55D32D514E581A381E31EEBF61770C71` |
 

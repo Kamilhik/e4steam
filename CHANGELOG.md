@@ -7,6 +7,11 @@ belong to this fork and are independent of upstream e4mc releases.
 
 ### English
 
+- Fixed the Forge 1.17.1 startup crash caused by Forge renaming its server
+  lifecycle events in 1.18. The shared Forge entrypoint now resolves the
+  matching 1.17 or 1.18+ event API without linking an unavailable class.
+  The corrected JAR reached the main menu on Forge 37.1.1/Minecraft 1.17.1
+  with Java 16 and Forge 39.1.0/Minecraft 1.18.1 with Java 17 on Windows x64.
 - Added an opt-in pre-LWJGL Steam Overlay relaunch for Linux x64 and macOS
   x86_64/arm64, including Java 8 retro artifacts. Prism/MultiMC-style
   launchers use a separate bounded Java 8 stdin
@@ -39,6 +44,12 @@ belong to this fork and are independent of upstream e4mc releases.
 
 ### Русский
 
+- Исправлен вылет при запуске Forge 1.17.1, вызванный переименованием событий
+  жизненного цикла сервера в Forge 1.18. Общая точка входа Forge теперь
+  выбирает подходящий API событий для 1.17 или 1.18+ без загрузки
+  отсутствующего класса. Исправленный JAR дошёл до главного меню на Forge
+  37.1.1/Minecraft 1.17.1 с Java 16 и Forge 39.1.0/Minecraft 1.18.1 с Java 17
+  под Windows x64.
 - Выделенные серверы теперь автоматически печатают адрес `d-...steam` только
   после готовности Minecraft listener, мира и Steam GameServer identity.
   Исправлено изменение API прав команд в Minecraft 26.2, а инициализация

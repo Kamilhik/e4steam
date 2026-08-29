@@ -27,7 +27,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Shared bounded framing/bridge layer running above the headless GameServer backend. */
 public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, AutoCloseable {
     private static final Logger LOGGER = LogManager.getLogger("e4steam");
-    private static final int CHANNEL = 480;
     private static final int MAX_PACKETS_PER_TICK = 64;
     private static final int LOOPBACK_CONNECT_TIMEOUT_MILLIS = 1_000;
     private static final long ADMISSION_TIMEOUT_SECONDS = 16L;
@@ -184,13 +183,13 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
 
     private void receive(ByteBuffer buffer) throws IOException {
         for (int count = 0; count < MAX_PACKETS_PER_TICK; count++) {
-            int size = backend.availablePacketSize(CHANNEL);
+            int size = backend.availablePacketSize();
             if (size == 0) return;
             if (size < 0 || size > SteamProtocol.MAX_ACCEPTED_STEAM_PACKET_SIZE) {
                 throw new IOException("Steam returned an invalid dedicated packet size");
             }
             buffer.clear();
-            SteamGameServerRuntimeBackend.ReceivedPacket packet = backend.receive(buffer, CHANNEL);
+            SteamGameServerRuntimeBackend.ReceivedPacket packet = backend.receive(buffer);
             if (packet.size() <= 0 || packet.size() > SteamProtocol.MAX_PACKET_SIZE
                     || packet.remoteSteamId() == 0L) continue;
             buffer.flip();
@@ -381,7 +380,7 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
             ByteBuffer direct = ByteBuffer.allocateDirect(packet.payload().length);
             direct.put(packet.payload()).flip();
             boolean unreliable = packet.kind() == SteamOutboundQueue.Kind.ADDON_DATAGRAM;
-            boolean sent = backend.send(packet.remoteSteamId(), direct, unreliable, CHANNEL);
+            boolean sent = backend.send(packet.remoteSteamId(), direct, unreliable);
             if (!sent) {
                 if (unreliable) continue;
                 if (bridge != null) bridge.close(false);

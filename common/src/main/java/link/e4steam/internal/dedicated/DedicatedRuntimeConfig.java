@@ -2,7 +2,7 @@ package link.e4steam.internal.dedicated;
 
 import link.e4steam.api.dedicated.DedicatedServerService.DedicatedAccessMode;
 import link.e4steam.api.dedicated.DedicatedServerService.DedicatedConfigSnapshot;
-import link.e4steam.steam.SteamRuntimeBackend;
+import link.e4steam.steam.SteamGameServerRuntimeBackend;
 
 import java.net.InetAddress;
 import java.io.IOException;
@@ -108,8 +108,8 @@ public final class DedicatedRuntimeConfig {
     public String serverName() { return serverName; }
     public boolean isWhitelisted(long steamId) { return whitelist.contains(steamId); }
 
-    public SteamRuntimeBackend.Config backend(int minecraftPort) {
-        return new SteamRuntimeBackend.Config(
+    public SteamGameServerRuntimeBackend.Config backend(int minecraftPort) {
+        return new SteamGameServerRuntimeBackend.Config(
                 APP_ID, minecraftPort, queryPort, maxPeers, serverName, null
         );
     }

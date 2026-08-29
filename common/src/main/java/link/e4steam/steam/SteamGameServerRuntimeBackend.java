@@ -19,6 +19,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -35,7 +36,103 @@ import java.util.concurrent.atomic.AtomicReference;
  * Headless Steam GameServer context. It never initializes a user Steam API,
  * never asks for a personal account and keeps master-server advertising off.
  */
-public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend {
+public class SteamGameServerRuntimeBackend {
+    public enum State {
+        OFF, CONFIG_VALIDATED, NATIVES_READY, STEAM_INITIALIZING, STEAM_LOGGING_ON,
+        TRANSPORT_READY, DRAINING, STOPPED, FAILED
+    }
+
+    public enum ShutdownReason { NORMAL, MINECRAFT_STOPPING, STEAM_DISCONNECTED, STARTUP_FAILURE }
+
+    public interface StateListener {
+        void onState(State state, String safeCategory);
+    }
+
+    public static final class Config {
+        private final int appId;
+        private final int gamePort;
+        private final int queryPort;
+        private final int maxPeers;
+        private final String serverName;
+        private final char[] loginToken;
+
+        public Config(int appId, int gamePort, int queryPort, int maxPeers,
+                      String serverName, char[] loginToken) {
+            if (appId != 480) throw new IllegalArgumentException("Only App ID 480 is supported");
+            if (gamePort < 1 || gamePort > 65535) throw new IllegalArgumentException("gamePort");
+            if (queryPort < 0 || queryPort > 65535) throw new IllegalArgumentException("queryPort");
+            if (maxPeers < 1 || maxPeers > 256) throw new IllegalArgumentException("maxPeers");
+            String checkedName = Objects.requireNonNull(serverName, "serverName").trim();
+            if (checkedName.isEmpty() || checkedName.length() > 64) {
+                throw new IllegalArgumentException("serverName");
+            }
+            if (containsControl(checkedName)) throw new IllegalArgumentException("serverName");
+            this.appId = appId;
+            this.gamePort = gamePort;
+            this.queryPort = queryPort;
+            this.maxPeers = maxPeers;
+            this.serverName = checkedName;
+            this.loginToken = loginToken == null ? new char[0] : loginToken.clone();
+            if (this.loginToken.length > 512) throw new IllegalArgumentException("loginToken");
+        }
+
+        public int appId() { return appId; }
+        public int gamePort() { return gamePort; }
+        public int queryPort() { return queryPort; }
+        public int maxPeers() { return maxPeers; }
+        public String serverName() { return serverName; }
+        public boolean anonymousLogin() { return loginToken.length == 0; }
+        char[] copyLoginToken() { return loginToken.clone(); }
+
+        @Override public String toString() {
+            return "Config{appId=480, gamePort=" + gamePort
+                    + ", queryPort=" + queryPort + ", maxPeers=" + maxPeers
+                    + ", login=" + (anonymousLogin() ? "ANONYMOUS" : "SECRET_SOURCE") + '}';
+        }
+
+        private static boolean containsControl(String value) {
+            for (int index = 0; index < value.length(); index++) {
+                if (Character.isISOControl(value.charAt(index))) return true;
+            }
+            return false;
+        }
+    }
+
+    public static final class RuntimeReady {
+        private final long generation;
+        private final long internalServerSteamId;
+
+        public RuntimeReady(long generation, long internalServerSteamId) {
+            if (generation <= 0L) throw new IllegalArgumentException("generation");
+            this.generation = generation;
+            this.internalServerSteamId = internalServerSteamId;
+        }
+
+        public long generation() { return generation; }
+        public long internalServerSteamId() { return internalServerSteamId; }
+        @Override public String toString() { return "RuntimeReady{generation=" + generation + '}'; }
+    }
+
+    public static final class Snapshot {
+        private final State state;
+        private final long generation;
+        private final String failureCategory;
+
+        public Snapshot(State state, long generation, String failureCategory) {
+            this.state = Objects.requireNonNull(state, "state");
+            this.generation = generation;
+            this.failureCategory = failureCategory == null ? "" : failureCategory;
+        }
+
+        public State state() { return state; }
+        public long generation() { return generation; }
+        public String failureCategory() { return failureCategory; }
+        @Override public String toString() {
+            return "Snapshot{state=" + state + ", generation="
+                    + generation + ", failure=" + failureCategory + '}';
+        }
+    }
+
     private static final Logger LOGGER = LogManager.getLogger("e4steam");
     private static final long START_TIMEOUT_MILLIS = 30_000L;
     private static final long AUTH_TIMEOUT_MILLIS = 15_000L;
@@ -67,11 +164,7 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
         this.stateListener = stateListener == null ? (state, category) -> { } : stateListener;
     }
 
-    @Override public RuntimeKind kind() {
-        return RuntimeKind.DEDICATED_GAME_SERVER;
-    }
-
-    @Override public CompletionStage<RuntimeReady> start(Config requested) {
+    public CompletionStage<RuntimeReady> start(Config requested) {
         if (requested == null) throw new NullPointerException("config");
         if (!startRequested.compareAndSet(false, true)) {
             return readiness.thenApply(value -> value);
@@ -84,12 +177,12 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
         return readiness.thenApply(value -> value);
     }
 
-    @Override public Snapshot snapshot() {
+    public Snapshot snapshot() {
         SteamProcessGuard.Lease lease = processLease;
         return new Snapshot(state.get(), lease == null ? 0L : lease.generation(), failureCategory);
     }
 
-    @Override public CompletionStage<Void> stop(ShutdownReason reason) {
+    public CompletionStage<Void> stop(ShutdownReason reason) {
         CompletableFuture<Void> stopped = new CompletableFuture<>();
         if (stopRequested.compareAndSet(false, true)) {
             if (!submitControl(() -> {
@@ -175,17 +268,17 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
                 && authenticatedPeers.contains(remoteSteamId);
     }
 
-    public boolean send(long remoteSteamId, ByteBuffer payload, boolean unreliable, int channel)
+    public boolean send(long remoteSteamId, ByteBuffer payload, boolean unreliable)
             throws IOException {
         SteamNetworkingSocketsP2PTransport active = requireTransport();
         return active.send(remoteSteamId, payload, unreliable);
     }
 
-    public int availablePacketSize(int channel) throws IOException {
+    public int availablePacketSize() throws IOException {
         return requireTransport().availablePacketSize();
     }
 
-    public ReceivedPacket receive(ByteBuffer target, int channel) throws IOException {
+    public ReceivedPacket receive(ByteBuffer target) throws IOException {
         SteamNetworkingSocketsP2PTransport.Received received =
                 requireTransport().receive(target);
         return new ReceivedPacket(received.remoteSteamId(), received.size());

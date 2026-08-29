@@ -6,7 +6,6 @@ import link.e4steam.api.dedicated.DedicatedServerService.DedicatedServerSnapshot
 import link.e4steam.api.dedicated.DedicatedServerService.PublicationPlan;
 import link.e4steam.api.dedicated.DedicatedServerService.PublicationProposal;
 import link.e4steam.steam.SteamGameServerRuntimeBackend;
-import link.e4steam.steam.SteamRuntimeBackend;
 import link.e4steam.steam.SteamDedicatedAddress;
 import link.e4steam.steam.SteamDedicatedServerTransport;
 import link.e4steam.api.identity.IdentityService.PeerId;
@@ -31,7 +30,7 @@ public final class DedicatedServerController implements AutoCloseable {
 
     private final DedicatedRuntimeConfig config;
     private final DedicatedLifecycle lifecycle;
-    private final SteamRuntimeBackend backend;
+    private final SteamGameServerRuntimeBackend backend;
     private final DedicatedIngressRegistry ingress = new DedicatedIngressRegistry();
     private final DedicatedAccessStore accessStore;
     private final AtomicBoolean started = new AtomicBoolean();
@@ -43,16 +42,18 @@ public final class DedicatedServerController implements AutoCloseable {
     private volatile SteamDedicatedServerTransport transport;
 
     public DedicatedServerController(DedicatedRuntimeConfig config) {
-        this(config, SteamGameServerRuntimeBackend::new);
+        this(config, null);
     }
 
-    DedicatedServerController(DedicatedRuntimeConfig config, BackendFactory factory) {
+    DedicatedServerController(DedicatedRuntimeConfig config,
+                              SteamGameServerRuntimeBackend backend) {
         this.config = java.util.Objects.requireNonNull(config, "config");
         this.lifecycle = new DedicatedLifecycle(config);
         this.accessStore = new DedicatedAccessStore(Paths.get(
                 System.getProperty("user.dir", "."), "config", "e4steam-dedicated-access.txt"));
-        this.backend = java.util.Objects.requireNonNull(factory, "factory")
-                .create(this::backendState);
+        this.backend = backend == null
+                ? new SteamGameServerRuntimeBackend(this::backendState)
+                : backend;
     }
 
     public static DedicatedServerController install(DedicatedRuntimeConfig config) {
@@ -94,12 +95,10 @@ public final class DedicatedServerController implements AutoCloseable {
             }
             backendGeneration = ready.generation();
             backendSteamId = ready.internalServerSteamId();
-            if (backend instanceof SteamGameServerRuntimeBackend) {
-                SteamDedicatedServerTransport created = new SteamDedicatedServerTransport(
-                        (SteamGameServerRuntimeBackend) backend, this, config.maxPeers());
-                transport = created;
-                created.start();
-            }
+            SteamDedicatedServerTransport created = new SteamDedicatedServerTransport(
+                    backend, this, config.maxPeers());
+            transport = created;
+            created.start();
             maybeAccept();
         });
     }
@@ -129,7 +128,7 @@ public final class DedicatedServerController implements AutoCloseable {
         SteamDedicatedServerTransport activeTransport = transport;
         transport = null;
         if (activeTransport != null) activeTransport.close();
-        backend.stop(SteamRuntimeBackend.ShutdownReason.MINECRAFT_STOPPING)
+        backend.stop(SteamGameServerRuntimeBackend.ShutdownReason.MINECRAFT_STOPPING)
                 .whenComplete((ignored, failure) -> {
                     if (failure != null) {
                         fail("GAMESERVER_STOP_FAILED");
@@ -148,9 +147,7 @@ public final class DedicatedServerController implements AutoCloseable {
     }
 
     public AutoCloseable registerAuthenticatedIngress(int localPort, long steamId, long generation) {
-        if (generation != backendGeneration || !(backend instanceof SteamGameServerRuntimeBackend)
-                || !((SteamGameServerRuntimeBackend) backend)
-                .isAuthenticated(steamId, generation)) {
+        if (generation != backendGeneration || !backend.isAuthenticated(steamId, generation)) {
             throw new SecurityException("Dedicated ingress requires current Steam authentication");
         }
         return ingress.register(localPort, steamId, generation);
@@ -315,7 +312,7 @@ public final class DedicatedServerController implements AutoCloseable {
 
     private void maybeAccept() {
         if (!listenerReady.get() || !minecraftReady.get() || backend.snapshot().state()
-                != SteamRuntimeBackend.State.TRANSPORT_READY) return;
+                != SteamGameServerRuntimeBackend.State.TRANSPORT_READY) return;
         try {
             if (lifecycle.snapshot().state()
                     == DedicatedServerService.DedicatedServerState.TRANSPORT_READY) {
@@ -327,7 +324,7 @@ public final class DedicatedServerController implements AutoCloseable {
         }
     }
 
-    private void backendState(SteamRuntimeBackend.State state, String category) {
+    void backendState(SteamGameServerRuntimeBackend.State state, String category) {
         try {
             switch (state) {
                 case CONFIG_VALIDATED:
@@ -375,10 +372,6 @@ public final class DedicatedServerController implements AutoCloseable {
         if (activeTransport != null) activeTransport.close();
         lifecycle.fail(category);
         LOGGER.warn("Dedicated e4steam is unavailable [{}]", category);
-    }
-
-    interface BackendFactory {
-        SteamRuntimeBackend create(SteamRuntimeBackend.StateListener listener);
     }
 
     private static final class ParsedIdentity {

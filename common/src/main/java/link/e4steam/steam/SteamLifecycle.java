@@ -5,13 +5,13 @@ import java.nio.file.Path;
 
 /** Restartable ownership of the process-global Steam API. */
 final class SteamLifecycle implements AutoCloseable {
-    private final SteamApi api;
+    private final SteamworksApi api;
     private SteamNativeLibraryLoader nativeLoader;
     private SteamProcessGuard.Lease processLease;
     private boolean librariesLoaded;
     private boolean initialized;
 
-    SteamLifecycle(SteamApi api) {
+    SteamLifecycle(SteamworksApi api) {
         this.api = api;
     }
 

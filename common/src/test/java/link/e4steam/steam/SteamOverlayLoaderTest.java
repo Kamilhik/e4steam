@@ -37,7 +37,7 @@ class SteamOverlayLoaderTest {
                 NativePlatform.normalize("Linux", "x86_64"), temporary).isPresent());
     }
 
-    @Test void findsIntelMacOverlayButRejectsArmInjection() throws Exception {
+    @Test void findsUniversalMacOverlayForIntelAndArm() throws Exception {
         Path overlay = temporary.resolve(
                 "Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/"
                         + "gameoverlayrenderer.dylib"
@@ -47,7 +47,7 @@ class SteamOverlayLoaderTest {
 
         assertTrue(SteamOverlayLoader.findOverlayLibrary(
                 NativePlatform.normalize("Mac OS X", "x86_64"), temporary).isPresent());
-        assertFalse(SteamOverlayLoader.findOverlayLibrary(
+        assertTrue(SteamOverlayLoader.findOverlayLibrary(
                 NativePlatform.normalize("Mac OS X", "aarch64"), temporary).isPresent());
     }
 

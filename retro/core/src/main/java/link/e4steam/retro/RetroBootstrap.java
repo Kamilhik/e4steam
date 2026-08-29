@@ -25,6 +25,9 @@ public final class RetroBootstrap {
     }
 
     public static void install(String minecraftVersion, RetroPlatform platform) {
+        // The optional Unix overlay relaunch must happen before Minecraft
+        // creates its first LWJGL/OpenGL context.
+        SteamRuntime.relaunchForOverlayIfNeeded();
         MinecraftVersion.install(minecraftVersion);
         installedPlatform = platform;
         E4steamClient.install(platform);

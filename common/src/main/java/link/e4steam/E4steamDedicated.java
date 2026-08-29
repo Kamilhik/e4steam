@@ -91,7 +91,7 @@ public final class E4steamDedicated {
     /** Registers console/op-only headless commands without loading client UI classes. */
     public static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("e4steam-dedicated")
-                .requires(source -> source.hasPermission(4))
+                .requires(source -> CommandPermissionCompat.hasPermission(source, 4))
                 .then(Commands.literal("status").executes(context -> {
                     DedicatedServerController active = controller;
                     String status = active == null ? "unavailable" : active.safeStatus();

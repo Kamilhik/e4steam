@@ -25,7 +25,7 @@ class SteamOverlayRelauncherTest {
                 NativePlatform.normalize("Linux", "amd64")));
         assertEquals("DYLD_INSERT_LIBRARIES", SteamOverlayRelauncher.insertLibrariesEnvName(
                 NativePlatform.normalize("Mac OS X", "x86_64")));
-        assertNull(SteamOverlayRelauncher.insertLibrariesEnvName(
+        assertEquals("DYLD_INSERT_LIBRARIES", SteamOverlayRelauncher.insertLibrariesEnvName(
                 NativePlatform.normalize("Mac OS X", "aarch64")));
         assertNull(SteamOverlayRelauncher.insertLibrariesEnvName(
                 NativePlatform.normalize("Windows 11", "amd64")));

@@ -30,17 +30,17 @@
 > [!IMPORTANT]
 > **e4steam 0.3.0 is the current full release, not an alpha, beta or
 > prerelease.** Windows x64 is the primary supported platform. Linux x64,
-> macOS and dedicated servers are experimental. e4steam permanently uses the
+> and macOS are experimental. Dedicated servers are supported on Windows x64.
+> e4steam permanently uses the
 > shared Steam test App ID 480 (Spacewar), so unrelated App ID 480 traffic is
 > possible and is filtered.
 
 > [!NOTE]
 > 0.3.0 includes Addon API 1.0, loader-native addon discovery, macOS natives,
-> an experimental fail-closed dedicated server and retro release artifacts.
-> A Windows x64 NeoForge 1.21.1 dedicated server with one authenticated Steam
-> client was manually verified on August 24, 2026. The two-client, macOS and
-> remaining cross-platform matrices are not complete, so Linux, macOS and
-> dedicated-server support remain experimental.
+> a fail-closed dedicated server and retro release artifacts. On August 28,
+> 2026, authenticated Windows x64 joins were manually verified on dedicated
+> NeoForge 1.21.1, Fabric 26.2 and Forge 1.12.2 servers. Linux, macOS and the
+> two-client/cross-platform matrices are not yet complete.
 
 e4steam opens a Minecraft singleplayer world to Steam friends without port
 forwarding or a public IP. Both players need the mod and a signed-in Steam
@@ -52,6 +52,12 @@ Offline Minecraft launcher profiles are supported for Steam connections. In
 UUID and safe profile name from the authenticated SteamID rather than trusting
 the name supplied by the client. Steam itself must still be running and signed
 in on every computer.
+
+When upgrading a world first played through e4steam 0.2.4, a guest can appear
+with fresh progress once because 0.3.0 replaces the old Mojang/offline UUID
+with the stable Steam-derived UUID. Back up the world before migrating the
+matching `world/playerdata/<old UUID>.dat`; later 0.3.0 joins reuse the same
+Steam-derived UUID.
 
 ## What's new in 0.3.0
 
@@ -126,7 +132,7 @@ experimental until their manual matrices are complete.
 
 Declared ranges are broader than the manually tested matrix. Retro branch JARs
 are supported release files; [COMPATIBILITY.md](COMPATIBILITY.md) records exact
-manual coverage separately. Linux, macOS and dedicated modes remain experimental.
+manual coverage separately. Linux and macOS remain experimental.
 
 ## Installation
 
@@ -146,14 +152,16 @@ manual coverage separately. Linux, macOS and dedicated modes remain experimental
 Simple Voice Chat is detected automatically. Plasmo Voice is supported when it
 shares Minecraft's port. Another UDP mod can use the `voiceChatPort` setting.
 
-## Dedicated servers (experimental 0.3.0)
+## Dedicated servers
 
 The same matching loader JAR can run on a headless Minecraft server. The
 server uses anonymous Steam GameServer login, binds Minecraft to loopback and
-prints a credential-free `d-...steam` descriptor for players. A personal Steam
+automatically prints a credential-free `d-...steam` descriptor as soon as it is
+ready for players. A personal Steam
 client must not be launched on the server. Start with the
-[dedicated deployment guide](docs/DEDICATED_DEPLOYMENT.md); the currently
-recorded real smoke test is NeoForge 1.21.1 on Windows x64 with one client.
+[dedicated deployment guide](docs/DEDICATED_DEPLOYMENT.md). Representative
+Windows x64 joins are recorded for NeoForge 1.21.1, Fabric 26.2 and Forge
+1.12.2; see the compatibility matrix for exact coverage.
 
 ## If an invitation does not arrive
 
@@ -166,19 +174,19 @@ For `SteamAPI_Init failed`, first follow the
 - Ask the host to close and reopen the Steam connection, then send a new invite.
 - For a friends-only lobby, copy the green e4steam address as a fallback.
 - Restart Steam if Spacewar presence or the overlay is stuck.
-- On Linux x64 or Intel macOS, see the optional
+- On Linux x64 or macOS x86_64/arm64, see the optional
   [Steam overlay relaunch guide](docs/UNIX_OVERLAY.md). Prism/MultiMC require
-  the separate Java 8 stdin agent included under `tools/` in the release. The
-  automatic relaunch currently applies to Minecraft 1.17+; retro clients use
-  the standalone Steam friends window or a copied address.
+  the separate Java 8 stdin agent included under `tools/` in the release.
+  Java 8 retro clients use a JVM property documented in the guide. Retro Forge
+  overlay rendering remains unverified; invitations and copied addresses work
+  without the injected overlay.
 
 ## Known limitations
 
 - App ID 480 is a shared test namespace and is not exclusive to e4steam.
-- Windows x64 integrated worlds are the primary release path. Linux x64,
-  macOS and dedicated servers are experimental. Dedicated
-  NeoForge 1.21.1 has a one-client Windows smoke pass, but the full two-client
-  and cross-platform matrix is still pending.
+- Windows x64 integrated worlds and dedicated servers are supported. Linux x64
+  and macOS remain experimental. The full two-client and cross-platform
+  dedicated matrix is still pending.
 - 32-bit operating systems are unsupported.
 - Both players need Steam, e4steam, matching Minecraft versions, and compatible loaders.
 - Check the compatibility matrix for the exact versions and loaders that were manually smoke-tested.
@@ -200,18 +208,18 @@ For `SteamAPI_Init failed`, first follow the
 > [!IMPORTANT]
 > **e4steam 0.3.0 — текущий полноценный релиз, не alpha, beta или
 > prerelease.** Основная поддерживаемая платформа — Windows x64. Linux x64,
-> macOS и выделенные серверы имеют статус experimental. Мод навсегда использует
+> и macOS имеют статус experimental. Выделенные серверы поддерживаются на
+> Windows x64. Мод навсегда использует
 > общий тестовый Steam App ID 480 (Spacewar), поэтому посторонний трафик App ID
 > 480 возможен и фильтруется.
 
 > [!NOTE]
 > В 0.3.0 реализованы Addon API 1.0, обнаружение аддонов через загрузчики,
-> библиотеки macOS, защищённый experimental dedicated-сервер и отдельные
-> релизные retro-сборки.
-> 24 августа 2026 года вручную проверен выделенный NeoForge 1.21.1 сервер на
-> Windows x64 с одним авторизованным Steam-клиентом. Проверки с двумя клиентами,
-> macOS и оставшаяся межплатформенная матрица ещё не завершены, поэтому Linux,
-> macOS и выделенные серверы пока имеют статус experimental.
+> библиотеки macOS, защищённый dedicated-сервер и отдельные релизные
+> retro-сборки. 28 августа 2026 года вручную проверены авторизованные входы на
+> выделенные серверы NeoForge 1.21.1, Fabric 26.2 и Forge 1.12.2 под Windows
+> x64. Проверки с двумя клиентами, Linux, macOS и оставшаяся
+> межплатформенная матрица ещё не завершены.
 
 e4steam позволяет открыть одиночный мир Minecraft друзьям из Steam без проброса
 портов и белого IP. Мод и запущенный Steam нужны у всех игроков. TCP-трафик
@@ -223,6 +231,12 @@ Minecraft и UDP-трафик поддерживаемых голосовых м
 имя гостя из подтверждённого SteamID, а не доверяет имени, присланному клиентом.
 Сам Steam всё равно должен быть запущен, и на каждом компьютере должен быть
 выполнен вход в аккаунт Steam.
+
+После обновления мира, который раньше использовался с e4steam 0.2.4, гость
+может один раз появиться без старого прогресса: 0.3.0 заменяет прежний
+Mojang/offline UUID стабильным UUID из SteamID. Перед переносом подходящего
+`world/playerdata/<старый UUID>.dat` сделайте резервную копию мира. Все
+следующие входы 0.3.0 используют тот же Steam-derived UUID.
 
 ## Что нового в 0.3.0
 
@@ -296,7 +310,7 @@ Linux и macOS. Для своей версии Minecraft и загрузчика
 
 Заявленный диапазон шире проверенной матрицы. Retro JAR являются поддерживаемыми
 файлами релиза, а [COMPATIBILITY.md](COMPATIBILITY.md) отдельно показывает точное
-ручное покрытие. Linux, macOS и dedicated-режимы остаются экспериментальными.
+ручное покрытие. Linux и macOS остаются экспериментальными.
 
 ## Как установить мод
 
@@ -316,14 +330,16 @@ Linux и macOS. Для своей версии Minecraft и загрузчика
 Simple Voice Chat определяется автоматически. Plasmo Voice поддерживается,
 когда использует порт Minecraft. Для другого UDP-мода укажите `voiceChatPort`.
 
-## Выделенные серверы (experimental 0.3.0)
+## Выделенные серверы
 
 Обычный JAR для нужного загрузчика можно установить на headless Minecraft
 server. Сервер анонимно входит через Steam GameServer, принимает Minecraft
-только через локальный bridge и печатает адрес `d-...steam`. Личный клиент
+только через локальный bridge и автоматически печатает адрес `d-...steam`,
+когда готов принимать игроков. Личный клиент
 Steam на серверном ПК запускать не нужно. Начните с
-[инструкции по dedicated-серверу](docs/DEDICATED_DEPLOYMENT.md). Сейчас вручную
-подтверждён NeoForge 1.21.1 на Windows x64 с одним клиентом.
+[инструкции по dedicated-серверу](docs/DEDICATED_DEPLOYMENT.md). На Windows x64
+вручную подтверждены NeoForge 1.21.1, Fabric 26.2 и Forge 1.12.2; точное
+покрытие приведено в матрице совместимости.
 
 ## Если приглашение не приходит
 
@@ -336,19 +352,18 @@ Steam на серверном ПК запускать не нужно. Начн�
 - Закройте соединение, откройте его заново и отправьте новое приглашение.
 - В режиме для друзей можно скопировать зелёный адрес как запасной вариант.
 - Перезапустите Steam, если статус Spacewar или оверлей завис.
-- На Linux x64 и Intel macOS можно включить дополнительный
+- На Linux x64 и macOS x86_64/arm64 можно включить дополнительный
   [перезапуск для оверлея Steam](docs/UNIX_OVERLAY.md). Для Prism/MultiMC нужен
-  отдельный Java 8 агент из папки `tools/` внутри релиза. Автоматический
-  перезапуск сейчас относится к Minecraft 1.17+; retro-клиенты используют
-  отдельное окно друзей Steam или скопированный адрес.
+  отдельный Java 8 агент из папки `tools/` внутри релиза. Для Java 8 retro
+  используется JVM-параметр из инструкции. Отрисовка overlay на Retro Forge
+  пока не подтверждена; приглашения и адрес работают без внедрённого overlay.
 
 ## Известные ограничения
 
 - App ID 480 — общий тестовый идентификатор, не принадлежащий e4steam.
-- Открытые одиночные миры на Windows x64 — основной релизный режим. Linux x64,
-  macOS и выделенные серверы имеют статус experimental. Dedicated NeoForge
-  1.21.1 прошёл Windows-проверку с одним клиентом, но полная
-  матрица с двумя клиентами и другими ОС ещё не завершена.
+- Открытые одиночные миры и выделенные серверы на Windows x64 поддерживаются.
+  Linux x64 и macOS имеют статус experimental. Полная матрица выделенных
+  серверов с двумя клиентами и другими ОС ещё не завершена.
 - 32-битные системы не поддерживаются.
 - Всем нужны Steam, e4steam, одинаковая версия Minecraft и совместимые загрузчики.
 - Точные вручную проверенные версии и загрузчики перечислены в матрице совместимости.

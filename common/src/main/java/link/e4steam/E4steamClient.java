@@ -68,7 +68,7 @@ public class E4steamClient {
                                 return false;
                             }
                             if (src.getServer().isDedicatedServer()) {
-                                return src.hasPermission(4);
+                                return CommandPermissionCompat.hasPermission(src, 4);
                             } else {
                                 try {
                                     return Mirror.isSingleplayerOwner(src.getServer(), src.getPlayerOrException());

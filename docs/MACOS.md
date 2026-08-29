@@ -39,11 +39,12 @@ Minecraft normally. Do not add the launcher as a non-Steam game.
 When Steam reports an injected overlay, e4steam can use it normally. Otherwise
 the invitation button opens the standalone Steam friends window through the
 fixed `steam://open/friends` URI; lobby rich presence remains available for
-**Join Game**. Intel users may opt into the pre-LWJGL relaunch described in the
+**Join Game**. Intel and Apple Silicon users may opt into the pre-LWJGL relaunch described in the
 [Unix overlay guide](UNIX_OVERLAY.md). The relaunch uses Valve's installed
 `gameoverlayrenderer.dylib`; Prism/MultiMC additionally require the supplied
-Java 8 stdin agent. It is unavailable to a native Apple Silicon JVM because
-Valve's macOS overlay renderer is currently x86_64.
+Java 8 stdin agent. Current Steam installations provide the renderer as a
+universal x86_64/arm64 image; real overlay relaunch remains experimental on
+both architectures until the manual matrix is complete.
 
 e4steam never disables Gatekeeper, removes quarantine, asks for `sudo` or
 changes system security policy. If macOS blocks Minecraft or a native library,

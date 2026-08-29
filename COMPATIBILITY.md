@@ -17,8 +17,9 @@ built and audited · ⏳ not yet manually verified · — unsupported.
 | Integrated two-client Steam regression | ⏳ | ⏳ | ⏳ | ⏳ |
 | Dedicated GameServer/two clients | ⏳ | ⏳ | ⏳ | ⏳ |
 
-macOS and dedicated therefore remain experimental. Linux remains experimental
-under the existing release policy. No 32-bit target is supported.
+Dedicated servers are supported on Windows x64 after representative modern and
+retro authenticated joins. Linux and macOS remain experimental under the
+existing release policy. No 32-bit target is supported.
 
 ## Modern client launch evidence
 
@@ -78,20 +79,32 @@ versions, and a separate Rift port is possible for 1.13.2, but none of those
 artifacts is built or verified in the current matrix. Retro Quilt remains
 unsupported.
 Retro dedicated GameServer paths are implemented, built and server-side
-artifact-audited, but not manually runtime-verified. They may be described only
-as experimental until the per-version Steam join matrix is recorded.
+artifact-audited. Forge 1.12.2 has a real Windows x64 authenticated join; the
+other branch baselines remain not yet manually verified.
 
 ## 0.3.0 dedicated matrix
 
-| Loader family | Headless entry/class graph | GameServer startup | Two clients |
+| Loader family | Headless entry/class graph | GameServer startup | Authenticated client join |
 | --- | --- | --- | --- |
-| Fabric/Quilt 1.17+ | 🧪 | ⏳ | ⏳ |
+| Fabric/Quilt 1.17+ | 🧪 | ✅ Fabric 26.2, Windows x64, 2026-08-28 | ✅ one authenticated client |
 | Forge 1.17.1+ | 🧪 | ⏳ | ⏳ |
-| NeoForge 1.20.2+ | 🧪 | ✅ NeoForge 1.21.1, Windows x64, one client, 2026-08-24 | ⏳ |
-| Retro branch artifacts | 🧪 physical-side, listener/login mixin and JAR audit | ⏳ | ⏳ |
+| NeoForge 1.20.2+ | 🧪 | ✅ NeoForge 1.21.1, Windows x64, 2026-08-28 | ✅ one authenticated client |
+| Retro branch artifacts | 🧪 physical-side, listener/login mixin and JAR audit | ✅ Forge 1.12.2, Windows x64, 2026-08-28 | ✅ one authenticated client |
 
-The recorded NeoForge check proves startup and one authenticated client join;
-it does not prove the two-client or cross-platform matrix.
+The recorded checks prove startup and one authenticated client join on three
+representative loader generations. They do not prove the two-client or
+cross-platform matrix, nor every patch inside each declared branch range.
+
+Current audited release JARs built after the Windows x64 checks on 2026-08-28.
+Changes made after those joins are limited to a fail-closed unknown command-
+permission fallback and the opt-in Unix overlay relaunch; neither changes the
+tested Windows dedicated transport path:
+
+| Minecraft / loader | Java | Release JAR SHA-256 |
+| --- | --- | --- |
+| Forge 1.12.2 | 8 | `3A52FDCC4F67ED23F9B1BBB61811C220D18ACB64F2D06D5C133D57D27865A106` |
+| NeoForge 1.21.1 | 21 | `101545A0ACCF47115CA55CF2C6F398E118F95204D9421103E85E587971662445` |
+| Fabric 26.2 | 25 | `5B732F9937550C7F606C264FF33E33FE55D32D514E581A381E31EEBF61770C71` |
 
 Before any additional status becomes verified, record exact artifact SHA-256,
 Minecraft, loader, Java, OS/arch, host/join/invite/reconnect, direct-TCP rejection and

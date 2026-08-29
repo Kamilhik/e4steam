@@ -116,8 +116,7 @@ final class SteamOverlayRelauncher {
                 && platform.architecture() == NativePlatform.Architecture.X86_64) {
             return "LD_PRELOAD";
         }
-        if (platform.operatingSystem() == NativePlatform.OperatingSystem.MACOS
-                && platform.architecture() == NativePlatform.Architecture.X86_64) {
+        if (platform.operatingSystem() == NativePlatform.OperatingSystem.MACOS) {
             return "DYLD_INSERT_LIBRARIES";
         }
         return null;

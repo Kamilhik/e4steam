@@ -1,8 +1,9 @@
-# Dedicated deployment (experimental 0.3.0)
+# Dedicated deployment — e4steam 0.3.0
 
-Do not use this development branch for an important public server. The backend
-is implemented and automatically tested, but real Steam GameServer deployment
-has not completed the two-client matrix.
+Dedicated servers are supported on Windows x64. Representative authenticated
+joins are recorded for NeoForge 1.21.1, Fabric 26.2 and Forge 1.12.2. Linux,
+macOS and the full two-client/cross-platform matrix are not yet manually
+complete; review the compatibility matrix before deployment.
 
 ## Server prerequisites
 
@@ -43,8 +44,10 @@ input at all.
 
 - Start the Minecraft server normally; do not start a personal Steam client or
   launch it through Steam.
-- On modern Minecraft, wait for `state=ACCEPTING`, then use the
-  permission-level-4 console commands:
+- On modern Minecraft, wait for
+  `e4steam dedicated address: d-...steam` in the console/log. The address is
+  printed automatically as soon as the server starts accepting authenticated
+  Steam connections. The permission-level-4 console commands remain available:
   `e4steam-dedicated status`, `descriptor`, `allow`, `unallow`, `ban`, `unban`
   and `stop`.
 - On a retro Forge `1.7.x`–`1.16.x` or Fabric `1.14.x`–`1.16.x` server, wait

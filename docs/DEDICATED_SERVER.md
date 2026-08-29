@@ -1,8 +1,8 @@
 # Dedicated server
 
-Status for the 0.3.0 release: implementation and automated tests exist, but no
-real two-client Steam GameServer smoke has been recorded. Treat it as
-**experimental**, not supported production hosting.
+Status for the 0.3.0 release: supported on Windows x64. Real authenticated
+joins are recorded for representative modern and retro loaders; the complete
+two-client and cross-platform matrix is still tracked separately.
 
 ## Architecture
 
@@ -33,9 +33,11 @@ Private/whitelist/unlisted admission, stable-identity bans and the server-owned
 authority model are implemented. Public advertising always returns
 `public-worlds-addon-required`; core has no public browser or publication flow.
 
-Clients join the credential-free, generation-bound descriptor printed by
-`/e4steam-dedicated descriptor`. A descriptor is routing metadata, not proof of
-authorization: GameServer auth and all mandatory gates still run.
+Clients join the credential-free, generation-bound descriptor printed
+automatically as `e4steam dedicated address: d-...steam` when readiness is
+reached. The `e4steam-dedicated descriptor` command can print it again. A
+descriptor is routing metadata, not proof of authorization: GameServer auth
+and all mandatory gates still run.
 
 ## Loader scope
 
@@ -45,8 +47,8 @@ retro Forge `1.7.x`–`1.16.x` and Fabric `1.14.x`–`1.16.x` artifacts also hav
 Java 8 headless bootstrap, the same GameServer authentication backend and
 server-side login/listener hooks. Their transport deliberately omits addon
 channel negotiation; the base Minecraft TCP stream remains authenticated and
-bounded. Retro dedicated combinations have been built and artifact-audited but
-not runtime smoke-tested. Exact statuses are in
+bounded. All retro combinations are built and artifact-audited; Forge 1.12.2
+also has a real Windows x64 authenticated join. Exact statuses are in
 [`COMPATIBILITY.md`](../COMPATIBILITY.md).
 
 See [`DEDICATED_DEPLOYMENT.md`](DEDICATED_DEPLOYMENT.md) for configuration and

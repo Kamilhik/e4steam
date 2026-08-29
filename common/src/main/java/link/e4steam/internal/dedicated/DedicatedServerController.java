@@ -315,12 +315,14 @@ public final class DedicatedServerController implements AutoCloseable {
 
     private void maybeAccept() {
         if (!listenerReady.get() || !minecraftReady.get() || backend.snapshot().state()
-                != SteamRuntimeBackend.State.TRANSPORT_READY) return;
+                != SteamRuntimeBackend.State.TRANSPORT_READY
+                || backendGeneration <= 0L || backendSteamId == 0L) return;
         try {
             if (lifecycle.snapshot().state()
                     == DedicatedServerService.DedicatedServerState.TRANSPORT_READY) {
                 lifecycle.accepting(true);
                 LOGGER.info("Dedicated e4steam transport is accepting authenticated peers");
+                LOGGER.info("e4steam dedicated address: {}", descriptor());
             }
         } catch (RuntimeException failure) {
             fail("READINESS_TRANSITION_FAILED");

@@ -45,13 +45,12 @@ final class SteamOverlayLoader {
         if (platform == null || home == null) return Collections.emptyList();
         List<Path> roots = new ArrayList<>();
         if (platform.operatingSystem() == NativePlatform.OperatingSystem.MACOS) {
-            // Steam's macOS client and overlay are currently x86-64. Injecting
-            // that image into an ARM64 JVM would make the replacement fail.
-            if (platform.architecture() == NativePlatform.Architecture.X86_64) {
-                roots.add(home.resolve(
-                        "Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS"
-                ));
-            }
+            // Current Steam installations provide a universal renderer with
+            // both x86_64 and arm64 slices. The JVM architecture still has to
+            // match one of those slices; NativePlatform rejects other targets.
+            roots.add(home.resolve(
+                    "Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS"
+            ));
             return Collections.unmodifiableList(roots);
         }
         if (platform.operatingSystem() != NativePlatform.OperatingSystem.LINUX

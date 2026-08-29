@@ -7,11 +7,15 @@ belong to this fork and are independent of upstream e4mc releases.
 
 ### English
 
-- Added an opt-in pre-LWJGL Steam Overlay relaunch for Linux x64 and Intel
-  macOS. Prism/MultiMC-style launchers use a separate bounded Java 8 stdin
+- Added an opt-in pre-LWJGL Steam Overlay relaunch for Linux x64 and macOS
+  x86_64/arm64, including Java 8 retro artifacts. Prism/MultiMC-style
+  launchers use a separate bounded Java 8 stdin
   agent so their original launch hand-off can be replayed to the replacement
   JVM. Failure to find or validate the launcher command, capture file or
   Valve-installed overlay now safely falls back to the original process.
+- Documented the one-time playerdata migration that may be needed when a world
+  moves from 0.2.4's Mojang/offline guest UUID to 0.3.0's stable Steam-derived
+  UUID. Subsequent joins with the same Steam account keep the same identity.
 - Added Steam-only dedicated-server ingress to every released retro Forge
   `1.7.x`–`1.16.x` and Fabric `1.14.x`–`1.16.x` artifact. The retro server
   uses anonymous Steam GameServer login, validates each auth ticket before
@@ -26,14 +30,30 @@ belong to this fork and are independent of upstream e4mc releases.
 - Made the live Steam Networking Messages smoke test explicitly opt-in, so
   ordinary unit/CI runs no longer attach to the developer's signed-in Steam
   client or let native Steam diagnostics print account identity.
+- Dedicated servers now print their `d-...steam` address automatically only
+  after the Minecraft listener, world and Steam GameServer identity are all
+  ready. Fixed the Minecraft 26.2 command-permission API change and moved
+  Forge 1.7.x–1.12.x physical-server initialization before listener binding.
+  Authenticated Windows x64 joins were manually verified on NeoForge 1.21.1,
+  Fabric 26.2 and Forge 1.12.2.
 
 ### Русский
 
+- Выделенные серверы теперь автоматически печатают адрес `d-...steam` только
+  после готовности Minecraft listener, мира и Steam GameServer identity.
+  Исправлено изменение API прав команд в Minecraft 26.2, а инициализация
+  физического сервера Forge 1.7.x–1.12.x перенесена до привязки listener.
+  На Windows x64 вручную подтверждены авторизованные входы на NeoForge 1.21.1,
+  Fabric 26.2 и Forge 1.12.2.
 - Добавлен опциональный перезапуск JVM до инициализации LWJGL для Steam Overlay
-  на Linux x64 и Intel macOS. Для Prism/MultiMC используется отдельный
+  на Linux x64 и macOS x86_64/arm64, включая Java 8 retro JAR. Для
+  Prism/MultiMC используется отдельный
   ограниченный Java 8 stdin-agent, который сохраняет и повторяет исходный
   протокол запуска. Если команда, файл захвата или установленный Valve overlay
   не проходят проверку, Minecraft безопасно продолжает работу без перезапуска.
+- Описан разовый перенос playerdata при обновлении мира с Mojang/offline UUID
+  гостя из 0.2.4 на стабильный Steam-derived UUID версии 0.3.0. Все последующие
+  входы с тем же Steam-аккаунтом используют одну identity.
 - Steam-only вход выделенного сервера добавлен во все релизные retro JAR:
   Forge `1.7.x`–`1.16.x` и Fabric `1.14.x`–`1.16.x`. Retro-сервер анонимно
   входит через Steam GameServer, проверяет auth ticket до создания привязанного

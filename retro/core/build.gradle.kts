@@ -30,6 +30,7 @@ val sharedSteamSources = fileTree(rootProject.file("../common/src/main/java")) {
         "link/e4steam/steam/SteamLoopbackAuthentication.java",
         "link/e4steam/steam/SteamMinecraftIdentity.java",
         "link/e4steam/steam/SteamNativeLibraryLoader.java",
+        "link/e4steam/steam/SteamOverlayLoader.java",
         "link/e4steam/steam/SteamNetworkingMessagesTransport.java",
         "link/e4steam/steam/SteamNetworkingSocketsP2PTransport.java",
         "link/e4steam/steam/SteamOutboundQueue.java",

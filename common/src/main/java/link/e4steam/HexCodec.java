@@ -10,16 +10,16 @@ public final class HexCodec {
     }
 
     public static String encode(byte[] bytes) {
-        return encode(bytes, 0, bytes.length);
+        return encode(bytes, bytes.length);
     }
 
-    public static String encode(byte[] bytes, int offset, int length) {
-        if (offset < 0 || length < 0 || offset > bytes.length - length) {
+    public static String encode(byte[] bytes, int length) {
+        if (length < 0 || length > bytes.length) {
             throw new IndexOutOfBoundsException("Invalid hexadecimal byte range");
         }
         char[] result = new char[length * 2];
         for (int i = 0; i < length; i++) {
-            int value = bytes[offset + i] & 0xff;
+            int value = bytes[i] & 0xff;
             result[i * 2] = DIGITS[value >>> 4];
             result[i * 2 + 1] = DIGITS[value & 0x0f];
         }

@@ -27,10 +27,6 @@ public final class SteamSession {
     private volatile SteamAddress address;
     private SteamRuntime.Activity runtimeActivity;
 
-    public SteamSession(int localPort) {
-        this(localPort, SteamAccessMode.FRIENDS_ONLY);
-    }
-
     public SteamSession(int localPort, SteamAccessMode accessMode) {
         if (localPort < 1 || localPort > 65535) {
             throw new IllegalArgumentException("Invalid LAN port: " + localPort);

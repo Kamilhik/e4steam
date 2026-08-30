@@ -191,7 +191,7 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
         if (known == null || content == null || content.length != known.size) {
             throw new IOException("Bundled Steam native does not match the pinned manifest");
         }
-        String actual = HexCodec.encode(sha256(content), 0, 32);
+        String actual = HexCodec.encode(sha256(content), 32);
         if (!actual.equals(known.sha256)) {
             throw new IOException("Bundled Steam native hash does not match the pinned manifest");
         }
@@ -651,7 +651,7 @@ final class SteamNativeLibraryLoader implements SteamLibraryLoader {
         digest.update(steamApi);
         digest.update(steamworks4j);
         digest.update(steamworks4jServer);
-        return HexCodec.encode(digest.digest(), 0, 12);
+        return HexCodec.encode(digest.digest(), 12);
     }
 
     static final class VerifiedLibrary {

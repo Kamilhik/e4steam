@@ -154,16 +154,6 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
         }
     }
 
-    boolean send(long remoteSteamId, ByteBuffer payload, boolean unreliable, int channel)
-            throws IOException {
-        return sendResult(remoteSteamId, payload, unreliable, channel) == RESULT_OK;
-    }
-
-    int sendResult(long remoteSteamId, ByteBuffer payload, boolean unreliable, int channel)
-            throws IOException {
-        return sendResult(remoteSteamId, payload, unreliable, false, channel);
-    }
-
     int sendResult(
             long remoteSteamId,
             ByteBuffer payload,

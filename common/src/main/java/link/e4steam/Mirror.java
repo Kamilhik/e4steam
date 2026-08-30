@@ -280,10 +280,6 @@ public class Mirror {
         throw new RuntimeException("Could not locate any way to call setUsingWhitelist!");
     }
 
-    public static void addMessage(Component message) {
-        addMessageIf(message, () -> true);
-    }
-
     public static void addMessageIf(Component message, BooleanSupplier condition) {
         Minecraft.getInstance().execute(() -> {
             if (!condition.getAsBoolean()) {

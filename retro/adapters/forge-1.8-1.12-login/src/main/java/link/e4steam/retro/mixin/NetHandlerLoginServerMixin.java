@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Steam-authenticated login bridge for the Forge 1.8.x branch. */
+/** Steam-authenticated login bridge for Forge 1.8.x through 1.12.x. */
 @Mixin(NetHandlerLoginServer.class)
 public abstract class NetHandlerLoginServerMixin {
     @Shadow @Final public NetworkManager networkManager;

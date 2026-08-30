@@ -107,9 +107,6 @@ configure(runtimeProjects) {
                 project.name in legacyConnectProjects -> java.srcDir(
                     rootProject.file("adapters/minecraft-1.7-1.12-connect/src/main/java")
                 )
-                project.name == "forge-1.13.2" -> java.srcDir(
-                    rootProject.file("adapters/minecraft-1.13-connect/src/main/java")
-                )
                 project.name in modernRetroConnectProjects -> java.srcDir(
                     rootProject.file("adapters/minecraft-1.14-1.16-connect/src/main/java")
                 )
@@ -412,9 +409,9 @@ tasks.register("auditRetroArtifacts") {
                         )
                         "fabric-1.14.4" -> setOf(
                             "ConnectScreenAddressRetroMixin",
-                            "ChatScreenCommandSuggestions114Mixin",
+                            "ChatScreenCommandSuggestionsMixin",
                             "PauseScreenStringMixin",
-                            "ScreenCommand114Mixin",
+                            "ScreenCommandMixin",
                             "ServerGamePacketListenerRetroMixin",
                             "ServerLoginPacketListenerRetroMixin",
                             "ShareToLanScreenStringMixin"
@@ -544,7 +541,7 @@ tasks.register("auditRetroArtifacts") {
                         "forge-1.15.2", "forge-1.16.5" ->
                             "link/e4steam/retro/forge/E4steamForgeModernClient.class"
                         "fabric-1.14.4" ->
-                            "link/e4steam/retro/fabric/E4steamFabric114.class"
+                            "link/e4steam/retro/fabric/E4steamFabric.class"
                         "fabric-1.15.2", "fabric-1.16.5" ->
                             "link/e4steam/retro/fabric/E4steamFabric.class"
                         else -> error("No audited client adapter for ${project.name}")

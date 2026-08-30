@@ -33,7 +33,7 @@ dependencies {
 
     // Forge 1.17/1.18 does not load Loom's META-INF/jars dependency here.
     // Shade Kaleido so Config's superclass is available during mod construction.
-    shadowCommon("folk.sisby:kaleido-config:0.3.3+1.3.2") { transitive = false }
+    shadowCommon(libs.kaleido.config) { transitive = false }
     shadowCommon("com.code-disaster.steamworks4j:steamworks4j:${rootProject.steamworks4j_version}") {
         transitive = false
     }

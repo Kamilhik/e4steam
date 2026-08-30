@@ -71,28 +71,6 @@ tasks.register("apiChecks") {
     )
 }
 
-ext.getLatestChangelog = {
-    Collection<String> lines = file("$rootDir/CHANGELOG.md").readLines()
-    String changelog = ""
-    Boolean atSegment = false
-    for (String line : lines) {
-        if (line.startsWith("## ")) {
-            if (atSegment) break // hit next segment
-            atSegment = true
-        }
-        if (atSegment) changelog += "$line\n"
-    }
-    return changelog.trim()
-}
-
-tasks.register("viewLatestChangelog") {
-    group "documentation"
-    description "Print the topmost single version section from the full CHANGELOG.md file."
-    doLast {
-        println(getLatestChangelog())
-    }
-}
-
 tasks.register("legacyReleaseJars", GradleBuild) {
     group = "build"
     description = "Build the separate Minecraft 1.17/Java 16 legacy variants."

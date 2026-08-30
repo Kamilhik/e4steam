@@ -1,6 +1,7 @@
 package link.e4steam.forge;
 
 import link.e4steam.E4steamDedicated;
+import link.e4steam.LoaderSupport;
 import link.e4steam.MinecraftVersion;
 import link.e4steam.api.runtime.RuntimeMode;
 import link.e4steam.internal.addon.AddonDiscoverySupport;
@@ -17,7 +18,7 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 public final class E4steamForge {
     public E4steamForge() {
         MinecraftForge.EVENT_BUS.register(this);
-        String loaderVersion = versionOf(net.minecraftforge.fml.loading.FMLLoader.class);
+        String loaderVersion = LoaderSupport.versionOf(net.minecraftforge.fml.loading.FMLLoader.class);
         if (!AgnosImpl.isClient()) {
             E4steamDedicated.init(
                     new RuntimeEnvironment("forge", loaderVersion, MinecraftVersion.current(),
@@ -26,7 +27,7 @@ public final class E4steamForge {
             );
             return;
         }
-        initializeClient(loaderVersion);
+        LoaderSupport.initializeClient("link.e4steam.forge.E4steamClientForge", loaderVersion);
     }
 
     @SubscribeEvent public void serverStarted(ServerStartedEvent event) {
@@ -39,24 +40,5 @@ public final class E4steamForge {
 
     @SubscribeEvent public void registerCommands(RegisterCommandsEvent event) {
         E4steamDedicated.registerCommands(event.getDispatcher());
-    }
-
-    private static String versionOf(Class<?> type) {
-        String version = type.getPackage() == null
-                ? null : type.getPackage().getImplementationVersion();
-        return version == null || version.trim().isEmpty() ? "unknown" : version;
-    }
-
-    private static void initializeClient(String loaderVersion) {
-        try {
-            Class<?> bootstrap = Class.forName(
-                    "link.e4steam.forge.E4steamClientForge", true,
-                    E4steamForge.class.getClassLoader());
-            java.lang.reflect.Method initialize =
-                    bootstrap.getDeclaredMethod("initialize", String.class);
-            initialize.invoke(null, loaderVersion);
-        } catch (ReflectiveOperationException failure) {
-            throw new IllegalStateException("Could not initialize the e4steam Forge client", failure);
-        }
     }
 }

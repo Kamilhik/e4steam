@@ -67,11 +67,11 @@ public final class SteamAddonNetworkRuntime implements AddonNetworkCoordinator.T
                 new FrameSender() {
                     @Override public boolean sendHello(
                             SteamConnectionBridge target, byte[] packet) {
-                        return SteamClientApiBridge.sendAddonHello(target, packet);
+                        return SteamRuntime.get().sendAddonHello(target, packet);
                     }
                     @Override public boolean sendData(
                             SteamConnectionBridge target, byte[] packet, boolean reliable) {
-                        return SteamClientApiBridge.sendAddonFrame(target, packet, reliable);
+                        return SteamRuntime.get().sendAddonFrame(target, packet, reliable);
                     }
                 }, true);
     }
@@ -244,9 +244,9 @@ public final class SteamAddonNetworkRuntime implements AddonNetworkCoordinator.T
     }
 
     private static BridgeIdentity clientIdentity(SteamConnectionBridge bridge) {
-        SteamClientApiBridge.SessionView view = SteamClientApiBridge.sessionView();
+        SteamRuntime.SafeSessionView view = SteamRuntime.get().safeSessionView();
         if (!view.active()) return null;
-        String opaque = SteamClientApiBridge.opaquePeerId(bridge.remoteSteamId());
+        String opaque = SteamRuntime.get().safeOpaquePeerId(bridge.remoteSteamId());
         if (opaque == null) return null;
         return new BridgeIdentity(new SessionId(view.sessionId(), view.generation()),
                 new PeerId(opaque));

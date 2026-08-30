@@ -7,7 +7,7 @@ import link.e4steam.api.Registration;
 import link.e4steam.api.identity.IdentityService;
 import link.e4steam.api.session.SessionService;
 import link.e4steam.api.event.SessionStateEvent;
-import link.e4steam.steam.SteamClientApiBridge;
+import link.e4steam.steam.SteamRuntime;
 import link.e4steam.internal.dedicated.DedicatedServerController;
 
 import java.util.ArrayList;
@@ -37,7 +37,7 @@ final class CoreSessionRegistry implements AutoCloseable {
     ApiResult<SessionService.SessionSnapshot> snapshot() {
         SessionService.SessionSnapshot dedicated = dedicatedSnapshot();
         if (dedicated != null) return ApiResult.success(dedicated);
-        SteamClientApiBridge.SessionView view = SteamClientApiBridge.sessionView();
+        SteamRuntime.SafeSessionView view = SteamRuntime.get().safeSessionView();
         return view.active() ? ApiResult.success(toSnapshot(view))
                 : SafeApiErrors.failure(ApiErrorCode.UNAVAILABLE,
                 "session.snapshot", "NoActiveContext");
@@ -60,7 +60,7 @@ final class CoreSessionRegistry implements AutoCloseable {
                         "session.peers", "Cursor"));
             }
         }
-        SteamClientApiBridge.SessionView view = SteamClientApiBridge.sessionView();
+        SteamRuntime.SafeSessionView view = SteamRuntime.get().safeSessionView();
         if (!matches(view, id)) return completed(stale("session.peers"));
         String after = cursor == null ? "" : cursor.trim();
         if (!after.isEmpty()) {
@@ -70,11 +70,11 @@ final class CoreSessionRegistry implements AutoCloseable {
                         "session.peers", "Cursor"));
             }
         }
-        ArrayList<SteamClientApiBridge.PeerIdentity> peers = new ArrayList<>(view.peers());
-        peers.sort(Comparator.comparing(SteamClientApiBridge.PeerIdentity::opaquePeerId));
+        ArrayList<SteamRuntime.SafePeerIdentity> peers = new ArrayList<>(view.peers());
+        peers.sort(Comparator.comparing(SteamRuntime.SafePeerIdentity::opaquePeerId));
         ArrayList<SessionService.PeerSnapshot> page = new ArrayList<>();
         String next = "";
-        for (SteamClientApiBridge.PeerIdentity peer : peers) {
+        for (SteamRuntime.SafePeerIdentity peer : peers) {
             if (!after.isEmpty() && peer.opaquePeerId().compareTo(after) <= 0) continue;
             if (page.size() == limit) {
                 next = page.get(page.size() - 1).peerId().value();
@@ -97,10 +97,10 @@ final class CoreSessionRegistry implements AutoCloseable {
             return completed(SafeApiErrors.failure(ApiErrorCode.CAPABILITY_DENIED,
                     "session.disconnect", "DedicatedAdminRequired"));
         }
-        SteamClientApiBridge.SessionView view = SteamClientApiBridge.sessionView();
+        SteamRuntime.SafeSessionView view = SteamRuntime.get().safeSessionView();
         if (!matches(view, id)) return completed(stale("session.disconnect"));
         SessionService.SessionSnapshot before = toSnapshot(view);
-        if (!SteamClientApiBridge.disconnect(id.generation())) {
+        if (!SteamRuntime.get().disconnectSafeSession(id.generation())) {
             return completed(stale("session.disconnect"));
         }
         closeGeneration(id.generation());
@@ -123,7 +123,7 @@ final class CoreSessionRegistry implements AutoCloseable {
             SessionService.SessionId id, Registration resource) {
         if (id == null || resource == null) return SafeApiErrors.failure(
                 ApiErrorCode.INVALID_ARGUMENT, "session.resource", "Validation");
-        SteamClientApiBridge.SessionView view = SteamClientApiBridge.sessionView();
+        SteamRuntime.SafeSessionView view = SteamRuntime.get().safeSessionView();
         if (!matchesAny(view, id)) return stale("session.resource");
         SessionResource owned = new SessionResource(id.generation(), resource);
         synchronized (lock) {
@@ -134,7 +134,7 @@ final class CoreSessionRegistry implements AutoCloseable {
             }
             resources.add(owned);
         }
-        if (!matchesAny(SteamClientApiBridge.sessionView(), id)) {
+        if (!matchesAny(SteamRuntime.get().safeSessionView(), id)) {
             owned.close();
             return stale("session.resource");
         }
@@ -142,7 +142,7 @@ final class CoreSessionRegistry implements AutoCloseable {
     }
 
     IdentityService.LocalIdentity localIdentity() {
-        SteamClientApiBridge.MinecraftIdentity identity = SteamClientApiBridge.localIdentity();
+        SteamRuntime.SafeMinecraftIdentity identity = SteamRuntime.get().safeLocalMinecraftIdentity();
         return identity == null ? null : new IdentityService.LocalIdentity(
                 new IdentityService.MinecraftIdentity(
                         identity.minecraftUuid(), identity.minecraftName(), true));
@@ -158,7 +158,7 @@ final class CoreSessionRegistry implements AutoCloseable {
                     peerId, new IdentityService.MinecraftIdentity(
                     dedicatedIdentity.minecraftUuid(), dedicatedIdentity.minecraftName(), false)));
         }
-        SteamClientApiBridge.PeerIdentity peer = SteamClientApiBridge.resolvePeer(peerId.value());
+        SteamRuntime.SafePeerIdentity peer = SteamRuntime.get().safeResolvePeer(peerId.value());
         return peer == null ? null : new IdentityService.RemoteIdentity(
                 new IdentityService.PeerIdentity(peerId,
                         new IdentityService.MinecraftIdentity(
@@ -169,8 +169,8 @@ final class CoreSessionRegistry implements AutoCloseable {
         if (id == null || peerId == null) return false;
         DedicatedServerController dedicated = DedicatedServerController.current();
         if (dedicated != null && dedicated.matchesAddonPeer(id, peerId)) return true;
-        SteamClientApiBridge.SessionView view = SteamClientApiBridge.sessionView();
-        return matches(view, id) && SteamClientApiBridge.resolvePeer(peerId.value()) != null;
+        SteamRuntime.SafeSessionView view = SteamRuntime.get().safeSessionView();
+        return matches(view, id) && SteamRuntime.get().safeResolvePeer(peerId.value()) != null;
     }
 
     boolean localIsHost(SessionService.SessionId id) {
@@ -179,12 +179,12 @@ final class CoreSessionRegistry implements AutoCloseable {
         SessionService.SessionId dedicatedId = dedicated == null
                 ? null : dedicated.addonSessionId();
         if (dedicatedId != null && dedicatedId.equals(id)) return true;
-        SteamClientApiBridge.SessionView view = SteamClientApiBridge.sessionView();
+        SteamRuntime.SafeSessionView view = SteamRuntime.get().safeSessionView();
         return matches(view, id) && "INTEGRATED_HOST".equals(view.roleCode());
     }
 
     void refresh() {
-        SteamClientApiBridge.SessionView view = SteamClientApiBridge.sessionView();
+        SteamRuntime.SafeSessionView view = SteamRuntime.get().safeSessionView();
         SessionService.SessionSnapshot dedicated = dedicatedSnapshot();
         List<SessionResource> stale = Collections.emptyList();
         CompletableFuture<ApiResult<SessionService.SessionSnapshot>> ready = null;
@@ -254,7 +254,7 @@ final class CoreSessionRegistry implements AutoCloseable {
     }
 
     private static SessionService.SessionSnapshot toSnapshot(
-            SteamClientApiBridge.SessionView view) {
+            SteamRuntime.SafeSessionView view) {
         return new SessionService.SessionSnapshot(
                 new SessionService.SessionId(view.sessionId(), view.generation()),
                 SessionService.SessionRole.valueOf(view.roleCode()),
@@ -311,13 +311,13 @@ final class CoreSessionRegistry implements AutoCloseable {
     }
 
     private static boolean matches(
-            SteamClientApiBridge.SessionView view, SessionService.SessionId id) {
+            SteamRuntime.SafeSessionView view, SessionService.SessionId id) {
         return view.active() && view.generation() == id.generation()
                 && view.sessionId().equals(id.value());
     }
 
     private static boolean matchesAny(
-            SteamClientApiBridge.SessionView view, SessionService.SessionId id) {
+            SteamRuntime.SafeSessionView view, SessionService.SessionId id) {
         DedicatedServerController dedicated = DedicatedServerController.current();
         SessionService.SessionId dedicatedId = dedicated == null
                 ? null : dedicated.addonSessionId();

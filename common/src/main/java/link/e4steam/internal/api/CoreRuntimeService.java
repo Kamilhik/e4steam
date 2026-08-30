@@ -9,7 +9,7 @@ import link.e4steam.api.runtime.RuntimeService;
 import link.e4steam.api.runtime.RuntimeSnapshot;
 import link.e4steam.api.runtime.SteamRuntimeState;
 import link.e4steam.api.runtime.TransportCapability;
-import link.e4steam.steam.SteamClientApiBridge;
+import link.e4steam.steam.SteamRuntime;
 import link.e4steam.internal.dedicated.DedicatedServerController;
 import link.e4steam.api.dedicated.DedicatedServerService.DedicatedServerState;
 import link.e4steam.api.runtime.RuntimeMode;
@@ -45,7 +45,7 @@ final class CoreRuntimeService implements RuntimeService {
             failureCategory = dedicated == null ? "DEDICATED_BACKEND_UNAVAILABLE"
                     : dedicated.failureCategory();
         } else {
-            String status = SteamClientApiBridge.statusCode();
+            String status = SteamRuntime.get().safeStatusCode();
             try {
                 steamState = SteamRuntimeState.valueOf(
                         status.equals("RUNNING") ? "READY" : status
@@ -53,7 +53,7 @@ final class CoreRuntimeService implements RuntimeService {
             } catch (IllegalArgumentException failure) {
                 steamState = SteamRuntimeState.FAILED;
             }
-            failureCategory = SteamClientApiBridge.failureCategory();
+            failureCategory = SteamRuntime.get().safeFailureCategory();
         }
         Set<TransportCapability> transports;
         if (steamState != SteamRuntimeState.READY) {

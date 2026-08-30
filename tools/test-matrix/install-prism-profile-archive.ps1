@@ -10,22 +10,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "common.ps1")
+
 if ([string]::IsNullOrWhiteSpace($ManifestPath)) {
     $ManifestPath = Join-Path $PSScriptRoot "profiles.json"
-}
-
-function Assert-ChildPath {
-    param(
-        [Parameter(Mandatory = $true)][string]$Parent,
-        [Parameter(Mandatory = $true)][string]$Child
-    )
-
-    $parentPath = [IO.Path]::GetFullPath($Parent).TrimEnd('\', '/') +
-            [IO.Path]::DirectorySeparatorChar
-    $childPath = [IO.Path]::GetFullPath($Child)
-    if (-not $childPath.StartsWith($parentPath, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Refusing to modify a path outside $parentPath`: $childPath"
-    }
 }
 
 if (-not (Test-Path -LiteralPath $PrismRoot -PathType Container)) {
@@ -102,9 +90,7 @@ try {
     }
 
     if ($existing.Count -ne 0) {
-        $backupRoot = Join-Path $PrismRoot (
-            "e4steam-test-profile-backups\" + [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss"))
-        Assert-ChildPath -Parent $PrismRoot -Child $backupRoot
+        $backupRoot = New-TestProfileBackupRoot -PrismRoot $PrismRoot
         New-Item -ItemType Directory -Path $backupRoot | Out-Null
         foreach ($id in $existing) {
             Move-Item -LiteralPath (Join-Path $instancesRoot $id) -Destination (Join-Path $backupRoot $id)

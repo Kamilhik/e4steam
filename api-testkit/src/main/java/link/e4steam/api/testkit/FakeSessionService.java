@@ -9,8 +9,9 @@ import link.e4steam.api.session.SessionService;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+
+import static link.e4steam.api.testkit.TestResults.completed;
 
 /** Mutable generation-safe fake session and peer inventory. */
 public final class FakeSessionService implements SessionService {
@@ -27,7 +28,6 @@ public final class FakeSessionService implements SessionService {
     @Override public CompletionStage<ApiResult<SessionSnapshot>> readiness() { return completed(ApiResult.success(snapshot)); }
     @Override public ApiResult<Registration> registerResource(SessionId sessionId, Registration resource) { if (resource == null) throw new NullPointerException("resource"); return current(sessionId) ? ApiResult.success(resource) : stale("session.resource"); }
     private boolean current(SessionId id) { return id != null && snapshot.id().equals(id) && snapshot.state() != SessionState.CLOSED; }
-    private static <T> CompletionStage<T> completed(T value) { return CompletableFuture.completedFuture(value); }
     private static <T> ApiResult<T> stale(String operation) { return ApiResult.failure(new ApiError(ApiErrorCode.STALE_HANDLE, "e4steam:session.stale", Retryability.PERMANENT, operation, "", "testkit")); }
     private static <T> ApiResult<T> invalid(String operation) { return ApiResult.failure(new ApiError(ApiErrorCode.INVALID_ARGUMENT, "e4steam:invalid_argument", Retryability.PERMANENT, operation, "", "testkit")); }
 }

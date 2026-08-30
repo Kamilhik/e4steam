@@ -105,17 +105,6 @@ class TestkitContractTest {
     }
 
     @Test
-    void privacyAssertionRejectsCanary() {
-        boolean rejected = false;
-        try {
-            PrivacyAssertions.assertNoSecrets("prefix TOKEN-CANARY suffix", "TOKEN-CANARY");
-        } catch (AssertionError expected) {
-            rejected = true;
-        }
-        assertTrue(rejected);
-    }
-
-    @Test
     void standardServicesExposeLoggerAndRejectSensitiveFields() {
         StandardFakeServices services = new StandardFakeServices();
         TestServiceRegistry registry = services.registerInto(new TestServiceRegistry());

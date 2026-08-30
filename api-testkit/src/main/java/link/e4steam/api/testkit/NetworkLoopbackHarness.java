@@ -1,10 +1,8 @@
 package link.e4steam.api.testkit;
 
-import link.e4steam.api.ApiError;
 import link.e4steam.api.ApiErrorCode;
 import link.e4steam.api.ApiLimits;
 import link.e4steam.api.ApiResult;
-import link.e4steam.api.Retryability;
 import link.e4steam.api.identity.IdentityService.PeerId;
 import link.e4steam.api.network.NetworkService;
 import link.e4steam.api.session.SessionService.SessionId;
@@ -13,6 +11,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+
+import static link.e4steam.api.testkit.TestResults.completed;
+import static link.e4steam.api.testkit.TestResults.failure;
 
 /** Deterministic authenticated addon-channel loopback with bounds and failure injection. */
 public final class NetworkLoopbackHarness implements NetworkService, AutoCloseable {
@@ -109,10 +110,5 @@ public final class NetworkLoopbackHarness implements NetworkService, AutoCloseab
 
         @Override public synchronized boolean isClosed() { return handleClosed; }
         @Override public synchronized void close() { if (!handleClosed) { handleClosed = true; state = ChannelState.CLOSED; synchronized (NetworkLoopbackHarness.this) { channels.remove(descriptor.id()); } } }
-    }
-
-    private static <T> CompletionStage<T> completed(T value) { return CompletableFuture.completedFuture(value); }
-    private static <T> ApiResult<T> failure(ApiErrorCode code, String key, String operation) {
-        return ApiResult.failure(new ApiError(code, "e4steam:" + key, Retryability.PERMANENT, operation, "", "testkit"));
     }
 }

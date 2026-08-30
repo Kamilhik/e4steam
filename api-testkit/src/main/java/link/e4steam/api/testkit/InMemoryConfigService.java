@@ -1,15 +1,15 @@
 package link.e4steam.api.testkit;
 
-import link.e4steam.api.ApiError;
 import link.e4steam.api.ApiErrorCode;
 import link.e4steam.api.ApiResult;
-import link.e4steam.api.Retryability;
 import link.e4steam.api.config.ConfigService;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+
+import static link.e4steam.api.testkit.TestResults.completed;
+import static link.e4steam.api.testkit.TestResults.failure;
 
 /** Deterministic atomic in-memory config backend for migrations and addon contract tests. */
 public final class InMemoryConfigService implements ConfigService {
@@ -63,6 +63,4 @@ public final class InMemoryConfigService implements ConfigService {
 
     /** Makes the next atomic write fail without mutating the previous snapshot. */ public synchronized void failNextWrite() { failNextWrite = true; }
     private static String key(String schemaId, ConfigScope scope) { if (schemaId == null || scope == null) throw new NullPointerException("config"); return schemaId + '|' + scope.name(); }
-    private static <T> CompletionStage<T> completed(T value) { return CompletableFuture.completedFuture(value); }
-    private static <T> ApiResult<T> failure(ApiErrorCode code, String key, String operation) { return ApiResult.failure(new ApiError(code, "e4steam:" + key, Retryability.PERMANENT, operation, "", "testkit")); }
 }

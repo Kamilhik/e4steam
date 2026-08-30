@@ -31,6 +31,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import static link.e4steam.api.testkit.TestResults.completed;
+
 /** Complete default fake service set for compile-checked addon contract tests. */
 public final class StandardFakeServices implements AutoCloseable {
     /** Fake identity service. */ public final IdentityService identities;
@@ -183,7 +185,6 @@ public final class StandardFakeServices implements AutoCloseable {
         }
     }
 
-    private static <T> CompletionStage<T> completed(T value) { return CompletableFuture.completedFuture(value); }
     private static <T> ApiResult<T> unavailable(String operation) { return ApiResult.failure(new ApiError(ApiErrorCode.UNAVAILABLE, "e4steam:unavailable", Retryability.AFTER_STATE_CHANGE, operation, "", "testkit")); }
     private static <T> ApiResult<T> denied(String operation) { return ApiResult.failure(new ApiError(ApiErrorCode.CAPABILITY_DENIED, "e4steam:capability_denied", Retryability.PERMANENT, operation, "", "testkit")); }
     private static <T> ApiResult<T> invalid(String operation) { return ApiResult.failure(new ApiError(ApiErrorCode.INVALID_ARGUMENT, "e4steam:invalid_argument", Retryability.PERMANENT, operation, "", "testkit")); }

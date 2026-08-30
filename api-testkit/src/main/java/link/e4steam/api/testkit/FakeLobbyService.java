@@ -10,9 +10,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static link.e4steam.api.testkit.TestResults.completed;
 
 /** Deterministic bounded in-memory lobby backend. */
 public final class FakeLobbyService implements LobbyService {
@@ -24,6 +25,5 @@ public final class FakeLobbyService implements LobbyService {
     @Override public synchronized CompletionStage<ApiResult<LobbySnapshot>> updateMetadata(LobbyId lobbyId, Metadata metadata) { LobbySnapshot old = lobbies.get(lobbyId); if (old == null) return completed(missing("lobby.metadata")); LobbySnapshot next = new LobbySnapshot(old.id(), old.visibility(), old.memberLimit(), old.members(), metadata); lobbies.put(lobbyId, next); return completed(ApiResult.success(next)); }
     @Override public synchronized CompletionStage<ApiResult<SearchPage>> search(SearchQuery query) { ArrayList<LobbySnapshot> values = new ArrayList<>(lobbies.values()); if (values.size() > query.limit()) values = new ArrayList<>(values.subList(0, query.limit())); return completed(ApiResult.success(new SearchPage(values, ""))); }
     /** Returns current lobby count. */ public synchronized int size() { return lobbies.size(); }
-    private static <T> CompletionStage<T> completed(T value) { return CompletableFuture.completedFuture(value); }
     private static <T> ApiResult<T> missing(String operation) { return ApiResult.failure(new ApiError(ApiErrorCode.UNAVAILABLE, "e4steam:lobby.not_found", Retryability.PERMANENT, operation, "", "testkit")); }
 }

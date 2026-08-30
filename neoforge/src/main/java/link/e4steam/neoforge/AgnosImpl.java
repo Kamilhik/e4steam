@@ -25,10 +25,6 @@ public class AgnosImpl {
         return FMLPaths.CONFIGDIR.get();
     }
 
-    public static boolean proactivelyAcceptSteamPeerSessions() {
-        return true;
-    }
-
     public static boolean autoRestartBrokenSteamSessionForHandshake() {
         return false;
     }

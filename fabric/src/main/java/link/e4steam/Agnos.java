@@ -18,10 +18,6 @@ public class Agnos {
         return FabricLoader.getInstance().getModContainer(E4steamConstants.MOD_ID).get().getOrigin().getPaths().get(0);
     }
 
-    public static boolean proactivelyAcceptSteamPeerSessions() {
-        return true;
-    }
-
     public static boolean autoRestartBrokenSteamSessionForHandshake() {
         return false;
     }

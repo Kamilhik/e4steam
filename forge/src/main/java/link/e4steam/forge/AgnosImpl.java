@@ -20,10 +20,6 @@ public class AgnosImpl {
         return FMLLoader.getLoadingModList().getMods().stream().filter(modInfo -> modInfo.getModId().equals(E4steamConstants.MOD_ID)).findAny().get().getOwningFile().getFile().getFilePath();
     }
 
-    public static boolean proactivelyAcceptSteamPeerSessions() {
-        return true;
-    }
-
     public static boolean autoRestartBrokenSteamSessionForHandshake() {
         return true;
     }

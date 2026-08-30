@@ -40,7 +40,7 @@ import java.util.function.Consumer;
 public final class AddonManager implements AddonService, AutoCloseable {
     private final Object lock = new Object();
     private final ApiVersion apiVersion;
-    private final CapabilityGrantPolicy capabilityPolicy;
+    private final BuiltinCapabilityPolicy capabilityPolicy;
     private final AddonApiFactory apiFactory;
     private final ExecutorService lifecycleExecutor;
     private final long callbackTimeoutMillis;
@@ -52,16 +52,7 @@ public final class AddonManager implements AddonService, AutoCloseable {
     private boolean discovered;
 
     public AddonManager(ApiVersion apiVersion,
-                        CapabilityGrantPolicy capabilityPolicy,
-                        AddonApiFactory apiFactory,
-                        ExecutorService lifecycleExecutor,
-                        long callbackTimeoutMillis) {
-        this(apiVersion, capabilityPolicy, apiFactory, lifecycleExecutor,
-                callbackTimeoutMillis, handle -> { });
-    }
-
-    public AddonManager(ApiVersion apiVersion,
-                        CapabilityGrantPolicy capabilityPolicy,
+                        BuiltinCapabilityPolicy capabilityPolicy,
                         AddonApiFactory apiFactory,
                         ExecutorService lifecycleExecutor,
                         long callbackTimeoutMillis,

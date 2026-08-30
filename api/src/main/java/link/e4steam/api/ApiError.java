@@ -24,8 +24,8 @@ public final class ApiError {
         this.messageKey = ApiValidation.text(messageKey, "messageKey", 128);
         this.retryability = Objects.requireNonNull(retryability, "retryability");
         this.operation = ApiValidation.text(operation, "operation", 96);
-        this.correlationId = optionalSafe(correlationId, 64);
-        this.causeCategory = optionalSafe(causeCategory, 64);
+        this.correlationId = ApiValidation.optionalText(correlationId, "correlationId", 64);
+        this.causeCategory = ApiValidation.optionalText(causeCategory, "causeCategory", 64);
     }
 
     /** Returns the stable error code. */
@@ -55,10 +55,5 @@ public final class ApiError {
                 + (correlationId.isEmpty() ? "" : ", correlationId='" + correlationId + '\'')
                 + (causeCategory.isEmpty() ? "" : ", causeCategory='" + causeCategory + '\'')
                 + '}';
-    }
-
-    private static String optionalSafe(String value, int maximumLength) {
-        if (value == null || value.trim().isEmpty()) return "";
-        return ApiValidation.text(value, "optional safe field", maximumLength);
     }
 }

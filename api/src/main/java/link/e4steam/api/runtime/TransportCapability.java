@@ -7,7 +7,5 @@ public enum TransportCapability {
     /** Unreliable bounded datagrams. */
     DATAGRAM,
     /** Steam lobby invitation flow. */
-    LOBBY_INVITES,
-    /** Version-negotiated addon channels, once provided by a later service. */
-    ADDON_CHANNELS
+    LOBBY_INVITES
 }

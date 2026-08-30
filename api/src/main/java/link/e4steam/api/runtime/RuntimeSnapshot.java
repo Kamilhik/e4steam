@@ -1,5 +1,6 @@
 package link.e4steam.api.runtime;
 
+import link.e4steam.api.ApiValidation;
 import link.e4steam.api.ApiVersion;
 
 import java.util.Collections;
@@ -40,19 +41,19 @@ public final class RuntimeSnapshot {
             String lastFailureCategory
     ) {
         this.apiVersion = Objects.requireNonNull(apiVersion, "apiVersion");
-        this.modVersion = safe(modVersion, "modVersion", 64, false);
+        this.modVersion = ApiValidation.text(modVersion, "modVersion", 64);
         if (wireVersion < 0) throw new IllegalArgumentException("wireVersion must be non-negative");
         this.wireVersion = wireVersion;
         this.platform = Objects.requireNonNull(platform, "platform");
         this.architecture = Objects.requireNonNull(architecture, "architecture");
         this.runtimeMode = Objects.requireNonNull(runtimeMode, "runtimeMode");
         this.loader = Objects.requireNonNull(loader, "loader");
-        this.minecraftVersion = safe(minecraftVersion, "minecraftVersion", 64, false);
+        this.minecraftVersion = ApiValidation.text(minecraftVersion, "minecraftVersion", 64);
         this.steamState = Objects.requireNonNull(steamState, "steamState");
         this.lifecyclePhase = Objects.requireNonNull(lifecyclePhase, "lifecyclePhase");
         this.transports = immutableEnumSet(transports, TransportCapability.class);
         this.compatibilityFlags = immutableEnumSet(compatibilityFlags, CompatibilityFlag.class);
-        this.lastFailureCategory = safe(lastFailureCategory, "lastFailureCategory", 64, true);
+        this.lastFailureCategory = ApiValidation.optionalText(lastFailureCategory, "lastFailureCategory", 64);
     }
 
     /** Returns the Java addon API version. */
@@ -107,15 +108,6 @@ public final class RuntimeSnapshot {
                 + ", steam=" + steamState
                 + ", phase=" + lifecyclePhase
                 + '}';
-    }
-
-    private static String safe(String value, String field, int maximum, boolean optional) {
-        if (value == null) throw new NullPointerException(field);
-        String checked = value.trim();
-        if ((!optional && checked.isEmpty()) || checked.length() > maximum) {
-            throw new IllegalArgumentException(field + " has an invalid length");
-        }
-        return checked;
     }
 
     private static <E extends Enum<E>> Set<E> immutableEnumSet(Set<E> values, Class<E> type) {

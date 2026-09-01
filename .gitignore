@@ -35,6 +35,22 @@ crash-reports/
 logs/
 /tools/test-matrix/results/
 
+# Local preview pages and manual test-matrix helpers are intentionally kept on
+# the maintainer machine, not in the public source repository.
+/tools/publication-preview/
+/tools/test-matrix/
+/tools/curseforge-preview.html
+
+# Local-only automation and browser previews are kept out of the public
+# repository. Runtime Forge coremods below are the only JavaScript exception:
+# Forge loads them as mandatory transformation entry points.
+*.ps1
+*.html
+*.js
+!retro/forge-1.13.2/src/main/resources/coremods/e4steam_login_113.js
+!retro/forge-1.14.4/src/main/resources/coremods/e4steam_login_114.js
+!retro/adapters/forge-modlauncher-overlay/src/main/resources/coremods/e4steam_overlay_bootstrap.js
+
 # Local credentials and signing material must never enter the repository.
 .env
 .env.*

@@ -1,7 +1,8 @@
 package link.e4steam.steam;
 
 import link.e4steam.Agnos;
-import link.e4steam.E4steamClient;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,14 +20,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/** Java 8-compatible opt-in Unix overlay relaunch for retro artifacts. */
-final class SteamOverlayRelauncher {
+/** Java 8-compatible Unix overlay relaunch for retro artifacts. */
+public final class SteamOverlayRelauncher {
+    private static final Logger LOGGER = LogManager.getLogger("e4steam");
     private static final String MARKER_ENV = "E4STEAM_OVERLAY_RELAUNCHED";
+    private static final String MARKER_PROPERTY = "e4steam.overlayRelaunched";
     private static final String OVERLAY_RELAUNCH_PROPERTY = "e4steam.overlayRelaunch";
     private static final String CAPTURED_STDIN_FILE_PROPERTY = "e4steam.capturedStdinFile";
     private static final String CAPTURED_STDIN_TRUNCATED_PROPERTY =
             "e4steam.capturedStdinTruncated";
     private static final long MAX_CAPTURE_BYTES = 1_048_576L;
+    private static final int MAX_PUBLISHED_GAME_ARGUMENT_BYTES = 1_048_576;
+    private static final int MAX_PUBLISHED_GAME_ARGUMENTS = 4_096;
+    private static final char PRISM_ARGUMENT_SEPARATOR = 31;
+    private static final String PRISM_MAIN_CLASS_PROPERTY =
+            "org.prismlauncher.launch.mainclass";
+    private static final String PRISM_GAME_ARGUMENTS_PROPERTY =
+            "org.prismlauncher.launch.gameargs";
+    private static final String MULTIMC_MAIN_CLASS_PROPERTY =
+            "org.multimc.launch.mainclass";
+    private static final String MULTIMC_GAME_ARGUMENTS_PROPERTY =
+            "org.multimc.launch.gameargs";
     private static final String[] STDIN_LAUNCHER_WRAPPERS = {
             "org.prismlauncher.EntryPoint",
             "org.multimc.EntryPoint"
@@ -35,15 +49,20 @@ final class SteamOverlayRelauncher {
     private SteamOverlayRelauncher() {
     }
 
-    static void relaunchIfNeeded() {
-        if (!Agnos.isClient() || System.getenv(MARKER_ENV) != null) return;
+    public static void relaunchIfNeeded() {
+        if (!Agnos.isClient() || isRelaunched(
+                System.getenv(MARKER_ENV), System.getProperty(MARKER_PROPERTY)
+        )) return;
         NativePlatform platform = currentPlatform();
         String insertionVariable = insertLibrariesEnvName(platform);
-        if (insertionVariable == null || !Boolean.getBoolean(OVERLAY_RELAUNCH_PROPERTY)) return;
+        if (insertionVariable == null
+                || !relaunchEnabled(System.getProperty(OVERLAY_RELAUNCH_PROPERTY))) {
+            return;
+        }
 
         Optional<Path> overlay = SteamOverlayLoader.findOverlayLibrary();
         if (!overlay.isPresent()) {
-            E4steamClient.LOGGER.info(
+            LOGGER.info(
                     "Steam Overlay renderer was not found; continuing without overlay relaunch"
             );
             return;
@@ -51,24 +70,41 @@ final class SteamOverlayRelauncher {
 
         Optional<List<String>> originalCommand = currentJvmCommandLine(platform);
         if (!originalCommand.isPresent()) {
-            E4steamClient.LOGGER.warn(
+            LOGGER.warn(
                     "Could not reconstruct the JVM launch command; continuing without overlay relaunch"
             );
             return;
         }
 
         List<String> command = new ArrayList<String>(originalCommand.get());
-        addEarlyProgressWindowFlagIfForgeModern(command);
         String wrapper = detectStdinLauncherWrapper(command);
         Optional<Path> capturedStdin = capturedStdinFile();
         if (wrapper != null && !capturedStdin.isPresent()) {
-            E4steamClient.LOGGER.warn(
-                    "Detected {} but no valid e4steam stdin-agent capture is available; "
-                            + "continuing without overlay relaunch",
+            Optional<List<String>> direct = rewritePublishedLauncherCommand(
+                    command,
+                    wrapper,
+                    publishedMainClass(wrapper),
+                    publishedGameArguments(wrapper)
+            );
+            if (!direct.isPresent()) {
+                LOGGER.warn(
+                        "Detected {} but it did not publish a safe direct launch command and "
+                                + "no valid e4steam stdin-agent capture is available; "
+                                + "continuing without overlay relaunch",
+                        wrapper
+                );
+                return;
+            }
+            command = new ArrayList<String>(direct.get());
+            preservePublishedLauncherProperties(command);
+            LOGGER.info(
+                    "Recovered the direct Minecraft launch command from {} without a Java agent",
                     wrapper
             );
-            return;
         }
+        addVmOption(command, "-D" + MARKER_PROPERTY + "=true");
+        addMacOsFirstThreadOption(command, platform);
+        addEarlyProgressWindowFlagIfForgeModern(command);
 
         Process child;
         try {
@@ -89,13 +125,13 @@ final class SteamOverlayRelauncher {
             configureSteamAppEnvironment(environment);
             environment.put(MARKER_ENV, "1");
 
-            E4steamClient.LOGGER.info(
+            LOGGER.info(
                     "Relaunching Minecraft with the Steam Overlay renderer injected"
             );
             child = builder.start();
             if (capturedStdin.isPresent()) replayCapturedStdin(child, capturedStdin.get());
         } catch (IOException | RuntimeException failure) {
-            E4steamClient.LOGGER.warn(
+            LOGGER.warn(
                     "Could not relaunch Minecraft for the Steam Overlay; continuing normally",
                     failure
             );
@@ -110,7 +146,85 @@ final class SteamOverlayRelauncher {
             child.destroy();
             exitCode = 1;
         }
+
+        // Forge 1.7-1.12 installs FMLSecurityManager and rejects a direct
+        // System.exit() from mod code. The tiny branch-specific bridge is in
+        // FML's allowlisted namespace and avoids initializing FMLCommonHandler
+        // while Forge's Loader is still being constructed. Newer Forge and
+        // non-Forge loaders fall through to the ordinary JVM exit below.
+        if (requestLegacyForgeExit(exitCode)) {
+            LOGGER.error("Legacy Forge shutdown bridge returned without terminating the JVM");
+        }
         System.exit(exitCode);
+    }
+
+    static boolean requestLegacyForgeExit(int exitCode) {
+        String[] earlyExitBridges = {
+                "net.minecraftforge.fml.e4steam.E4steamEarlyExit",
+                "cpw.mods.fml.e4steam.E4steamEarlyExit"
+        };
+        for (String bridgeName : earlyExitBridges) {
+            try {
+                Class<?> bridgeClass = Class.forName(bridgeName);
+                bridgeClass.getMethod("exit", Integer.TYPE).invoke(null, exitCode);
+                return true;
+            } catch (ClassNotFoundException absent) {
+                // The matching branch adapter is not installed.
+            } catch (ReflectiveOperationException incompatible) {
+                LOGGER.warn(
+                        "Could not invoke legacy Forge early shutdown bridge {}",
+                        bridgeName,
+                        incompatible
+                );
+                return false;
+            } catch (LinkageError incompatible) {
+                LOGGER.warn(
+                        "Could not link legacy Forge early shutdown bridge {}",
+                        bridgeName,
+                        incompatible
+                );
+                return false;
+            }
+        }
+
+        // Retain the established fallback for environments where Forge is
+        // already fully initialized. The early 1.7-1.12 artifacts always ship
+        // one of the bridges above, so this path cannot initialize Loader
+        // during their core-plugin construction.
+        String[] handlers = {
+                "net.minecraftforge.fml.common.FMLCommonHandler",
+                "cpw.mods.fml.common.FMLCommonHandler"
+        };
+        for (String handlerName : handlers) {
+            try {
+                Class<?> handlerClass = Class.forName(handlerName);
+                Object handler = handlerClass.getMethod("instance").invoke(null);
+                handlerClass.getMethod("exitJava", Integer.TYPE, Boolean.TYPE)
+                        .invoke(handler, exitCode, false);
+                return true;
+            } catch (ClassNotFoundException absent) {
+                // Try the other legacy Forge package, then the normal exit.
+            } catch (ReflectiveOperationException incompatible) {
+                LOGGER.warn(
+                        "Could not delegate JVM shutdown to {}",
+                        handlerName,
+                        incompatible
+                );
+                return false;
+            } catch (LinkageError incompatible) {
+                LOGGER.warn(
+                        "Could not link legacy Forge shutdown handler {}",
+                        handlerName,
+                        incompatible
+                );
+                return false;
+            }
+        }
+        return false;
+    }
+
+    static boolean isRelaunched(String environmentMarker, String propertyMarker) {
+        return environmentMarker != null || Boolean.parseBoolean(propertyMarker);
     }
 
     static String insertLibrariesEnvName(NativePlatform platform) {
@@ -148,6 +262,53 @@ final class SteamOverlayRelauncher {
             }
         }
         return null;
+    }
+
+    static Optional<List<String>> rewritePublishedLauncherCommand(
+            List<String> command,
+            String wrapper,
+            String mainClass,
+            String encodedGameArguments
+    ) {
+        if (command == null || wrapper == null || !isSafeMainClass(mainClass)
+                || encodedGameArguments == null
+                || encodedGameArguments.length() > MAX_PUBLISHED_GAME_ARGUMENT_BYTES) {
+            return Optional.empty();
+        }
+        int wrapperIndex = command.indexOf(wrapper);
+        if (wrapperIndex <= 0) return Optional.empty();
+
+        List<String> gameArguments = splitPublishedGameArguments(encodedGameArguments);
+        if (gameArguments.size() > MAX_PUBLISHED_GAME_ARGUMENTS) return Optional.empty();
+        for (String argument : gameArguments) {
+            if (argument.indexOf(0) >= 0) return Optional.empty();
+        }
+
+        List<String> direct = new ArrayList<String>(
+                command.subList(0, wrapperIndex + 1)
+        );
+        direct.set(wrapperIndex, mainClass);
+        direct.addAll(gameArguments);
+        return Optional.of(Collections.unmodifiableList(direct));
+    }
+
+    static List<String> splitPublishedGameArguments(String encoded) {
+        if (encoded == null || encoded.isEmpty()) return Collections.emptyList();
+        List<String> arguments = new ArrayList<String>();
+        int start = 0;
+        for (int index = 0; index <= encoded.length(); index++) {
+            if (index != encoded.length()
+                    && encoded.charAt(index) != PRISM_ARGUMENT_SEPARATOR) {
+                continue;
+            }
+            arguments.add(encoded.substring(start, index));
+            start = index + 1;
+        }
+        return Collections.unmodifiableList(arguments);
+    }
+
+    static boolean relaunchEnabled(String value) {
+        return value != null && Boolean.parseBoolean(value);
     }
 
     static Optional<List<String>> parseNullSeparatedCommand(byte[] raw) {
@@ -190,6 +351,108 @@ final class SteamOverlayRelauncher {
         // Index one is always after the java executable and before the main
         // class/-jar boundary, so Java consumes the value as a VM option.
         command.add(1, option);
+    }
+
+    static void addMacOsFirstThreadOption(List<String> command, NativePlatform platform) {
+        if (platform == null
+                || platform.operatingSystem() != NativePlatform.OperatingSystem.MACOS) {
+            return;
+        }
+        addVmOption(command, "-XstartOnFirstThread");
+    }
+
+    /** True only for the Unix path where overlay injection requires a new JVM. */
+    public static boolean isUnixOverlayRelaunchRequested() {
+        NativePlatform platform = currentPlatform();
+        return insertLibrariesEnvName(platform) != null
+                && relaunchEnabled(System.getProperty(OVERLAY_RELAUNCH_PROPERTY));
+    }
+
+    /** True when the Unix overlay relaunch path targets macOS. */
+    public static boolean isMacOsUnixOverlayRelaunchRequested() {
+        NativePlatform platform = currentPlatform();
+        return platform != null
+                && platform.operatingSystem() == NativePlatform.OperatingSystem.MACOS
+                && insertLibrariesEnvName(platform) != null
+                && relaunchEnabled(System.getProperty(OVERLAY_RELAUNCH_PROPERTY));
+    }
+
+    /** True only inside the replacement macOS JVM that has the overlay injected. */
+    public static boolean isMacOsOverlayRelaunched() {
+        NativePlatform platform = currentPlatform();
+        return platform != null
+                && platform.operatingSystem() == NativePlatform.OperatingSystem.MACOS
+                && relaunchEnabled(System.getProperty(OVERLAY_RELAUNCH_PROPERTY))
+                && isRelaunched(
+                        System.getenv(MARKER_ENV),
+                        System.getProperty(MARKER_PROPERTY)
+                );
+    }
+
+    private static boolean isSafeMainClass(String mainClass) {
+        if (mainClass == null || mainClass.isEmpty() || mainClass.length() > 512) return false;
+        boolean previousDot = true;
+        for (int index = 0; index < mainClass.length(); index++) {
+            char value = mainClass.charAt(index);
+            if (value == '.') {
+                if (previousDot) return false;
+                previousDot = true;
+                continue;
+            }
+            if (previousDot) {
+                if (!Character.isJavaIdentifierStart(value)) return false;
+            } else if (!(Character.isJavaIdentifierPart(value) || value == '$')) {
+                return false;
+            }
+            previousDot = false;
+        }
+        return !previousDot;
+    }
+
+    private static String publishedMainClass(String wrapper) {
+        if ("org.prismlauncher.EntryPoint".equals(wrapper)) {
+            return System.getProperty(PRISM_MAIN_CLASS_PROPERTY);
+        }
+        if ("org.multimc.EntryPoint".equals(wrapper)) {
+            return System.getProperty(MULTIMC_MAIN_CLASS_PROPERTY);
+        }
+        return null;
+    }
+
+    private static String publishedGameArguments(String wrapper) {
+        if ("org.prismlauncher.EntryPoint".equals(wrapper)) {
+            return System.getProperty(PRISM_GAME_ARGUMENTS_PROPERTY);
+        }
+        if ("org.multimc.EntryPoint".equals(wrapper)) {
+            return System.getProperty(MULTIMC_GAME_ARGUMENTS_PROPERTY);
+        }
+        return null;
+    }
+
+    private static void preservePublishedLauncherProperties(List<String> command) {
+        String[] properties = {
+                "minecraft.launcher.brand",
+                "minecraft.launcher.version",
+                "org.prismlauncher.instance.name",
+                "org.prismlauncher.instance.icon.id",
+                "org.prismlauncher.instance.icon.path",
+                "org.prismlauncher.window.title",
+                "org.prismlauncher.window.dimensions",
+                "multimc.instance.title",
+                "multimc.instance.icon"
+        };
+        for (String property : properties) {
+            addVmProperty(command, property, System.getProperty(property));
+        }
+    }
+
+    private static void addVmProperty(List<String> command, String name, String value) {
+        if (value == null || value.indexOf(0) >= 0 || value.length() > 16_384) return;
+        String prefix = "-D" + name + "=";
+        for (String argument : command) {
+            if (argument != null && argument.startsWith(prefix)) return;
+        }
+        command.add(1, prefix + value);
     }
 
     private static NativePlatform currentPlatform() {
@@ -254,10 +517,6 @@ final class SteamOverlayRelauncher {
         command.add(javaHome + File.separator + "bin" + File.separator + "java");
         List<String> vmArguments = ManagementFactory.getRuntimeMXBean().getInputArguments();
         command.addAll(vmArguments);
-        if (platform != null
-                && platform.operatingSystem() == NativePlatform.OperatingSystem.MACOS) {
-            addVmOption(command, "-XstartOnFirstThread");
-        }
 
         String classpath = System.getProperty("java.class.path", "").trim();
         if (!classpath.isEmpty()) {
@@ -297,34 +556,57 @@ final class SteamOverlayRelauncher {
     }
 
     private static void addEarlyProgressWindowFlagIfForgeModern(List<String> command) {
-        if (!isModernForgeLaunch(command)) return;
+        if (!shouldDisableForgeEarlyProgressWindow(
+                classAvailable("net.minecraftforge.fml.loading.FMLLoader"), command)) {
+            return;
+        }
         addVmOption(command, "-Dfml.earlyprogresswindow=false");
     }
 
-    private static boolean isModernForgeLaunch(List<String> command) {
-        try {
-            Class.forName(
-                    "net.minecraftforge.fml.loading.FMLLoader",
-                    false,
-                    SteamOverlayRelauncher.class.getClassLoader()
-            );
-        } catch (ClassNotFoundException absent) {
-            return false;
-        }
+    static boolean shouldDisableForgeEarlyProgressWindow(
+            boolean forgeLoaderAvailable,
+            List<String> command
+    ) {
+        // Prism/MultiMC pass the actual Minecraft arguments through stdin. By
+        // the time an ordinary Forge mod is constructed, FMLLoader is the most
+        // reliable discriminator even if --fml.mcVersion is absent from the
+        // process command line reconstructed for the replacement JVM.
+        if (forgeLoaderAvailable) return true;
+        if (command == null) return false;
         for (int index = 0; index < command.size(); index++) {
             String argument = command.get(index);
-            if ("fmlclient".equals(argument)) return true;
             if (argument != null && argument.startsWith("--fml.mcVersion=")) {
                 return isRetroModernForgeVersion(
                         argument.substring("--fml.mcVersion=".length())
                 );
             }
-            if ("--fml.mcVersion".equals(argument) && index + 1 < command.size()
-                    && isRetroModernForgeVersion(command.get(index + 1))) {
-                return true;
+            if ("--fml.mcVersion".equals(argument) && index + 1 < command.size()) {
+                return isRetroModernForgeVersion(command.get(index + 1));
             }
         }
         return false;
+    }
+
+    private static boolean classAvailable(String className) {
+        try {
+            Class.forName(
+                    className,
+                    false,
+                    SteamOverlayRelauncher.class.getClassLoader()
+            );
+            return true;
+        } catch (ClassNotFoundException | LinkageError | SecurityException absent) {
+            ClassLoader context = Thread.currentThread().getContextClassLoader();
+            if (context == null || context == SteamOverlayRelauncher.class.getClassLoader()) {
+                return false;
+            }
+            try {
+                Class.forName(className, false, context);
+                return true;
+            } catch (ClassNotFoundException | LinkageError | SecurityException stillAbsent) {
+                return false;
+            }
+        }
     }
 
     private static boolean isRetroModernForgeVersion(String version) {

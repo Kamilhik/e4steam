@@ -9,7 +9,7 @@ import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.relauncher.Side;
 
-@Mod(modid = "e4steam", name = "e4steam", version = "0.3.0",
+@Mod(modid = "e4steam", name = "e4steam", version = "0.3.1",
         acceptedMinecraftVersions = RetroBuildMetadata.ACCEPTED_FORGE_RANGE,
         acceptableRemoteVersions = "*")
 public final class E4steamForge {

@@ -1,63 +1,80 @@
 # Security policy
 
+For normal users: install e4steam and addons only from trusted project pages,
+keep every participant on compatible versions and never share a live
+`s-...steam` or `d-...steam` address publicly. If you think you found a security
+problem, use private vulnerability reporting instead of a public issue.
+
 ## Supported versions
 
-| Version | Supported |
+| Version | Security support |
 | --- | --- |
-| Latest 0.3.x stable | ✅ Yes |
-| 0.2.x and older stable releases | ❌ No |
-| Alpha and beta builds | ❌ No |
+| Latest stable 0.3.x | Yes |
+| 0.2.x and older releases | No |
+| Alpha and beta builds | No |
 
-Security fixes are provided for the latest stable 0.3.x release, including its
-listed retro branch artifacts. Linux x64, macOS and dedicated servers are
-experimental, but the core security policy still applies to them. 32-bit
-operating systems are unsupported.
+Security fixes target the latest stable 0.3.x release, including its listed
+retro JARs and Windows x64 dedicated-server path. Linux and macOS builds remain
+experimental, but the same security rules apply to them. 32-bit operating
+systems are unsupported.
 
-## Threat model for 0.3.0
+## Security model
 
-- A Steam transport session is not world authorization. The current invite
-  secret, social policy, live world and guest limit remain mandatory gates.
-- An offline Minecraft name supplied by a Steam guest is untrusted. The stable
-  guest UUID and safe name are derived from the already authenticated SteamID.
-- RESET retries are bounded and tied to one Steam worker generation; stale
-  terminal packets cannot cross a reconnect into a new generation.
-- Native libraries are loaded only from an allowlisted owner-controlled cache
-  after no-follow type, owner, size and SHA-256 validation. Same-account code
-  remains inside the trust boundary; Java cannot sandbox another installed mod.
-- Addon channels are generation-bound and negotiated only after core
-  authentication. Required incompatibility fails before game/addon traffic;
-  quotas and fair queues protect core/Minecraft capacity.
-- Dedicated mode requires loopback-only Minecraft bind, authenticated
-  GameServer tickets and current single-use ingress registration. Direct TCP,
-  stale generations and replayed authentication fail before gameplay code.
-- Doctor and addon diagnostics exclude Steam identity by default and redact
-  credential-bearing addresses, named secrets and user paths with finite
-  output limits.
+- A Steam transport session is not permission to enter a world. The current
+  address secret, access mode, live world and guest limit are separate gates.
+- Client-supplied Minecraft names are untrusted. e4steam derives a stable UUID
+  and safe profile name from the authenticated Steam identity.
+- Reconnect and RESET handling is bounded by one Steam worker generation. Old
+  terminal packets cannot be reused after a new generation starts.
+- Native libraries load only from an owner-controlled cache after type, link,
+  owner, size and SHA-256 checks. Java cannot sandbox another mod installed by
+  the same user; such code stays inside the local trust boundary.
+- Addon channels open only after core authentication and version negotiation.
+  Per-channel quotas and fair queues keep addon traffic from starving Minecraft
+  or core control frames.
+- A dedicated server accepts Minecraft only through a current authenticated
+  Steam bridge. Loopback binding, GameServer ticket validation and single-use
+  ingress records block direct TCP and stale sessions.
+- Diagnostics omit Steam identity by default and redact join descriptors,
+  named secrets and user paths. Output size and exception depth are bounded.
 
-## Installed addon trust
+## Trusting addons
 
-The addon API is a least-privilege contract and diagnostic boundary, not a JVM
-sandbox. A malicious installed mod can use ordinary Java APIs outside e4steam.
-Install addons only from trusted sources. Core never provides addons with a
-Steam password, auth ticket, invite token, cookie, API key, native handle or
-raw packet/native callback object. SteamID, persona name and avatar are
-personal data and require an explicit profile-read capability.
+Addon API capabilities limit what e4steam itself exposes; they do not turn an
+addon into sandboxed code. An installed mod can still use normal Java APIs.
+Install addons only from sources you trust.
+
+Core does not give addons Steam passwords, auth tickets, invite tokens, GSLT,
+API keys, native handles or raw protocol callbacks. Steam profiles are personal
+data and require an explicit profile-read capability.
 
 ## Reporting a vulnerability
 
-Use GitHub private vulnerability reporting. Do not publish working invite
-addresses, Steam session details, account identifiers, or logs containing
-private data in a public issue.
+Use GitHub private vulnerability reporting. Never post a live join address,
+Steam session details, account identifiers, private keys or an unreviewed log
+in a public issue.
 
-Include the e4steam version, loader, Minecraft version, operating system,
-whether the failure occurred as host or guest, and the smallest reproduction
-you can provide. The `/e4steam doctor` output intentionally omits the invite
-token; review diagnostics before sharing them.
+Include the e4steam version, Minecraft version, loader, Java version, operating
+system and whether the failure happened on a host, guest or dedicated server.
+Add the smallest reproduction you can provide. `/e4steam doctor` omits the
+invite token, but you should still read the generated report before sharing it.
 
-## Invite handling
+A useful private report includes:
 
-The compact `s-...steam` address and accepted long fallback contain a random
-128-bit bearer token. Both access modes also require the remote Steam account
-to be a direct friend of the host. Invite-only mode additionally requires
-current membership in the host's private lobby. Use `/e4steam stop` or reopen
-the world to invalidate the current token.
+- what an attacker must control or know;
+- whether the issue works before Steam authentication or only after admission;
+- affected client, integrated-world host or dedicated-server path;
+- exact e4steam, Minecraft, loader, Java and OS versions;
+- minimal steps and the expected versus actual security boundary;
+- sanitized logs or a small proof of concept.
+
+Do not test against another person's server or account without permission. Do
+not include a real password, ticket, token, private key or active join address
+even in a private report; replace it with a clearly marked dummy value.
+
+## Invite addresses
+
+An `s-...steam` address and its accepted long fallback contain a random
+128-bit bearer token. Friends mode also requires a direct Steam friendship;
+invite-only mode additionally requires current membership in the private
+lobby. `/e4steam stop` or reopening the world invalidates the current token.

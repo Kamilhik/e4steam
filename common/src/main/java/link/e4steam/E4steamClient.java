@@ -45,7 +45,7 @@ public class E4steamClient {
     /** Initializes the stable addon platform from entry points already discovered by the loader. */
     public static void init(RuntimeEnvironment environment, List<AddonCandidate> addons) {
         // Overlay injection must happen before Minecraft creates its LWJGL
-        // window. The call is a no-op unless the Unix-only opt-in is enabled.
+        // window. The call is a no-op outside the Unix overlay relaunch path.
         SteamRuntime.relaunchForOverlayIfNeeded();
         Config.INSTANCE.id(); // Touch to initialize for McQoy
         SteamRuntime.preloadCompatibilityClasses();

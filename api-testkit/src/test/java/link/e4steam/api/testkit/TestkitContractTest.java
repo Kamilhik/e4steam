@@ -122,7 +122,7 @@ class TestkitContractTest {
         FakeE4steamApi api = new FakeE4steamApi(
                 new FakeRuntimeService(new RuntimeSnapshot(
                         ApiConstants.API_VERSION,
-                        "0.3.0",
+                        "0.3.1",
                         ApiConstants.WIRE_PROTOCOL_VERSION,
                         Platform.WINDOWS,
                         Architecture.X86_64,

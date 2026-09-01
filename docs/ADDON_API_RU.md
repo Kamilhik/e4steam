@@ -6,7 +6,8 @@
 
 Addon API позволяет обычному моду Fabric, Forge или NeoForge расширять
 e4steam, не копируя Steam runtime и не привязываясь к внутренним классам
-Minecraft. API `1.0.0` входит в e4steam `0.3.0` и собирается под Java 8.
+Minecraft. API `1.0.0` входит в e4steam `0.3.1`, сохраняет совместимость с
+e4steam `0.3.0+` и собирается под Java 8.
 Подписанный релизный JAR, исходники, Javadocs и POM опубликованы в
 [Maven Central](https://repo1.maven.org/maven2/io/github/kamilhik/e4steam-api/1.0.0/).
 
@@ -14,6 +15,24 @@ Minecraft. API `1.0.0` входит в e4steam `0.3.0` и собирается �
 > Аддон работает как обычный код внутри JVM Minecraft. API ограничивает
 > доступ к возможностям e4steam, но не является песочницей. Устанавливайте
 > только доверенные аддоны.
+
+## Как читать документацию
+
+Эта страница — полное руководство для первого аддона. Отдельные документы
+подробнее разбирают важные контракты:
+
+| Тема | Подробный документ |
+| --- | --- |
+| Поиск аддона, проверка, запуск и освобождение ресурсов | [Жизненный цикл](ADDON_LIFECYCLE.md) |
+| Контексты выполнения, тайм-ауты и отмена задач | [Потоки и планировщик](API_THREADING.md) |
+| Каналы, кодирование, очереди и виртуальный UDP | [Сеть](API_NETWORKING.md) |
+| Возможности, порядок допуска и изоляция ошибок | [Безопасность](ADDON_SECURITY.md) |
+| Идентификаторы, логи, диагностика и хранилище | [Приватность](API_PRIVACY.md) |
+| Версии API/мода/протокола и Maven | [Совместимость](API_COMPATIBILITY.md) |
+
+Точные сигнатуры находятся в Javadocs и в `api/src/main/java`. Канонический
+пример — проверяемый сборкой модуль `example-addon`; фрагменты в документации
+показывают только относящуюся к разделу часть.
 
 ## Быстрый старт
 
@@ -121,11 +140,54 @@ example.hello.HelloAddon
 | Создавать сетевой канал или virtual UDP | `NETWORK_CHANNEL_REGISTER`, `UDP_PROVIDER_REGISTER` | `api.network()`, `api.udp()` |
 | Добавлять UI и команды | `UI_CONTRIBUTE`, `COMMANDS_REGISTER` | `api.ui()`, `api.commands()` |
 | Хранить настройки и данные | `CONFIG_READ`, `CONFIG_WRITE`, `STORAGE_PRIVATE` | `api.config()`, `api.storage()` |
-| Работать с dedicated backend | `DEDICATED_OBSERVE`, `DEDICATED_ADMIN` | `api.dedicatedServers()` |
+| Работать с dedicated backend | `DEDICATED_OBSERVE`, `DEDICATED_ADMIN`, `DEDICATED_PUBLICATION_PROPOSE` | `api.dedicatedServers()` |
 | Дополнять диагностику | `DIAGNOSTICS_CONTRIBUTE` | `api.diagnostics()` |
 
 World Settings, Modpack Sync и Skins — только API-контракты для отдельных
 аддонов. В core e4steam этих пользовательских функций нет.
+
+## API выделенного сервера
+
+Сервис `DedicatedServerService` доступен через
+`context.api().dedicatedServers()`. Он работает, когда e4steam запущен на
+выделенном сервере. В обычном клиенте методы возвращают типизированную ошибку
+`UNSUPPORTED` или `UNAVAILABLE`.
+
+Для чтения состояния и ожидания готовности запросите
+`DEDICATED_OBSERVE`:
+
+~~~java
+import link.e4steam.api.ApiResult;
+import link.e4steam.api.dedicated.DedicatedServerService;
+
+DedicatedServerService dedicated = context.api().dedicatedServers();
+ApiResult<DedicatedServerService.DedicatedServerSnapshot> result =
+        dedicated.snapshot();
+
+if (result.isSuccess() && result.value().isPresent()) {
+    DedicatedServerService.DedicatedServerSnapshot snapshot =
+            result.value().get();
+    boolean acceptingPlayers = snapshot.state()
+            == DedicatedServerService.DedicatedServerState.ACCEPTING;
+}
+~~~
+
+Снимок содержит состояние жизненного цикла, режим доступа, число игроков,
+лимит, статус ingress-защиты и публикации. `config()` возвращает настройки без
+секретов, а `readiness()` завершается только после готовности Steam-транспорта,
+защиты входа и Minecraft. Изменения можно получать через
+`DedicatedStateEvent`.
+
+Метод `drain(reasonCode)` требует `DEDICATED_ADMIN` и останавливает публикацию
+сервера через e4steam, но не завершает процесс Minecraft. Для предложения
+внешней публикации нужна `DEDICATED_PUBLICATION_PROPOSE`, однако ядро всё равно
+может отказать, если нет разрешённого провайдера или публикация запрещена в
+конфигурации. API не выдаёт Steam tickets, GSLT, закрытые данные дескриптора,
+native handles и сырые пакеты протокола.
+
+В core версии 0.3.1 нет провайдера публикации, поэтому встроенный ответ —
+`public-worlds-addon-required`. Контракт нужен отдельному доверенному аддону и
+не раскрывает внутренние объекты GameServer.
 
 ## Передавайте ресурсы под управление e4steam
 
@@ -211,19 +273,19 @@ storage и scheduler. Это нейтральный пример для комп
 `api/build/docs/javadoc/index.html` — там находится полный справочник классов
 и методов.
 
-## Реальный аддон: e4steam Friends
+## Пример выпущенного аддона: e4steam Friends
 
 [e4steam Friends](https://github.com/K2-Studio-Development/e4steam-Friends) —
 первый полноценный аддон e4steam. Он добавляет экран друзей Steam в стиле
 Minecraft, статусы, поиск, приглашения, подключение и запросы на вход для
 Fabric и NeoForge на Minecraft 26.2.
 
-Этот проект можно использовать как пример упаковки под загрузчики, клиентского
-жизненного цикла и интеграции интерфейса. Канонический пример работы именно с
-публичным API находится в `example-addon` основного репозитория. В e4steam
-Friends временно используется изолированный compatibility bridge для социальных
-данных, которых ещё нет в Addon API 1.0. Новым аддонам нельзя копировать эту
-прослойку или зависеть от классов `link.e4steam.internal`.
+Этот проект показывает упаковку под загрузчики, клиентский жизненный цикл и
+интеграцию интерфейса. Для работы с публичным API ориентируйтесь на
+`example-addon` из основного репозитория. В e4steam Friends есть отдельная
+прослойка совместимости для социальных данных, которых пока нет в API 1.0.
+Новым аддонам нельзя копировать её или зависеть от
+`link.e4steam.internal`.
 
 ## Частые ошибки
 
@@ -239,7 +301,7 @@ Friends временно используется изолированный com
 Версии независимы друг от друга:
 
 - Addon API — `1.0.0`;
-- мод e4steam — `0.3.0`;
+- мод e4steam — `0.3.1`;
 - основной сетевой протокол — `4`;
 - у каждого сетевого канала аддона свой диапазон версий.
 

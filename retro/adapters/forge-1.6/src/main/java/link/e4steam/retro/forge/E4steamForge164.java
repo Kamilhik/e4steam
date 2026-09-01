@@ -6,7 +6,7 @@ import cpw.mods.fml.relauncher.Side;
 import link.e4steam.retro.RetroBuildMetadata;
 import link.e4steam.retro.RetroClientLoader;
 
-@Mod(modid = "e4steam", name = "e4steam", version = "0.3.0",
+@Mod(modid = "e4steam", name = "e4steam", version = "0.3.1",
         acceptedMinecraftVersions = RetroBuildMetadata.ACCEPTED_FORGE_RANGE)
 public final class E4steamForge164 {
     @Mod.EventHandler

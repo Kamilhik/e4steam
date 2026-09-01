@@ -14,7 +14,8 @@
 
 ## Compatibility
 
-<!-- List the Minecraft versions and loaders actually tested. -->
+<!-- List the exact Minecraft, loader, Java and OS versions actually tested.
+A compile or main-menu launch is not a multiplayer result. -->
 
 ## API and security boundaries
 

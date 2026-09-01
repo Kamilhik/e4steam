@@ -3,6 +3,7 @@ package link.e4steam.retro;
 import link.e4steam.E4steamClient;
 import link.e4steam.MinecraftVersion;
 import link.e4steam.steam.SteamAccessMode;
+import link.e4steam.steam.SteamOverlayRelauncher;
 import link.e4steam.steam.SteamRuntime;
 import link.e4steam.steam.SteamSession;
 
@@ -25,9 +26,9 @@ public final class RetroBootstrap {
     }
 
     public static void install(String minecraftVersion, RetroPlatform platform) {
-        // The optional Unix overlay relaunch must happen before Minecraft
-        // creates its first LWJGL/OpenGL context.
-        SteamRuntime.relaunchForOverlayIfNeeded();
+        // Forge 1.7-1.12 invokes this earlier from a core plugin. This call is
+        // the idempotent fallback for Fabric and ModLauncher-era retro Forge.
+        SteamOverlayRelauncher.relaunchIfNeeded();
         MinecraftVersion.install(minecraftVersion);
         installedPlatform = platform;
         E4steamClient.install(platform);

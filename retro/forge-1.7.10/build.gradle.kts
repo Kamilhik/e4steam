@@ -16,13 +16,14 @@ sourceSets.main {
     resources.srcDir(rootProject.file("runtime-template/forge-lan"))
 }
 dependencies {
+    // UniMixins is a Forge mod suite, not a private implementation library.
+    // Keep it on the development/runtime classpath, but never merge it into
+    // e4steam: modpacks must be able to provide one shared compatible copy.
     implementation("com.github.LegacyModdingMC.UniMixins:unimixins-all-1.7.10:0.1.20") { isTransitive = false }
-    add("shadowBundle", "com.github.LegacyModdingMC.UniMixins:unimixins-all-1.7.10:0.1.20") { isTransitive = false }
 }
 tasks.withType<Jar>().configureEach {
     manifest.attributes(mapOf("FMLCorePluginContainsFMLMod" to "true",
             "ForceLoadAsMod" to "true",
-            "TweakClass" to "org.spongepowered.asm.launch.MixinTweaker",
             "MixinConfigs" to "e4steam.retro.mixins.json"))
 }
 tasks.processResources {

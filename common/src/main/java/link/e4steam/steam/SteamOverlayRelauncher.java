@@ -19,13 +19,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/** Opt-in pre-LWJGL JVM relaunch used to inject Steam's Unix overlay renderer. */
+/** Pre-LWJGL JVM relaunch used to inject Steam's Unix overlay renderer. */
 final class SteamOverlayRelauncher {
     private static final String MARKER_ENV = "E4STEAM_OVERLAY_RELAUNCHED";
     private static final String CAPTURED_STDIN_FILE_PROPERTY = "e4steam.capturedStdinFile";
     private static final String CAPTURED_STDIN_TRUNCATED_PROPERTY =
             "e4steam.capturedStdinTruncated";
     private static final long MAX_CAPTURE_BYTES = 1_048_576L;
+    private static final int MAX_PUBLISHED_GAME_ARGUMENT_BYTES = 1_048_576;
+    private static final int MAX_PUBLISHED_GAME_ARGUMENTS = 4_096;
+    private static final char PRISM_ARGUMENT_SEPARATOR = 31;
+    private static final String PRISM_MAIN_CLASS_PROPERTY =
+            "org.prismlauncher.launch.mainclass";
+    private static final String PRISM_GAME_ARGUMENTS_PROPERTY =
+            "org.prismlauncher.launch.gameargs";
+    private static final String MULTIMC_MAIN_CLASS_PROPERTY =
+            "org.multimc.launch.mainclass";
+    private static final String MULTIMC_GAME_ARGUMENTS_PROPERTY =
+            "org.multimc.launch.gameargs";
     private static final String[] STDIN_LAUNCHER_WRAPPERS = {
             "org.prismlauncher.EntryPoint",
             "org.multimc.EntryPoint"
@@ -47,28 +58,44 @@ final class SteamOverlayRelauncher {
             );
             return;
         }
-        Optional<List<String>> command = currentJvmCommandLine(platform);
-        if (!command.isPresent()) {
+        Optional<List<String>> originalCommand = currentJvmCommandLine(platform);
+        if (!originalCommand.isPresent()) {
             E4steamClient.LOGGER.warn(
                     "Could not reconstruct the JVM launch command; continuing without overlay relaunch"
             );
             return;
         }
 
-        String wrapper = detectStdinLauncherWrapper(command.get());
+        List<String> command = new ArrayList<>(originalCommand.get());
+        String wrapper = detectStdinLauncherWrapper(command);
         Optional<Path> capturedStdin = capturedStdinFile();
         if (wrapper != null && !capturedStdin.isPresent()) {
-            E4steamClient.LOGGER.warn(
-                    "Detected {} but no valid e4steam stdin-agent capture is available; "
-                            + "continuing without overlay relaunch",
+            Optional<List<String>> direct = rewritePublishedLauncherCommand(
+                    command,
+                    wrapper,
+                    publishedMainClass(wrapper),
+                    publishedGameArguments(wrapper)
+            );
+            if (!direct.isPresent()) {
+                E4steamClient.LOGGER.warn(
+                        "Detected {} but it did not publish a safe direct launch command and "
+                                + "no valid e4steam stdin-agent capture is available; "
+                                + "continuing without overlay relaunch",
+                        wrapper
+                );
+                return;
+            }
+            command = new ArrayList<>(direct.get());
+            preservePublishedLauncherProperties(command);
+            E4steamClient.LOGGER.info(
+                    "Recovered the direct Minecraft launch command from {} without a Java agent",
                     wrapper
             );
-            return;
         }
 
         Process child;
         try {
-            ProcessBuilder builder = new ProcessBuilder(command.get());
+            ProcessBuilder builder = new ProcessBuilder(command);
             Path working = Paths.get(System.getProperty("user.dir", "."))
                     .toAbsolutePath().normalize();
             if (Files.isDirectory(working)) builder.directory(working.toFile());
@@ -145,6 +172,115 @@ final class SteamOverlayRelauncher {
             }
         }
         return null;
+    }
+
+    static Optional<List<String>> rewritePublishedLauncherCommand(
+            List<String> command,
+            String wrapper,
+            String mainClass,
+            String encodedGameArguments
+    ) {
+        if (command == null || wrapper == null || !isSafeMainClass(mainClass)
+                || encodedGameArguments == null
+                || encodedGameArguments.length() > MAX_PUBLISHED_GAME_ARGUMENT_BYTES) {
+            return Optional.empty();
+        }
+        int wrapperIndex = command.indexOf(wrapper);
+        if (wrapperIndex <= 0) return Optional.empty();
+
+        List<String> gameArguments = splitPublishedGameArguments(encodedGameArguments);
+        if (gameArguments.size() > MAX_PUBLISHED_GAME_ARGUMENTS) return Optional.empty();
+        for (String argument : gameArguments) {
+            if (argument.indexOf(0) >= 0) return Optional.empty();
+        }
+
+        List<String> direct = new ArrayList<>(
+                command.subList(0, wrapperIndex + 1)
+        );
+        direct.set(wrapperIndex, mainClass);
+        direct.addAll(gameArguments);
+        return Optional.of(Collections.unmodifiableList(direct));
+    }
+
+    static List<String> splitPublishedGameArguments(String encoded) {
+        if (encoded == null || encoded.isEmpty()) return Collections.emptyList();
+        List<String> arguments = new ArrayList<>();
+        int start = 0;
+        for (int index = 0; index <= encoded.length(); index++) {
+            if (index != encoded.length()
+                    && encoded.charAt(index) != PRISM_ARGUMENT_SEPARATOR) {
+                continue;
+            }
+            arguments.add(encoded.substring(start, index));
+            start = index + 1;
+        }
+        return Collections.unmodifiableList(arguments);
+    }
+
+    private static boolean isSafeMainClass(String mainClass) {
+        if (mainClass == null || mainClass.isEmpty() || mainClass.length() > 512) return false;
+        boolean previousDot = true;
+        for (int index = 0; index < mainClass.length(); index++) {
+            char value = mainClass.charAt(index);
+            if (value == '.') {
+                if (previousDot) return false;
+                previousDot = true;
+                continue;
+            }
+            if (previousDot) {
+                if (!Character.isJavaIdentifierStart(value)) return false;
+            } else if (!(Character.isJavaIdentifierPart(value) || value == '$')) {
+                return false;
+            }
+            previousDot = false;
+        }
+        return !previousDot;
+    }
+
+    private static String publishedMainClass(String wrapper) {
+        if ("org.prismlauncher.EntryPoint".equals(wrapper)) {
+            return System.getProperty(PRISM_MAIN_CLASS_PROPERTY);
+        }
+        if ("org.multimc.EntryPoint".equals(wrapper)) {
+            return System.getProperty(MULTIMC_MAIN_CLASS_PROPERTY);
+        }
+        return null;
+    }
+
+    private static String publishedGameArguments(String wrapper) {
+        if ("org.prismlauncher.EntryPoint".equals(wrapper)) {
+            return System.getProperty(PRISM_GAME_ARGUMENTS_PROPERTY);
+        }
+        if ("org.multimc.EntryPoint".equals(wrapper)) {
+            return System.getProperty(MULTIMC_GAME_ARGUMENTS_PROPERTY);
+        }
+        return null;
+    }
+
+    private static void preservePublishedLauncherProperties(List<String> command) {
+        String[] properties = {
+                "minecraft.launcher.brand",
+                "minecraft.launcher.version",
+                "org.prismlauncher.instance.name",
+                "org.prismlauncher.instance.icon.id",
+                "org.prismlauncher.instance.icon.path",
+                "org.prismlauncher.window.title",
+                "org.prismlauncher.window.dimensions",
+                "multimc.instance.title",
+                "multimc.instance.icon"
+        };
+        for (String property : properties) {
+            addVmProperty(command, property, System.getProperty(property));
+        }
+    }
+
+    private static void addVmProperty(List<String> command, String name, String value) {
+        if (value == null || value.indexOf(0) >= 0 || value.length() > 16_384) return;
+        String prefix = "-D" + name + "=";
+        for (String argument : command) {
+            if (argument != null && argument.startsWith(prefix)) return;
+        }
+        command.add(1, prefix + value);
     }
 
     static Optional<List<String>> parseNullSeparatedCommand(byte[] raw) {

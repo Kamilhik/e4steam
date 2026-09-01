@@ -1,15 +1,15 @@
 # Dependency and license report
 
-This report describes direct dependencies relevant to distributed e4steam
-artifacts. It does not treat Minecraft's complete loader/runtime classpath as
-content of the mod JAR. Generated dependency trees remain available through
-Gradle (`:common:dependencies` and the corresponding retro baseline project).
+This report covers direct dependencies distributed inside e4steam artifacts or
+required beside them. Minecraft's complete loader/runtime classpath is not
+content of the mod JAR. Gradle can generate the full dependency trees through
+`:common:dependencies` and the corresponding retro baseline projects.
 
 ## Distributed project code
 
 | Component | Version/source | Included in artifacts | Terms |
 | --- | --- | --- | --- |
-| e4steam core and API | 0.3.0 / API 1.0.0 | Yes | Apache License 2.0 |
+| e4steam core and API | 0.3.1 / API 1.0.0 | Yes | Apache License 2.0 |
 | inherited e4mc portions | `vgskye/e4mc-minecraft-architectury` | Yes | MIT; notice retained in `THIRD_PARTY_NOTICES.md` |
 | adapted retro seams | exact `xhyrom/e4mc-retro` revisions in `RETRO_PORTING.md` | Retro branch JARs | Apache License 2.0; attribution retained in `NOTICE` |
 
@@ -39,14 +39,15 @@ them:
 
 | Target family | Dependency | Packaging/legal handling |
 | --- | --- | --- |
-| Forge 1.7.10 | UniMixins 0.1.20 | Shaded; its complete module-specific `META-INF/licenses` tree is preserved |
+| Forge 1.7.10 | UniMixins 0.1.20 or newer | Required external Forge mod; not shaded, so one modpack-provided copy can be shared safely |
 | Forge 1.8.9–1.12.2 | Sponge Mixin 0.7.11 | Shaded; upstream license resource remains in the JAR |
 | Forge 1.13.2–1.16.5 | loader-provided Mixin | Compile-only; not shaded by e4steam |
 | Fabric 1.14.4–1.16.5 | Fabric API and loader-provided Mixin | Runtime prerequisite/compile-only; not shaded by e4steam |
 
-Because UniMixins aggregates modules under more than one upstream license, its
-embedded per-module license bundle is authoritative; it must not be flattened
-to a single e4steam license statement.
+UniMixins and all of its component Forge mods are deliberately absent from the
+e4steam JAR. Their own distribution keeps its upstream module licenses and
+prevents duplicate `unimixins`, GTNHMixins, MixinBooterLegacy, MixingASM,
+MixinExtras, GasStation and SpongeMixins registrations in modpacks.
 
 ## Native and legal gates
 
@@ -60,4 +61,4 @@ to a single e4steam license statement.
 - No release may proceed until the maintainer confirms the applicable current
   Steamworks redistribution agreement and all manual gates in `RELEASING.md`.
 
-Report baseline: e4steam 0.3.0 release, 2026-08-25.
+Report baseline: e4steam 0.3.1 release worktree, 2026-09-01.

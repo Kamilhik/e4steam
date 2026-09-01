@@ -1,79 +1,137 @@
 # Steam overlay relaunch on Linux and macOS
 
-e4steam can optionally restart the Minecraft JVM before LWJGL creates the game
-window and preload Valve's installed overlay renderer. This is an opt-in
-compatibility mode for **Linux x64** and **macOS x86_64/arm64**. Normal Steam
-transport, addresses and invitations do not require it.
+[Русская версия](UNIX_OVERLAY_RU.md)
 
-The automatic relaunch is included in both Java 16+ Minecraft 1.17+ artifacts
-and the Java 8 retro artifacts for Minecraft 1.7.10–1.16.5. Current macOS Steam
-installations provide a universal `gameoverlayrenderer.dylib` with Intel and
-Apple Silicon slices, so the matching native JVM can use either. Both macOS
-paths remain experimental until real host/join/relaunch checks are recorded.
-Windows uses the Steam client's normal overlay injection and does not use this
-setting.
+e4steam networking works without an injected Steam overlay. The optional
+relaunch exists only for users who want Valve's Shift+Tab interface inside the
+Minecraft window on Linux or macOS.
 
-## Prism Launcher and MultiMC
+> **Recommended default:** leave overlay relaunch disabled. First verify that
+> hosting and address-based joining work. Enable the relaunch only if the
+> overlay itself matters to you.
 
-1. Take `tools/e4steam-stdin-agent-v0.3.0.jar` from the e4steam release. The
-   agent is required for this optional mode on both modern and retro artifacts.
-2. In the instance Java arguments, add an absolute path:
+## Choose the right path
 
-   ```text
-   -javaagent:"/absolute/path/to/e4steam-stdin-agent-v0.3.0.jar"
-   ```
+| Situation | What to do |
+| --- | --- |
+| Address joining works and you do not need Shift+Tab | Leave relaunch off |
+| Invitation button opens Steam's standalone friends window | Leave relaunch off unless you specifically want injection |
+| Minecraft 1.17+ on Linux/macOS | Try `overlayRelaunch = true` |
+| Retro Minecraft on Java 8 | Try `-De4steam.overlayRelaunch=true` |
+| Old Prism/MultiMC does not expose a safe launch command | Relaunch is unavailable; keep normal networking without injection |
+| Forge 1.7.x-1.12.x on macOS | Do not force relaunch; this path is skipped intentionally |
+| Game restarts twice, hangs or loses its window | Disable relaunch immediately |
 
-3. For Minecraft 1.17+, start Minecraft once so `config/e4steam.toml` exists,
-   close it and set:
+Windows does not use this setting. The Steam client performs its normal
+Windows overlay injection.
 
-   ```toml
-   overlayRelaunch = true
-   ```
+## Normal setup for Minecraft 1.17+
 
-   For a Java 8 retro artifact (Minecraft 1.7.10–1.16.5), add this second JVM
-   argument instead; retro artifacts do not have the modern TOML option:
+Keep the desktop Steam client running and signed in. Do not add Minecraft or
+its launcher as a non-Steam game.
 
-   ```text
-   -De4steam.overlayRelaunch=true
-   ```
+Open `config/e4steam.toml` and set:
 
-4. Keep the Steam desktop client running and signed in, then start the instance
-   normally. Do **not** add or launch the Minecraft launcher as a non-Steam game.
+```toml
+overlayRelaunch = true
+```
 
-Prism and MultiMC pass launch metadata through standard input. The small Java 8
-agent preserves at most 1 MiB of that hand-off in an owner-readable temporary
-file so the replacement JVM receives the same data. A missing, changed,
-truncated or unsafe capture makes e4steam skip the relaunch and continue the
-original process instead of guessing arguments.
+On a successful run, e4steam restarts the JVM once before LWJGL creates the
+persistent game window. It preserves safe launcher arguments, preloads Valve's
+installed renderer and marks the replacement process so it cannot relaunch
+again.
 
-## Retro Forge status
+To undo the change:
 
-The Java 8 relaunch path is now present and build-tested, but a relaunch alone
-does not prove that Valve's widgets attach to every old Forge window. Fabric
-1.14–1.16 has a successful external Intel-macOS report. Forge 1.7–1.13 has
-reported overlay-initialization crashes, while Forge 1.14–1.16 can reach the
-renderer hooks without making the widgets visible. Leave the option disabled
-on those Forge versions unless testing it, and use the standalone Steam friends
-window or copied address when the injected overlay is unavailable.
+```toml
+overlayRelaunch = false
+```
 
-## Other launchers
+## Retro setup for Java 8
 
-Enable `overlayRelaunch` without the agent first. If the JVM command line cannot
-be reconstructed safely, e4steam records a warning and continues without a
-restart. Never copy Java arguments from an untrusted person: JVM arguments can
-load arbitrary code before Minecraft starts.
+Add this JVM argument to the instance:
 
-## What e4steam searches
+```text
+-De4steam.overlayRelaunch=true
+```
+
+Remove it, or change it to `false`, to disable the feature:
+
+```text
+-De4steam.overlayRelaunch=false
+```
+
+Forge 1.7.x-1.12.x has a special early startup path because Forge's splash
+screen creates another LWJGL drawable. On Linux, e4steam starts the replacement
+before that drawable and disables only the in-memory splash flag. It does not
+edit `config/splash.properties`.
+
+On macOS, the Forge 1.7.x-1.12.x relaunch is skipped. Testing showed that a
+replacement JVM can disappear from the Dock, lose the game window or restart
+repeatedly. Steam networking remains available without the overlay.
+
+Forge 1.13.x-1.16.x uses an early ModLauncher hook and starts the replacement
+with `-Dfml.earlyprogresswindow=false`, before the persistent Minecraft window
+is created.
+
+## Prism and MultiMC
+
+Modern Prism versions expose enough information for e4steam to reconstruct the
+direct Minecraft command. No additional agent is required.
+
+Older Prism or MultiMC versions may hide important launch data. If the log says
+that a safe direct command could not be recovered, e4steam cancels the optional
+relaunch and keeps the original process instead of guessing arguments. Steam
+networking and copied addresses remain available without overlay injection.
+
+## What e4steam loads
 
 Only Valve's installed `gameoverlayrenderer.so` or
-`gameoverlayrenderer.dylib` is used. The lookup covers native Steam, Flatpak and
-Snap locations on Linux and the standard Steam application bundle on macOS.
-The selected path must resolve to a readable regular file. Existing
-`LD_PRELOAD` or `DYLD_INSERT_LIBRARIES` entries are preserved.
-The replacement JVM receives the fixed non-secret `SteamAppId`, `SteamGameId`
-and `SteamOverlayGameId` value `480`, which also avoids losing the App ID at a
-sandbox/relaunch boundary.
+`gameoverlayrenderer.dylib` is considered. The search covers:
 
-e4steam does not disable Gatekeeper, remove quarantine, request `sudo`, modify
-Steam, or install system files. If relaunch fails, disable `overlayRelaunch` and
-use the standalone Steam friends window or a copied e4steam address.
+- normal Steam installations on Linux;
+- common Flatpak Steam locations;
+- common Snap Steam locations;
+- the standard Steam application bundle on macOS.
+
+The selected renderer must resolve to a readable regular file. Existing
+`LD_PRELOAD` or `DYLD_INSERT_LIBRARIES` values are preserved. The replacement
+receives the fixed non-secret App ID values for Spacewar (`480`) so the Steam
+context survives a launcher or sandbox boundary.
+
+e4steam does not download an overlay renderer, use an arbitrary file from
+`PATH`, modify Steam, request `sudo`, disable Gatekeeper or install system
+files.
+
+## Current status
+
+These ranges have been reported outside the automated build environment:
+
+| Loader | Minecraft range | Reported result |
+| --- | --- | --- |
+| Fabric | 1.14.x-26.2 | Overlay reported working |
+| Forge | 1.17.x-1.20.2 | Overlay reported working |
+| NeoForge | 1.20.2-26.2 | Overlay reported working |
+| Retro Forge on Linux | 1.7.x-1.16.x | Early lifecycle path; more external retesting required |
+| Retro Forge on macOS | 1.7.x-1.12.x | Relaunch skipped; transport works without injection |
+
+Build tests audit entry points, packaged files and relaunch-loop prevention.
+They cannot prove that Valve's widgets render on every desktop environment,
+macOS release, launcher or graphics stack.
+
+## If it fails
+
+1. Disable relaunch and confirm that Minecraft starts normally.
+2. Confirm that address-based e4steam joining works without the overlay.
+3. Close every stale Java/Minecraft process before another attempt.
+4. Check that Steam and Minecraft run as the same operating-system user.
+5. On Linux, record whether Steam is native, Flatpak or Snap.
+6. Run `/e4steam doctor` and inspect the report before sharing it.
+
+Repeated relaunches, two LWJGL initializations, a missing Dock entry, a hidden
+window or a process that remains only in the background all mean that the
+optional compatibility path should be turned off for that setup.
+
+When reporting a problem, include OS and architecture, desktop environment,
+Steam packaging, launcher, Java, Minecraft, loader and e4steam version. Never
+post a live join address or launcher secrets.

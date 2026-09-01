@@ -6,7 +6,8 @@
 
 The Addon API lets a normal Fabric, Forge or NeoForge mod extend e4steam
 without copying its Steam runtime or depending on Minecraft internals. API
-`1.0.0` is part of e4steam `0.3.0` and targets Java 8 bytecode.
+`1.0.0` is included in e4steam `0.3.1`, remains compatible with e4steam
+`0.3.0+`, and targets Java 8 bytecode.
 The signed release artifact, sources, Javadocs and POM are published on
 [Maven Central](https://repo1.maven.org/maven2/io/github/kamilhik/e4steam-api/1.0.0/).
 
@@ -14,6 +15,24 @@ The signed release artifact, sources, Javadocs and POM are published on
 > An addon is ordinary code running in the Minecraft JVM. The API limits what
 > e4steam exposes, but it is not a security sandbox. Install only addons you
 > trust.
+
+## Guide map
+
+This page is the complete starting tutorial. The focused contract guides go
+deeper where correctness matters:
+
+| Topic | Detailed guide |
+| --- | --- |
+| Discovery, validation, initialization and cleanup | [Addon lifecycle](ADDON_LIFECYCLE.md) |
+| Execution contexts, timeouts and cancellation | [Threading and scheduling](API_THREADING.md) |
+| Negotiated channels, encoding, backpressure and virtual UDP | [Networking](API_NETWORKING.md) |
+| Capabilities, admission order and failure isolation | [Security](ADDON_SECURITY.md) |
+| Identity, logs, diagnostics and storage | [Privacy](API_PRIVACY.md) |
+| API/mod/wire/channel versions and Maven usage | [Compatibility](API_COMPATIBILITY.md) |
+
+For exact signatures, generate Javadocs or open the source under
+`api/src/main/java`. The compile-checked `example-addon` is the canonical code
+sample; documentation examples intentionally show only the relevant part.
 
 ## Quick start
 
@@ -136,11 +155,52 @@ return new AddonDescriptor(
 | Add network or virtual UDP traffic | `NETWORK_CHANNEL_REGISTER`, `UDP_PROVIDER_REGISTER` | `api.network()`, `api.udp()` |
 | Add UI and commands | `UI_CONTRIBUTE`, `COMMANDS_REGISTER` | `api.ui()`, `api.commands()` |
 | Store addon settings and data | `CONFIG_READ`, `CONFIG_WRITE`, `STORAGE_PRIVATE` | `api.config()`, `api.storage()` |
-| Observe or administer a dedicated backend | `DEDICATED_OBSERVE`, `DEDICATED_ADMIN` | `api.dedicatedServers()` |
+| Observe or administer a dedicated backend | `DEDICATED_OBSERVE`, `DEDICATED_ADMIN`, `DEDICATED_PUBLICATION_PROPOSE` | `api.dedicatedServers()` |
 | Contribute diagnostics | `DIAGNOSTICS_CONTRIBUTE` | `api.diagnostics()` |
 
 World settings, modpack staging and skins are contracts for separate addons.
 The e4steam core does not ship those user-facing features.
+
+## Dedicated-server API
+
+`DedicatedServerService` is available from
+`context.api().dedicatedServers()`. It works only when e4steam is running in
+dedicated mode; on a normal client its methods return a typed unsupported or
+unavailable result.
+
+Request `DEDICATED_OBSERVE` to read state and wait for readiness:
+
+~~~java
+import link.e4steam.api.ApiResult;
+import link.e4steam.api.dedicated.DedicatedServerService;
+
+DedicatedServerService dedicated = context.api().dedicatedServers();
+ApiResult<DedicatedServerService.DedicatedServerSnapshot> result =
+        dedicated.snapshot();
+
+if (result.isSuccess() && result.value().isPresent()) {
+    DedicatedServerService.DedicatedServerSnapshot snapshot =
+            result.value().get();
+    boolean acceptingPlayers = snapshot.state()
+            == DedicatedServerService.DedicatedServerState.ACCEPTING;
+}
+~~~
+
+The snapshot contains the lifecycle state, access mode, player count, capacity
+and ingress/publication flags. `config()` returns a redacted configuration, and
+`readiness()` completes after the transport, ingress guard and Minecraft are
+ready. `DedicatedStateEvent` provides replayable state changes.
+
+`drain(reasonCode)` requires `DEDICATED_ADMIN` and stops e4steam sharing; it
+does not terminate the Minecraft process. Publication proposals require
+`DEDICATED_PUBLICATION_PROPOSE`; core can still reject them when no approved
+provider is active or the server configuration disallows publication. The API
+never returns Steam tickets, GSLT, raw descriptor contents, native handles or
+protocol packets.
+
+e4steam core 0.3.1 has no publication provider and returns
+`public-worlds-addon-required`; the service exists so a separate trusted addon
+can integrate without exposing the GameServer internals.
 
 ## Own every resource
 
@@ -228,7 +288,7 @@ contains no Fabric, Forge or NeoForge metadata.
 After `gradlew.bat :api:javadoc`, open
 `api/build/docs/javadoc/index.html` for the complete class and method reference.
 
-## Real addon: e4steam Friends
+## Example from a released addon: e4steam Friends
 
 [e4steam Friends](https://github.com/K2-Studio-Development/e4steam-Friends) is
 the first full e4steam addon. It provides a Minecraft-style Steam friends
@@ -236,10 +296,10 @@ screen, presence, search, invitations, joining and join requests for Fabric
 and NeoForge on Minecraft 26.2.
 
 Use that project as a reference for loader packaging, client lifecycle and UI
-integration. Use this repository's `example-addon` as the canonical reference
-for public Addon API calls. e4steam Friends contains an isolated compatibility
-bridge for social data that Addon API 1.0 does not expose yet; new addons must
-not copy that internal bridge or depend on `link.e4steam.internal` classes.
+integration. For public API calls, follow this repository's `example-addon`.
+e4steam Friends has an isolated compatibility bridge for social data that API
+1.0 does not expose yet. Do not copy that bridge or depend on
+`link.e4steam.internal` classes in a new addon.
 
 ## Common mistakes
 
@@ -255,7 +315,7 @@ not copy that internal bridge or depend on `link.e4steam.internal` classes.
 API, mod and wire versions are independent:
 
 - Addon API: `1.0.0`;
-- e4steam mod: `0.3.0`;
+- e4steam mod: `0.3.1`;
 - core wire protocol: `4`;
 - each addon network channel has its own version range.
 

@@ -27,27 +27,38 @@
 
 </div>
 
+## Start here
+
+| I want to... | Open |
+| --- | --- |
+| Install the mod and play with a friend | [Getting started](docs/GETTING_STARTED.md) |
+| Read the same guide in Russian | [Начало работы](docs/GETTING_STARTED_RU.md) |
+| Choose the correct JAR | [Compatibility matrix](COMPATIBILITY.md) |
+| Fix a Steam startup error | [Steam troubleshooting](docs/STEAM_TROUBLESHOOTING.md) |
+| Run a dedicated server | [Dedicated-server guide](docs/DEDICATED_SERVER.md) |
+| Create an addon | [Addon API guide](docs/ADDON_API.md) or [на русском](docs/ADDON_API_RU.md) |
+| Browse every guide | [Documentation index](docs/README.md) |
+
 > [!IMPORTANT]
-> **e4steam 0.3.0 is the current full release, not an alpha, beta or
-> prerelease.** Windows x64 is the primary supported platform. Linux x64,
-> and macOS are experimental. Dedicated servers are supported on Windows x64.
-> e4steam permanently uses the
-> shared Steam test App ID 480 (Spacewar), so unrelated App ID 480 traffic is
-> possible and is filtered.
+> **e4steam 0.3.1 is a full release.** Windows x64 is the primary supported
+> platform, including integrated worlds and dedicated servers. Linux x64 and
+> macOS are available as experimental builds. e4steam permanently uses Valve's
+> shared test App ID 480 (Spacewar), so it filters unrelated App ID 480 traffic.
 
 > [!NOTE]
-> 0.3.0 includes Addon API 1.0, loader-native addon discovery, macOS natives,
-> a fail-closed dedicated server and retro release artifacts. On August 28,
-> 2026, authenticated Windows x64 joins were manually verified on dedicated
-> NeoForge 1.21.1, Fabric 26.2 and Forge 1.12.2 servers. Linux, macOS and the
-> two-client/cross-platform matrices are not yet complete.
+> Version 0.3.1 extends Steam-only dedicated servers to every retro release
+> JAR, fixes Forge 1.17.1 startup, removes bundled UniMixins from Forge 1.7.x
+> and makes the Unix Steam Overlay relaunch opt-in.
+> Authenticated Windows x64 joins were manually verified on NeoForge 1.21.1,
+> Fabric 26.2 and Forge 1.12.2 dedicated servers. Linux, macOS and the full
+> cross-platform matrix still need more manual coverage.
 
 e4steam opens a Minecraft singleplayer world to Steam friends without port
 forwarding or a public IP. Both players need the mod and a signed-in Steam
 client. Minecraft TCP traffic and supported voice-chat UDP traffic travel over
 Steam P2P or Valve relays.
 
-Offline Minecraft launcher profiles are supported for Steam connections. In
+Offline Minecraft launcher profiles are supported for Steam connections. Since
 0.3.0, the host derives each Steam guest's stable Minecraft
 UUID and safe profile name from the authenticated SteamID rather than trusting
 the name supplied by the client. Steam itself must still be running and signed
@@ -56,13 +67,22 @@ in on every computer.
 When upgrading a world first played through e4steam 0.2.4, a guest can appear
 with fresh progress once because 0.3.0 replaces the old Mojang/offline UUID
 with the stable Steam-derived UUID. Back up the world before migrating the
-matching `world/playerdata/<old UUID>.dat`; later 0.3.0 joins reuse the same
+matching `world/playerdata/<old UUID>.dat`; later 0.3.0+ joins reuse the same
 Steam-derived UUID.
 
-## What's new in 0.3.0
+## What's new in 0.3.1
 
-The repository now contains a separate loader-independent Java 8 API artifact,
-an addon testkit and a neutral compile-checked example. API 1.0 includes scoped
+Compared with 0.3.0, this version adds protected Steam-only dedicated-server
+entry paths to every retro Forge and Fabric artifact, prints the dedicated
+address only after the server is ready, and fixes the Forge 1.17.1 lifecycle
+crash. The Forge 1.7.x JAR now uses an external UniMixins 0.1.20+ installation
+instead of embedding duplicate component mods. Linux and macOS gain a safer,
+explicitly enabled pre-LWJGL overlay relaunch; legacy Forge on macOS keeps its
+normal window path to avoid hidden or repeatedly restarted JVMs. See the full
+[changelog](CHANGELOG.md) for verification details.
+
+The repository also contains a separate loader-independent Java 8 API artifact, an
+addon testkit and a compile-checked example. API 1.0 includes scoped
 identity, session, dedicated, access, lobby, negotiated network, UDP, UI,
 command, config, storage, world-settings, modpack, skin, diagnostics,
 localization and logging contracts. Addons are discovered only through the
@@ -87,13 +107,13 @@ dependencies {
 This API is not a sandbox: an installed addon is ordinary code in the same JVM
 and must come from a trusted source. Core does not expose Steam passwords,
 auth tickets, invite tokens, GSLT, native handles or raw protocol hooks.
-Public Worlds, Modpack Sync, Offline Skins and World Settings remain separate
-future addons. Their bounded API contracts exist, but none of those
-user-facing features is included in core.
+Public Worlds, Modpack Sync, Offline Skins and World Settings are separate
+addon ideas. Their bounded API contracts exist, but core does not include
+those user-facing features.
 
 ## Addons
 
-Addon API 1.0 and addon support are stable parts of e4steam 0.3.0. Addons are
+Addon API 1.0 and addon support are stable parts of e4steam 0.3.1. Addons are
 installed as normal loader mods; check each addon's version requirements.
 
 ### Client add-ons
@@ -119,13 +139,17 @@ sources you trust; e4steam does not download or execute addons automatically.
 | 1.20.2–1.21.x | NeoForge | `neoforge-mc1.20.2-26.2` | None |
 | 26.1–26.2 | Fabric/Quilt or NeoForge | file containing `mc26.1-26.2` | Fabric API only for Fabric/Quilt |
 
-The 0.3.0 release also includes retro JARs in `release/0.3.0`: Forge branch
+The 0.3.1 release also includes retro JARs in `release/0.3.1`: Forge branch
 JARs from `1.7.x` through `1.16.x`, and Fabric
 branch JARs from `1.14.x` through `1.16.x`. Every filename identifies its loader
 and minor branch. Fabric still requires the matching Fabric API. A successful
 baseline test does not automatically prove every patch in that `.x` branch.
 
-Each listed 0.3.0 JAR contains the required 64-bit Steam native libraries for
+Forge `1.7.x` additionally requires one separate **UniMixins 0.1.20 or newer**
+JAR. e4steam no longer embeds UniMixins or any of its component mods, so an
+existing modpack copy can be used without duplicate-mod errors.
+
+Each listed 0.3.1 JAR contains the required 64-bit Steam native libraries for
 Windows, Linux and macOS. Download one file for your Minecraft version and
 loader; there are no separate per-OS builds. Linux and macOS remain
 experimental until their manual matrices are complete.
@@ -154,14 +178,21 @@ shares Minecraft's port. Another UDP mod can use the `voiceChatPort` setting.
 
 ## Dedicated servers
 
-The same matching loader JAR can run on a headless Minecraft server. The
-server uses anonymous Steam GameServer login, binds Minecraft to loopback and
-automatically prints a credential-free `d-...steam` descriptor as soon as it is
-ready for players. A personal Steam
-client must not be launched on the server. Start with the
-[dedicated deployment guide](docs/DEDICATED_DEPLOYMENT.md). Representative
-Windows x64 joins are recorded for NeoForge 1.21.1, Fabric 26.2 and Forge
-1.12.2; see the compatibility matrix for exact coverage.
+Install the same loader/version JAR on a headless Minecraft server; there is no
+separate server download. The server signs in anonymously through the Steam
+GameServer API, keeps Minecraft bound to loopback and prints a `d-...steam`
+address when it is ready. Send that address to players, who paste it into
+Minecraft's server address field. No personal Steam account, desktop Steam
+client or GSLT is required on the server.
+
+Windows x64 dedicated servers are supported. Recorded checks cover NeoForge
+1.21.1, Fabric 26.2 and Forge 1.12.2; Linux and macOS remain experimental.
+Setup, access modes and commands are covered in the
+[dedicated-server guide](docs/DEDICATED_DEPLOYMENT.md).
+
+Addon developers can observe readiness, player count and lifecycle state
+through `DedicatedServerService`; controlled drain and publication proposals
+use separate capabilities. See the [Addon API guide](docs/ADDON_API.md).
 
 ## If an invitation does not arrive
 
@@ -174,12 +205,11 @@ For `SteamAPI_Init failed`, first follow the
 - Ask the host to close and reopen the Steam connection, then send a new invite.
 - For a friends-only lobby, copy the green e4steam address as a fallback.
 - Restart Steam if Spacewar presence or the overlay is stuck.
-- On Linux x64 or macOS x86_64/arm64, see the optional
-  [Steam overlay relaunch guide](docs/UNIX_OVERLAY.md). Prism/MultiMC require
-  the separate Java 8 stdin agent included under `tools/` in the release.
-  Java 8 retro clients use a JVM property documented in the guide. Retro Forge
-  overlay rendering remains unverified; invitations and copied addresses work
-  without the injected overlay.
+- On Linux x64 or macOS x86_64/arm64, see the
+  [Steam overlay relaunch guide](docs/UNIX_OVERLAY.md). The experimental
+  relaunch is disabled by default because some launcher/loader combinations
+  can hang, crash or restart repeatedly. Steam invitations and copied addresses
+  work without overlay injection.
 
 ## Known limitations
 
@@ -206,20 +236,18 @@ For `SteamAPI_Init failed`, first follow the
 <summary><h2>🇷🇺 Русская версия — нажмите, чтобы открыть</h2></summary>
 
 > [!IMPORTANT]
-> **e4steam 0.3.0 — текущий полноценный релиз, не alpha, beta или
-> prerelease.** Основная поддерживаемая платформа — Windows x64. Linux x64,
-> и macOS имеют статус experimental. Выделенные серверы поддерживаются на
-> Windows x64. Мод навсегда использует
-> общий тестовый Steam App ID 480 (Spacewar), поэтому посторонний трафик App ID
-> 480 возможен и фильтруется.
+> **e4steam 0.3.1 — полноценный релиз.** Основная поддерживаемая платформа —
+> Windows x64, включая открытые миры и выделенные серверы. Сборки для Linux x64
+> и macOS пока экспериментальные. Мод постоянно использует общий тестовый
+> Steam App ID 480 (Spacewar) и фильтрует посторонний трафик этого App ID.
 
 > [!NOTE]
-> В 0.3.0 реализованы Addon API 1.0, обнаружение аддонов через загрузчики,
-> библиотеки macOS, защищённый dedicated-сервер и отдельные релизные
-> retro-сборки. 28 августа 2026 года вручную проверены авторизованные входы на
-> выделенные серверы NeoForge 1.21.1, Fabric 26.2 и Forge 1.12.2 под Windows
-> x64. Проверки с двумя клиентами, Linux, macOS и оставшаяся
-> межплатформенная матрица ещё не завершены.
+> В версии 0.3.1 защищённый Steam-only вход выделенных серверов добавлен во все
+> retro-JAR, исправлен запуск Forge 1.17.1, из Forge 1.7.x убраны встроенные
+> компоненты UniMixins, а Unix-реланч Steam Overlay сделан явно включаемым.
+> Под Windows x64 вручную проверены авторизованные подключения к
+> серверам NeoForge 1.21.1, Fabric 26.2 и Forge 1.12.2. Для Linux, macOS и
+> межплатформенных подключений ещё собирается полная матрица результатов.
 
 e4steam позволяет открыть одиночный мир Minecraft друзьям из Steam без проброса
 портов и белого IP. Мод и запущенный Steam нужны у всех игроков. TCP-трафик
@@ -227,7 +255,7 @@ Minecraft и UDP-трафик поддерживаемых голосовых м
 или ретрансляторы Valve.
 
 Офлайн-профили Minecraft-лаунчеров поддерживаются для подключений через Steam.
-В 0.3.0 хост создаёт стабильный Minecraft UUID и безопасное
+Начиная с 0.3.0 хост создаёт стабильный Minecraft UUID и безопасное
 имя гостя из подтверждённого SteamID, а не доверяет имени, присланному клиентом.
 Сам Steam всё равно должен быть запущен, и на каждом компьютере должен быть
 выполнен вход в аккаунт Steam.
@@ -236,17 +264,26 @@ Minecraft и UDP-трафик поддерживаемых голосовых м
 может один раз появиться без старого прогресса: 0.3.0 заменяет прежний
 Mojang/offline UUID стабильным UUID из SteamID. Перед переносом подходящего
 `world/playerdata/<старый UUID>.dat` сделайте резервную копию мира. Все
-следующие входы 0.3.0 используют тот же Steam-derived UUID.
+следующие входы в 0.3.0 и новее используют тот же UUID, вычисленный из SteamID.
 
-## Что нового в 0.3.0
+## Что нового в 0.3.1
 
-В репозитории появился отдельный независимый от загрузчика Java 8 API JAR,
-testkit и нейтральный пример аддона с проверкой компиляции. API 1.0 содержит
-scoped-контракты identity, sessions, dedicated, access, lobby, согласованных
-сетевых каналов, UDP, UI, команд, config, storage, world settings, modpack,
-skins, diagnostics, localization и logging. Аддоны обнаруживаются только
-обычным загрузчиком модов или Java service metadata — core не ищет и не
-скачивает произвольные JAR. Подробности: [Addon API](docs/ADDON_API_RU.md) и
+По сравнению с 0.3.0 защищённый Steam-only вход выделенного сервера добавлен
+во все retro-сборки Forge и Fabric, адрес сервера выводится только после полной
+готовности, а вылет Forge 1.17.1 при запуске исправлен. Forge 1.7.x теперь
+использует отдельно установленный UniMixins 0.1.20+ и не создаёт дубликаты его
+внутренних модов. На Linux и macOS появился более безопасный реланч до LWJGL,
+который включается только явно; старые версии Forge на macOS сохраняют обычный
+запуск окна, чтобы JVM не исчезала из Dock и не перезапускалась несколько раз.
+Подробности перечислены в [changelog](CHANGELOG.md).
+
+В репозитории также есть отдельный Java 8 API JAR, не зависящий от загрузчика,
+набор средств для тестов и пример аддона, который проверяется при сборке. API
+1.0 содержит отдельные контракты для идентификаторов, сессий, выделенных
+серверов, доступа, лобби, сетевых каналов, UDP, интерфейса, команд, настроек,
+хранилища, диагностики и локализации. Аддоны обнаруживает обычный загрузчик
+модов или Java `ServiceLoader`; ядро не ищет и не скачивает произвольные JAR.
+Подробности: [Addon API](docs/ADDON_API_RU.md) и
 [матрица совместимости](COMPATIBILITY.md).
 
 ### Addon API для разработчиков
@@ -264,14 +301,15 @@ dependencies {
 [Полная документация Addon API](docs/ADDON_API_RU.md)
 
 API не является песочницей: установленный аддон — обычный код в той же JVM,
-поэтому ставить можно только доверенные моды. Core не выдаёт пароли Steam,
-auth tickets, invite tokens, GSLT, native handles и raw protocol hooks. Для
-Public Worlds, Modpack Sync, Offline Skins и World Settings реализованы только
-ограниченные API-контракты; самих пользовательских функций в e4steam core нет.
+поэтому ставить можно только доверенные моды. Ядро не выдаёт пароли Steam,
+билеты авторизации, токены приглашений, GSLT, нативные дескрипторы и доступ к
+сырым пакетам протокола.
+Для Public Worlds, Modpack Sync, Offline Skins и World Settings есть только
+ограниченные API-контракты. Самих пользовательских функций в core пока нет.
 
 ## Аддоны
 
-Addon API 1.0 и поддержка аддонов — стабильные части e4steam 0.3.0. Аддоны
+Addon API 1.0 и поддержка аддонов — стабильные части e4steam 0.3.1. Аддоны
 устанавливаются как обычные моды; точные требования указаны на их страницах.
 
 ### Клиентские аддоны
@@ -297,13 +335,17 @@ Addon API 1.0 и поддержка аддонов — стабильные ча
 | 1.20.2–1.21.x | NeoForge | `neoforge-mc1.20.2-26.2` | Ничего |
 | 26.1–26.2 | Fabric/Quilt или NeoForge | файл с `mc26.1-26.2` | Fabric API только для Fabric/Quilt |
 
-В релиз 0.3.0 также входят retro-сборки из `release/0.3.0`: веточные Forge JAR
+В релиз 0.3.1 также входят retro-сборки из `release/0.3.1`: веточные Forge JAR
 от `1.7.x` до `1.16.x` и Fabric JAR от `1.14.x` до `1.16.x`.
 В названии указаны загрузчик и ветка Minecraft. Для Fabric по-прежнему нужен
 подходящий Fabric API. Проверка основной версии не доказывает автоматически
 работу каждого патча внутри ветки `.x`.
 
-Каждый JAR 0.3.0 содержит необходимые 64-битные библиотеки Steam для Windows,
+Для Forge `1.7.x` дополнительно нужен один отдельный JAR **UniMixins 0.1.20 или
+новее**. e4steam больше не встраивает UniMixins и его внутренние моды, поэтому
+можно использовать уже установленную в сборке версию без ошибки дубликатов.
+
+Каждый JAR 0.3.1 содержит необходимые 64-битные библиотеки Steam для Windows,
 Linux и macOS. Для своей версии Minecraft и загрузчика нужно скачать один файл
 — отдельных сборок по ОС нет. Linux и macOS остаются экспериментальными до
 завершения ручных проверок.
@@ -332,14 +374,23 @@ Simple Voice Chat определяется автоматически. Plasmo Vo
 
 ## Выделенные серверы
 
-Обычный JAR для нужного загрузчика можно установить на headless Minecraft
-server. Сервер анонимно входит через Steam GameServer, принимает Minecraft
-только через локальный bridge и автоматически печатает адрес `d-...steam`,
-когда готов принимать игроков. Личный клиент
-Steam на серверном ПК запускать не нужно. Начните с
-[инструкции по dedicated-серверу](docs/DEDICATED_DEPLOYMENT.md). На Windows x64
-вручную подтверждены NeoForge 1.21.1, Fabric 26.2 и Forge 1.12.2; точное
-покрытие приведено в матрице совместимости.
+На сервер без графического интерфейса ставится тот же JAR для нужной версии
+Minecraft и загрузчика; отдельного серверного файла нет. e4steam анонимно
+входит через Steam GameServer, оставляет Minecraft доступным только через
+локальный мост и печатает адрес `d-...steam`, когда сервер готов. Игрок
+вставляет этот адрес
+в поле подключения к серверу. Личный аккаунт Steam, настольный клиент Steam и
+GSLT на серверном ПК не нужны.
+
+Выделенные серверы поддерживаются на Windows x64. Вручную проверены NeoForge
+1.21.1, Fabric 26.2 и Forge 1.12.2; Linux и macOS пока экспериментальные.
+Настройка, режимы доступа и команды описаны в
+[инструкции по выделенному серверу](docs/DEDICATED_DEPLOYMENT.md).
+
+Аддоны могут читать состояние и готовность сервера через
+`DedicatedServerService`. Для остановки и предложения внешней публикации
+нужны отдельные разрешения API. Пример есть в
+[документации Addon API](docs/ADDON_API_RU.md).
 
 ## Если приглашение не приходит
 
@@ -353,10 +404,10 @@ Steam на серверном ПК запускать не нужно. Начн�
 - В режиме для друзей можно скопировать зелёный адрес как запасной вариант.
 - Перезапустите Steam, если статус Spacewar или оверлей завис.
 - На Linux x64 и macOS x86_64/arm64 можно включить дополнительный
-  [перезапуск для оверлея Steam](docs/UNIX_OVERLAY.md). Для Prism/MultiMC нужен
-  отдельный Java 8 агент из папки `tools/` внутри релиза. Для Java 8 retro
-  используется JVM-параметр из инструкции. Отрисовка overlay на Retro Forge
-  пока не подтверждена; приглашения и адрес работают без внедрённого overlay.
+  [перезапуск для оверлея Steam](docs/UNIX_OVERLAY.md). Экспериментальный
+  реланч по умолчанию выключен: некоторые сочетания лаунчера и загрузчика могут
+  зависать, падать или перезапускаться несколько раз. Приглашения Steam и адрес
+  работают без внедрения overlay.
 
 ## Известные ограничения
 

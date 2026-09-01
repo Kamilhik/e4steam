@@ -69,4 +69,38 @@ class SteamOverlayRelauncherTest {
         assertFalse(SteamOverlayRelauncher.validateCapturedStdin(
                 temporary.resolve("missing.bin"), false).isPresent());
     }
+
+    @Test void rewritesCurrentPrismBootstrapIntoDirectMinecraftLaunch() {
+        List<String> wrapper = Arrays.asList(
+                "/usr/bin/java", "-Xmx2G", "-cp", "NewLaunch.jar:game.jar",
+                "org.prismlauncher.EntryPoint"
+        );
+        List<String> direct = SteamOverlayRelauncher.rewritePublishedLauncherCommand(
+                wrapper,
+                "org.prismlauncher.EntryPoint",
+                "net.fabricmc.loader.impl.launch.knot.KnotClient",
+                "--username\u001fPlayer Name\u001f--gameDir\u001f/home/user/My Instance"
+        ).orElseThrow();
+
+        assertEquals(Arrays.asList(
+                "/usr/bin/java", "-Xmx2G", "-cp", "NewLaunch.jar:game.jar",
+                "net.fabricmc.loader.impl.launch.knot.KnotClient",
+                "--username", "Player Name", "--gameDir", "/home/user/My Instance"
+        ), direct);
+    }
+
+    @Test void refusesIncompleteOrUnsafePublishedPrismLaunchData() {
+        List<String> wrapper = Arrays.asList(
+                "java", "org.prismlauncher.EntryPoint"
+        );
+        assertFalse(SteamOverlayRelauncher.rewritePublishedLauncherCommand(
+                wrapper, "org.prismlauncher.EntryPoint", null, "--username\u001fPlayer"
+        ).isPresent());
+        assertFalse(SteamOverlayRelauncher.rewritePublishedLauncherCommand(
+                wrapper, "org.prismlauncher.EntryPoint", "bad main", "--username\u001fPlayer"
+        ).isPresent());
+        assertFalse(SteamOverlayRelauncher.rewritePublishedLauncherCommand(
+                wrapper, "org.prismlauncher.EntryPoint", ".bad.Main", "--username\u001fPlayer"
+        ).isPresent());
+    }
 }

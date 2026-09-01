@@ -93,7 +93,7 @@ class ExampleAddonTest {
     private static RuntimeSnapshot snapshot(SteamRuntimeState steamState) {
         return new RuntimeSnapshot(
                 ApiConstants.API_VERSION,
-                "0.3.0",
+                "0.3.1",
                 ApiConstants.WIRE_PROTOCOL_VERSION,
                 Platform.WINDOWS,
                 Architecture.X86_64,

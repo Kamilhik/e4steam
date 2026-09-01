@@ -3,21 +3,54 @@
 All notable changes to e4steam are documented here. Version numbers below
 belong to this fork and are independent of upstream e4mc releases.
 
-## Unreleased
+## 0.3.1 - 2026-09-01
+
+This section records the changes from the published `0.3.0` release to
+`0.3.1`.
 
 ### English
 
+- Reworked the user, Addon API and maintainer documentation for the 0.3.1
+  release. Dedicated-server setup now explains the anonymous GameServer login,
+  automatic `d-...steam` address, client connection flow and the public
+  `DedicatedServerService` API without describing Windows server support as
+  experimental.
+- Stopped embedding the UniMixins mod suite in the Forge 1.7.x JAR. UniMixins,
+  GTNHMixins, MixinBooterLegacy, MixingASM, MixinExtras, GasStation and
+  SpongeMixins are now supplied by one external UniMixins 0.1.20+ dependency,
+  so modpacks can use their own compatible copy without duplicate mod IDs.
 - Fixed the Forge 1.17.1 startup crash caused by Forge renaming its server
   lifecycle events in 1.18. The shared Forge entrypoint now resolves the
   matching 1.17 or 1.18+ event API without linking an unavailable class.
   The corrected JAR reached the main menu on Forge 37.1.1/Minecraft 1.17.1
   with Java 16 and Forge 39.1.0/Minecraft 1.18.1 with Java 17 on Windows x64.
-- Added an opt-in pre-LWJGL Steam Overlay relaunch for Linux x64 and macOS
-  x86_64/arm64, including Java 8 retro artifacts. Prism/MultiMC-style
-  launchers use a separate bounded Java 8 stdin
-  agent so their original launch hand-off can be replayed to the replacement
-  JVM. Failure to find or validate the launcher command, capture file or
-  Valve-installed overlay now safely falls back to the original process.
+- Added a pre-LWJGL Steam Overlay relaunch for Linux x64 and macOS
+  x86_64/arm64, including Java 8 retro artifacts. Current Prism Launcher no
+  longer needs an extra agent when it publishes sufficient launch metadata:
+  e4steam reconstructs the direct Minecraft launch and preserves non-secret
+  instance/window properties. The relaunch itself now requires an explicit
+  opt-in. If the launcher command or Valve-installed overlay cannot be
+  validated, e4steam keeps the original process without overlay injection.
+- Made the Unix Steam Overlay relaunch opt-in on every modern and retro build.
+  A missing setting no longer restarts Minecraft, disables Forge's splash or
+  changes the normal startup path. This prevents repeated restarts, hangs and
+  startup crashes reported across old loader/LWJGL combinations. Steam
+  transport, invitations and copied addresses continue to work without it.
+- Fixed the Unix overlay relaunch lifecycle on Retro Forge. Forge 1.7–1.12 now
+  enters the relaunch from an early FML core plugin and suppresses only Forge's
+  second `SplashProgress` OpenGL drawable without changing
+  `config/splash.properties`. Forge 1.13–1.16 injects the bootstrap at the
+  beginning of Minecraft `Main.main`; its replacement JVM disables the
+  temporary ModLauncher progress window before creating the persistent game
+  window. Launchers that do not expose enough safe launch metadata continue
+  without overlay relaunch. Unit tests, compilation and JAR audits cover the
+  new paths; real Linux/macOS overlay rendering still requires an external
+  retest.
+- Disabled the automatic overlay relaunch for macOS on legacy Forge
+  `1.7.x`-`1.12.x`. Those branches keep the normal Java 8/LWJGL 2 window and
+  start Steam without overlay injection, avoiding the hidden Dock/window state
+  seen after the replacement JVM. Linux legacy Forge and modern macOS loaders
+  keep the pre-LWJGL overlay relaunch path as an explicit opt-in.
 - Documented the one-time playerdata migration that may be needed when a world
   moves from 0.2.4's Mojang/offline guest UUID to 0.3.0's stable Steam-derived
   UUID. Subsequent joins with the same Steam account keep the same identity.
@@ -44,6 +77,17 @@ belong to this fork and are independent of upstream e4mc releases.
 
 ### Русский
 
+Ниже перечислены отличия `0.3.1` от опубликованного релиза `0.3.0`.
+
+- Переработана пользовательская документация, справка Addon API и инструкции
+  для сопровождения версии 0.3.1. В разделе выделенных серверов теперь понятно
+  описаны анонимный вход GameServer, автоматический адрес `d-...steam`, порядок
+  подключения клиента и публичный API `DedicatedServerService`. Поддерживаемые
+  серверы Windows больше не названы экспериментальными.
+- Из Forge 1.7.x JAR удалён встроенный комплект модов UniMixins. UniMixins,
+  GTNHMixins, MixinBooterLegacy, MixingASM, MixinExtras, GasStation и
+  SpongeMixins теперь предоставляет одна внешняя зависимость UniMixins 0.1.20+,
+  поэтому сборка может использовать свою совместимую версию без дубликатов ID.
 - Исправлен вылет при запуске Forge 1.17.1, вызванный переименованием событий
   жизненного цикла сервера в Forge 1.18. Общая точка входа Forge теперь
   выбирает подходящий API событий для 1.17 или 1.18+ без загрузки
@@ -56,12 +100,32 @@ belong to this fork and are independent of upstream e4mc releases.
   физического сервера Forge 1.7.x–1.12.x перенесена до привязки listener.
   На Windows x64 вручную подтверждены авторизованные входы на NeoForge 1.21.1,
   Fabric 26.2 и Forge 1.12.2.
-- Добавлен опциональный перезапуск JVM до инициализации LWJGL для Steam Overlay
-  на Linux x64 и macOS x86_64/arm64, включая Java 8 retro JAR. Для
-  Prism/MultiMC используется отдельный
-  ограниченный Java 8 stdin-agent, который сохраняет и повторяет исходный
-  протокол запуска. Если команда, файл захвата или установленный Valve overlay
-  не проходят проверку, Minecraft безопасно продолжает работу без перезапуска.
+- Добавлен перезапуск JVM до инициализации LWJGL для Steam Overlay на Linux x64
+  и macOS x86_64/arm64, включая Java 8 retro JAR. В актуальном Prism Launcher
+  не требуется дополнительный агент, если лаунчер публикует достаточно данных:
+  e4steam восстанавливает прямой запуск Minecraft и сохраняет безопасные
+  параметры окна и инстанса. Сам реланч теперь требует явного включения. Если
+  команда запуска или установленный Valve overlay не проходят проверку,
+  Minecraft продолжает работу без внедрения оверлея.
+- Unix-реланч Steam Overlay сделан явно включаемым во всех modern и retro JAR.
+  При отсутствии настройки Minecraft больше не перезапускается, Forge splash
+  не отключается, а обычный путь запуска не меняется. Это предотвращает
+  повторные перезапуски, зависания и вылеты на старых сочетаниях загрузчиков и
+  LWJGL. Транспорт Steam, приглашения и адреса продолжают работать без реланча.
+- Исправлен момент перезапуска для Unix overlay на Retro Forge. В Forge
+  1.7–1.12 ранний FML core-plugin запускает реланч и отключает только второй
+  OpenGL-контекст `SplashProgress`, не меняя `config/splash.properties`.
+  В Forge 1.13–1.16 bootstrap внедряется в начало Minecraft `Main.main`, а
+  новая JVM отключает временное окно загрузки ModLauncher до создания
+  постоянного игрового окна. Если лаунчер не публикует достаточно безопасных
+  данных для повторного запуска, игра продолжает работу без overlay-реланча.
+  Новые пути проверены unit-тестами, компиляцией и аудитом JAR; реальную
+  отрисовку на Linux/macOS ещё нужно повторно проверить на этих системах.
+- Автоматический overlay-реланч на macOS отключён для legacy Forge
+  `1.7.x`-`1.12.x`. Эти ветки сохраняют обычное окно Java 8/LWJGL 2 и запускают
+  Steam без overlay injection, чтобы не получать скрытый процесс без окна в
+  Dock после перезапуска JVM. На Linux legacy Forge и современных macOS
+  загрузчиках ранний pre-LWJGL overlay-реланч доступен при явном включении.
 - Описан разовый перенос playerdata при обновлении мира с Mojang/offline UUID
   гостя из 0.2.4 на стабильный Steam-derived UUID версии 0.3.0. Все последующие
   входы с тем же Steam-аккаунтом используют одну identity.

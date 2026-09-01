@@ -1,57 +1,114 @@
 # macOS
 
-Status for the 0.3.0 release: native loading and artifact support are implemented
-and CI-tested on Intel and Apple Silicon runners. Real Steam host/join/reconnect
-has not been performed, so both macOS variants remain **experimental**.
+[Русская версия](MACOS_RU.md)
 
-## Implemented platform matrix
+macOS support is included in the same e4steam JARs as Windows and Linux. There
+is no separate macOS download. Intel and Apple Silicon native libraries are
+packaged together, but the full host/join/reconnect matrix is still incomplete,
+so macOS is marked **experimental** in 0.3.1.
 
-| JVM/OS | Native selection | Automated status | Steam smoke |
-| --- | --- | --- | --- |
-| macOS x86_64 (Intel) | x86_64 slice of universal dylibs | Unit/build/native audit | Not verified |
-| macOS arm64 (Apple Silicon) | arm64 slice of universal dylibs | Unit/build/native audit | Not verified |
-| Rosetta x86_64 JVM | x86_64 slice | Build path only | Not verified |
+## Quick start
 
-`NativePlatform` normalizes `Mac OS X`, `macOS`, `OS X` and `Darwin`, plus
-`amd64`/`x86_64` and `arm64`/`aarch64`. The active JVM architecture must exist
-in every Mach-O library. Rosetta is only an optional fallback and is never
-reported as native arm64 support.
+1. Install the e4steam JAR that matches your Minecraft version and loader.
+2. Use a 64-bit Java runtime that matches the way Minecraft is running:
+   `x86_64` for Intel or Rosetta, `arm64` for native Apple Silicon.
+3. Start the normal macOS Steam client and sign in.
+4. Launch Minecraft normally from your launcher. Do **not** add the launcher to
+   Steam as a non-Steam game.
+5. Open a singleplayer world to LAN and use either the copied e4steam address
+   or the invitation button.
 
-Runtime JARs bundle pinned universal `libsteam_api.dylib`,
-`libsteamworks4j.dylib` and `libsteamworks4j-server.dylib` from the declared
-Steamworks4j dependencies. Exact size and SHA-256 are checked at build time and
-again before extraction/load. CI runs `lipo`, `otool -L` and `codesign --verify`
-diagnostics on both macOS runner architectures and rejects developer-local
-dynamic dependency paths. Unsigned Valve/Steamworks redistributables are
-reported honestly; e4steam does not claim to sign them.
+Steam networking does not depend on the in-game overlay. If Shift+Tab does not
+appear, copied addresses and Valve relay traffic can still work.
 
-The owner-controlled native cache uses no-follow type/owner/link checks,
-bounded reads, content hashes, atomic publication and process locks. Only a
-verified absolute e4steam cache path reaches `System.load`; PATH and working
-directory fallbacks are forbidden.
+## Architecture and native libraries
 
-## Installation and diagnostics
+| Minecraft process | Native slice used | Meaning |
+| --- | --- | --- |
+| Intel Mac, `x86_64` JVM | x86_64 | Native Intel run |
+| Apple Silicon, `arm64` JVM | arm64 | Native Apple Silicon run |
+| Apple Silicon, `x86_64` JVM | x86_64 | Rosetta fallback; not an arm64 result |
 
-Use a 64-bit JVM matching the desired architecture, install the normal
-loader/version JAR, start and sign in to the macOS Steam client, then launch
-Minecraft normally. Do not add the launcher as a non-Steam game.
+The runtime JAR contains universal `libsteam_api.dylib`,
+`libsteamworks4j.dylib` and `libsteamworks4j-server.dylib` files. The build
+checks their size and SHA-256, and macOS CI inspects them with `lipo`,
+`otool -L` and `codesign --verify`. These checks prove that the files are
+packaged correctly; they do not prove a real Steam multiplayer connection.
 
-When Steam reports an injected overlay, e4steam can use it normally. Otherwise
-the invitation button opens the standalone Steam friends window through the
-fixed `steam://open/friends` URI; lobby rich presence remains available for
-**Join Game**. Intel and Apple Silicon users may opt into the pre-LWJGL relaunch described in the
-[Unix overlay guide](UNIX_OVERLAY.md). The relaunch uses Valve's installed
-`gameoverlayrenderer.dylib`; Prism/MultiMC additionally require the supplied
-Java 8 stdin agent. Current Steam installations provide the renderer as a
-universal x86_64/arm64 image; real overlay relaunch remains experimental on
-both architectures until the manual matrix is complete.
+e4steam extracts native files only into its owner-controlled cache. It checks
+file type, links, owner, size and SHA-256 before loading them. It does not load
+Steam libraries from `PATH` or from an arbitrary launcher directory.
 
-e4steam never disables Gatekeeper, removes quarantine, asks for `sudo` or
-changes system security policy. If macOS blocks Minecraft or a native library,
-inspect the publisher/quarantine state yourself and install only from a trusted
-source. Diagnostics redact user paths and never include passwords, tickets,
-tokens, SteamID or join secrets by default.
+## Overlay support
 
-Before a support claim, record macOS/JDK/loader/Minecraft versions and complete
-host, join, invite, relay, disconnect and reconnect tests separately on a
-native Intel JVM and native arm64 JVM.
+The optional overlay relaunch is disabled by default. Enable it only when you
+specifically want Valve's overlay inside the Minecraft window and first verify
+that normal address-based joining works.
+
+- Minecraft 1.17 and newer: set `overlayRelaunch = true` in
+  `config/e4steam.toml`.
+- Java 8 retro builds: add `-De4steam.overlayRelaunch=true` as a JVM argument.
+- Older Prism/MultiMC combinations that hide their direct launch command cannot
+  use the optional relaunch and continue without overlay injection.
+
+Legacy Forge 1.7.x-1.12.x deliberately skips the relaunch on macOS. Those
+versions can create more than one LWJGL window, and replacing the JVM may hide
+the game, remove it from the Dock or start it repeatedly. Networking continues
+without injected overlay support. Use the copied address or Steam's standalone
+friends window instead.
+
+The full explanation and rollback steps are in
+[Unix overlay relaunch](UNIX_OVERLAY.md).
+
+## Common problems
+
+### `SteamAPI_Init failed`
+
+Check that Steam is open, signed in and running as the same macOS user as
+Minecraft. Quit stale Minecraft/Java processes, restart Steam, then start the
+game again. Do not launch the Minecraft launcher through Steam.
+
+### `Could not verify ownership of the native cache parent`
+
+e4steam refused to trust the native cache location. Do not weaken file checks
+or copy native libraries into random folders. Close the game, remove only the
+e4steam native-cache directory shown in the log, and let the mod recreate it.
+If the error remains, include the sanitized path category in a report.
+
+### Minecraft restarts, disappears from the Dock or has no window
+
+Disable the optional overlay relaunch. Remove
+`-De4steam.overlayRelaunch=true` on retro versions or set
+`overlayRelaunch = false` on modern versions. The Steam transport does not need
+the relaunch.
+
+### Invitation UI does not open
+
+Copy the green `s-...steam` address and send it privately. The guest can paste
+it into Minecraft's server address field. A missing overlay is not the same as
+a failed Steam connection.
+
+### Native architecture error
+
+Check the architecture of the Java process, not only the Mac model. A Rosetta
+launcher uses the x86_64 native slice. Use a matching 64-bit Java runtime and
+avoid mixing arm64 and x86_64 Java/native files manually.
+
+## Safe troubleshooting
+
+e4steam never needs `sudo`, never disables Gatekeeper, never removes quarantine
+flags and never changes macOS security settings. Do not run a command from an
+untrusted support message merely to make a downloaded JAR load.
+
+For a useful report, include:
+
+- Mac model and CPU architecture;
+- architecture reported by the active JVM;
+- macOS, Java, Minecraft, loader and e4steam versions;
+- whether normal address joining works without overlay relaunch;
+- separate results for host, join, invitation, relay, disconnect and reconnect;
+- the sanitized output from `/e4steam doctor`.
+
+Never publish a live e4steam address, Steam ticket, account token or private
+path. See [Diagnostics](DIAGNOSTICS.md) and
+[Steam troubleshooting](STEAM_TROUBLESHOOTING.md).

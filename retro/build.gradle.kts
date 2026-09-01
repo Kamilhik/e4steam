@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "link.e4steam"
-version = "0.3.0"
+version = "0.3.1"
 
 subprojects {
     group = rootProject.group
@@ -38,7 +38,7 @@ subprojects {
 }
 
 // Keep the 1.6.4 source port available for reference, but do not build or
-// publish it as part of the 0.3.0 runtime matrix.
+// publish it as part of the 0.3.1 runtime matrix.
 val runtimeProjects = subprojects.filter {
     it.name != "core" && it.name != "forge-1.6.4"
 }
@@ -56,6 +56,15 @@ val componentLangProjects = setOf(
 val legacyConnectProjects = setOf(
     "forge-1.7.10", "forge-1.8.9", "forge-1.9.4",
     "forge-1.10.2", "forge-1.11.2", "forge-1.12.2"
+)
+
+val legacyForgeOverlayCoreProjects = setOf(
+    "forge-1.7.10", "forge-1.8.9", "forge-1.9.4",
+    "forge-1.10.2", "forge-1.11.2", "forge-1.12.2"
+)
+
+val modLauncherForgeOverlayCoreProjects = setOf(
+    "forge-1.13.2", "forge-1.14.4", "forge-1.15.2", "forge-1.16.5"
 )
 
 val modernRetroConnectProjects = setOf(
@@ -113,6 +122,19 @@ configure(runtimeProjects) {
                 project.name in modernRetroConnectProjects -> java.srcDir(
                     rootProject.file("adapters/minecraft-1.14-1.16-connect/src/main/java")
                 )
+            }
+            when (project.name) {
+                "forge-1.7.10" -> java.srcDir(
+                    rootProject.file("adapters/forge-overlay-core-1.7/src/main/java")
+                )
+                in legacyForgeOverlayCoreProjects -> java.srcDir(
+                    rootProject.file("adapters/forge-overlay-core-1.8-1.12/src/main/java")
+                )
+            }
+            if (project.name in modLauncherForgeOverlayCoreProjects) {
+                resources.srcDir(rootProject.file(
+                    "adapters/forge-modlauncher-overlay/src/main/resources"
+                ))
             }
         }
     }
@@ -241,6 +263,15 @@ public final class RetroBuildMetadata {
                 into("assets/e4steam/lang")
                 rename { "ru_ru.lang" }
             }
+        }
+    }
+
+    if (project.name in legacyForgeOverlayCoreProjects) {
+        tasks.withType<Jar>().configureEach {
+            manifest.attributes(mapOf(
+                "FMLCorePlugin" to
+                        "link.e4steam.retro.forge.core.E4steamForgeOverlayCore"
+            ))
         }
     }
 
@@ -650,8 +681,48 @@ tasks.register("auditRetroArtifacts") {
                         "Unexpected retro native set in ${jar.name}: ${packagedNatives - expectedNatives}"
                     }
                     if (project.name == "forge-1.7.10") {
-                        check("META-INF/licenses/module-common/LICENSE" in names) {
-                            "UniMixins module licenses were not preserved in ${jar.name}"
+                        val externalUniMixinsPrefixes = setOf(
+                            "io/github/legacymoddingmc/unimixins/",
+                            "io/github/tox1cozz/mixinbooterlegacy/",
+                            "com/falsepattern/gasstation/",
+                            "com/gtnewhorizon/gtnhmixins/",
+                            "com/llamalad7/mixinextras/",
+                            "makamys/mixingasm/",
+                            "ru/timeconqueror/spongemixins/",
+                            "org/spongepowered/"
+                        )
+                        externalUniMixinsPrefixes.forEach { prefix ->
+                            check(names.none { it.startsWith(prefix) }) {
+                                "${jar.name} embeds external Forge mod library $prefix"
+                            }
+                        }
+                        val externalUniMixinsResources = setOf(
+                            "META-INF/unimixins-all.EmbeddedFMLCorePlugins.txt",
+                            "mixin.mixinbooterlegacy.json",
+                            "mixingasm.mixin.json",
+                            "mixins.gasstation.json",
+                            "mixins.gtnhmixins.json"
+                        )
+                        externalUniMixinsResources.forEach { resource ->
+                            check(resource !in names) {
+                                "${jar.name} embeds external Forge mod metadata $resource"
+                            }
+                        }
+                        val manifest = zip.getInputStream(
+                            checkNotNull(zip.getEntry("META-INF/MANIFEST.MF"))
+                        ).bufferedReader(Charsets.UTF_8).use { it.readText() }
+                        check("TweakClass: org.spongepowered.asm.launch.MixinTweaker" !in manifest) {
+                            "${jar.name} claims the external UniMixins tweaker"
+                        }
+                        val entrypointConstants = zip.getInputStream(
+                            checkNotNull(zip.getEntry(
+                                "link/e4steam/retro/forge/E4steamForgeLegacy.class"
+                            ))
+                        ).use { input ->
+                            input.readBytes().toString(Charsets.ISO_8859_1)
+                        }
+                        check("required-after:unimixins@[0.1.20,)" in entrypointConstants) {
+                            "${jar.name} does not declare its external UniMixins dependency"
                         }
                     }
                     if (project.name in legacyLangProjects) {
@@ -728,6 +799,157 @@ tasks.register("auditRetroArtifacts") {
                         }
                         check("link/e4steam/steam/SteamRuntime" !in constantPool) {
                             "Physical-server Forge entrypoint eagerly references the client Steam runtime: ${jar.name}"
+                        }
+                    }
+                    if (project.name in legacyForgeOverlayCoreProjects) {
+                        check(
+                            "link/e4steam/retro/forge/core/E4steamForgeOverlayCore.class" in names
+                        ) {
+                            "Missing the pre-Display Unix overlay core plugin from ${jar.name}"
+                        }
+                        val manifestEntry = checkNotNull(zip.getEntry("META-INF/MANIFEST.MF")) {
+                            "Missing manifest from ${jar.name}"
+                        }
+                        val manifestText = zip.getInputStream(manifestEntry).use { input ->
+                            input.readBytes().toString(Charsets.UTF_8)
+                        }
+                        check(
+                            "FMLCorePlugin: link.e4steam.retro.forge.core.E4steamForgeOverlayCore" in
+                                    manifestText.replace("\r\n ", "")
+                        ) {
+                            "${jar.name} does not register the early Unix overlay core plugin"
+                        }
+                        val splashTransformer =
+                            "link/e4steam/retro/forge/core/E4steamForgeSplashTransformer.class"
+                        checkNotNull(zip.getEntry(splashTransformer)) {
+                            "Missing the Unix Forge splash transformer from ${jar.name}"
+                        }
+                        val splashClassPrefix = splashTransformer.removeSuffix(".class")
+                        val splashConstants = names
+                            .filter { entryName ->
+                                entryName == splashTransformer ||
+                                        (entryName.startsWith("${splashClassPrefix}$") &&
+                                                entryName.endsWith(".class"))
+                            }
+                            .joinToString("\n") { entryName ->
+                                zip.getInputStream(checkNotNull(zip.getEntry(entryName))).use {
+                                    input -> input.readBytes().toString(Charsets.ISO_8859_1)
+                                }
+                            }
+                        listOf("SplashProgress", "enabled", "shouldDisableSplash").forEach {
+                            marker ->
+                            check(marker in splashConstants) {
+                                "${jar.name} splash transformer is missing $marker"
+                            }
+                        }
+                        val glTransformer =
+                            "link/e4steam/retro/forge/core/E4steamForgeGlContextTransformer.class"
+                        checkNotNull(zip.getEntry(glTransformer)) {
+                            "Missing the macOS LWJGL 2 context transformer from ${jar.name}"
+                        }
+                        val glClassPrefix = glTransformer.removeSuffix(".class")
+                        val glConstants = names
+                            .filter { entryName ->
+                                entryName == glTransformer ||
+                                        (entryName.startsWith("${glClassPrefix}$") &&
+                                                entryName.endsWith(".class"))
+                            }
+                            .joinToString("\n") { entryName ->
+                                zip.getInputStream(checkNotNull(zip.getEntry(entryName))).use {
+                                    input -> input.readBytes().toString(Charsets.ISO_8859_1)
+                                }
+                            }
+                        listOf(
+                            "GLAllocation",
+                            "glGenLists",
+                            "generateDisplayLists",
+                            "shouldRepairLegacyDisplayContext",
+                            "requestForeground",
+                            "reserveDisplayLists"
+                        ).forEach { marker ->
+                            check(marker in glConstants) {
+                                "${jar.name} GL context transformer is missing $marker"
+                            }
+                        }
+                        if (project.name == "forge-1.7.10") {
+                            val cocoaActivator =
+                                "link/e4steam/retro/forge/core/MacOsCocoaWindowActivator.class"
+                            val cocoaPrefix = cocoaActivator.removeSuffix(".class")
+                            val cocoaEntries = zip.entries().asSequence()
+                                .map { it.name }
+                                .filter {
+                                    it == cocoaActivator ||
+                                        (it.startsWith("$cocoaPrefix\$") && it.endsWith(".class"))
+                                }
+                                .toList()
+                            check(cocoaActivator in cocoaEntries) {
+                                "Missing the native macOS window activator from ${jar.name}"
+                            }
+                            val cocoaConstants = cocoaEntries.joinToString("\n") { entryName ->
+                                val entry = checkNotNull(zip.getEntry(entryName)) {
+                                    "Missing the native macOS window activator from ${jar.name}: $entryName"
+                                }
+                                zip.getInputStream(entry).use { input ->
+                                    input.readBytes().toString(Charsets.ISO_8859_1)
+                                }
+                            }
+                            listOf(
+                                "NSApplication",
+                                "NSRunningApplication",
+                                "setActivationPolicy:",
+                                "activateWithOptions:",
+                                "ApplicationServices",
+                                "TransformProcessType",
+                                "SetFrontProcess",
+                                "objc_allocateClassPair",
+                                "class_addMethod",
+                                "objc_registerClassPair",
+                                "performSelectorOnMainThread:withObject:waitUntilDone:",
+                                "pthread_main_np",
+                                "com.apple.eawt.Application",
+                                "requestForeground",
+                                "E4steamMainThreadDispatcher",
+                                "unhide:",
+                                "deminiaturize:",
+                                "orderFrontRegardless",
+                                "makeMainWindow",
+                                "makeKeyWindow",
+                                "makeKeyAndOrderFront:"
+                            ).forEach { marker ->
+                                check(marker in cocoaConstants) {
+                                    "${jar.name} Cocoa window activator is missing $marker"
+                                }
+                            }
+                        }
+                        val earlyExitBridge = if (project.name == "forge-1.7.10") {
+                            "cpw/mods/fml/e4steam/E4steamEarlyExit.class"
+                        } else {
+                            "net/minecraftforge/fml/e4steam/E4steamEarlyExit.class"
+                        }
+                        checkNotNull(zip.getEntry(earlyExitBridge)) {
+                            "Missing the pre-Loader Forge shutdown bridge from ${jar.name}"
+                        }
+                    }
+                    if (project.name in modLauncherForgeOverlayCoreProjects) {
+                        listOf(
+                            "META-INF/coremods.json",
+                            "coremods/e4steam_overlay_bootstrap.js"
+                        ).forEach { overlayResource ->
+                            check(overlayResource in names) {
+                                "Missing Forge pre-Display overlay hook $overlayResource from ${jar.name}"
+                            }
+                        }
+                        val overlayScript = zip.getInputStream(checkNotNull(
+                            zip.getEntry("coremods/e4steam_overlay_bootstrap.js")
+                        )).bufferedReader(Charsets.UTF_8).use { it.readText() }
+                        listOf(
+                            "net.minecraft.client.main.Main",
+                            "RetroForgeOverlayBootstrap",
+                            "e4steam_forge_overlay_bootstrap"
+                        ).forEach { marker ->
+                            check(marker in overlayScript) {
+                                "${jar.name} pre-Display overlay hook is missing $marker"
+                            }
                         }
                     }
                 }

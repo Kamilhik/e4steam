@@ -77,7 +77,7 @@ final class CoreRuntimeService implements RuntimeService {
             flags.add(CompatibilityFlag.DEDICATED_BACKEND_AVAILABLE);
         }
         if (environment.experimental()) flags.add(CompatibilityFlag.EXPERIMENTAL_COMBINATION);
-        return new RuntimeSnapshot(ApiConstants.API_VERSION, "0.3.0", ApiConstants.WIRE_PROTOCOL_VERSION,
+        return new RuntimeSnapshot(ApiConstants.API_VERSION, "0.3.1", ApiConstants.WIRE_PROTOCOL_VERSION,
                 platform(), architecture(), environment.mode(), environment.loader(),
                 environment.minecraftVersion(), steamState, phase, transports, flags,
                 failureCategory);

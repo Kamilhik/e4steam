@@ -1,22 +1,44 @@
 # Contributing
 
-Thanks for helping with e4steam. This repository is an
-unofficial derivative of e4mc; it is not affiliated with Valve, Steam, Mojang,
-Microsoft, or the original e4mc maintainers.
+e4steam is an unofficial derivative of e4mc. It is maintained by
+**Kamilchik** and is not affiliated with Valve, Steam, Mojang, Microsoft or the
+original e4mc maintainers.
 
-The project author and current maintainer is **Kamilchik**.
+## Quick path
+
+1. Reproduce the problem in the smallest clean instance you can make.
+2. Choose one focused change; do not mix a bug fix with unrelated formatting or
+   generated files.
+3. Add an automated test when the behavior can be isolated.
+4. Run the checks for every affected modern, retro, client, server or API
+   target.
+5. Record manual evidence honestly: “builds” and “joins through Steam” are
+   different results.
+6. Update the changelog and compatibility matrix when user-visible behavior or
+   support changes.
+
+Small, well-tested fixes are welcome. You do not need to understand every
+Minecraft version before improving one clearly identified target.
 
 ## Before opening an issue
 
-- Use GitHub's private vulnerability reporting for security problems.
-- Never post a complete generated join address, Steam session details, private
-  account information, or an unreviewed log in a public issue.
-- Check that both players use the same mod release and a compatible Minecraft
-  version and loader.
+- Report security problems through GitHub's private vulnerability form.
+- Remove live join addresses, Steam session data, private account information,
+  credentials and unrelated personal paths from logs.
+- Check that all players use the same e4steam release, Minecraft version and a
+  compatible loader.
+- Include the smallest reproducible mod list and say whether the problem
+  affects client hosting, joining or a dedicated server.
+
+For a crash, attach the complete crash report and the relevant `latest.log`.
+The useful cause is often above the last `InvocationTargetException`. For a
+connection problem, say which machine hosted, which joined, whether an address
+or invitation was used and on which attempt it succeeded. Do not post the live
+address itself.
 
 ## Development setup
 
-Install JDK 21, clone the repository, and run:
+Install JDK 21, clone the repository and run on Windows:
 
 ```powershell
 .\gradlew.bat clean releaseJars
@@ -25,7 +47,7 @@ Install JDK 21, clone the repository, and run:
 .\gradlew.bat -p retro auditRetroArtifacts
 ```
 
-On Linux:
+On Linux or macOS:
 
 ```bash
 ./gradlew clean releaseJars
@@ -34,12 +56,12 @@ On Linux:
 ./gradlew -p retro auditRetroArtifacts
 ```
 
-The produced bytecode and supported game versions are defined by the checked-in
-Gradle configuration. Do not claim compatibility based only on a Minecraft
-version-family label; test every loader/version combination listed in release
-metadata.
+The checked-in Gradle configuration defines bytecode levels and supported
+Minecraft ranges. A branch label such as `1.14.x` is not proof that every patch
+in that branch works. Record the exact Minecraft, loader, Java and OS versions
+used in a manual test.
 
-Before submitting a pull request, also run:
+Before opening a pull request, run:
 
 ```powershell
 git diff --check
@@ -48,34 +70,48 @@ git diff --check
 .\gradlew.bat --no-daemon -p retro auditRetroArtifacts
 ```
 
-The root aggregate covers the two Minecraft 1.17 legacy artifacts, standard and
-modern Fabric variants, Forge and NeoForge. The separate `retro` build covers
-10 Forge branch and 3 Fabric branch Java 8 artifacts. Do not silently omit a
-variant or infer runtime support from compilation.
+The root build covers the modern Fabric/Quilt, Forge and NeoForge artifacts,
+including the two Minecraft 1.17-era files. The separate `retro` build covers
+ten Forge and three Fabric Java 8 branch artifacts. Do not omit a variant
+silently or describe a compile-only result as runtime support.
 
 ## Pull requests
 
-- Keep changes focused and explain how they were tested.
-- Add or update tests for protocol, address-parsing, and lifecycle changes.
-- Update `CHANGELOG.md` and compatibility documentation for user-visible
-  behavior.
-- Keep `:api` Java 8 and free from Minecraft, loader, JNA, Steamworks and
-  internal implementation types. Use a new typed service instead of silently
-  breaking the canonical API surface baseline.
-- Treat addons as trusted code in the same JVM, not as sandboxed plugins. Never
-  expose passwords, tickets, invite tokens, native handles or raw packet hooks.
-- Do not commit build output, Minecraft instances, logs, credentials, signing
-  keys, or generated `steam_appid.txt` files. The root `steam_appid.txt`
-  containing only `480` is the intentional development fixture.
-- Preserve all Apache 2.0 and third-party license notices, and update
-  `THIRD_PARTY_NOTICES.md` when a dependency, native library or adapted
-  upstream file changes.
+- Keep the change focused and describe how it was tested.
+- Add or update tests for protocol, address parsing, authentication and
+  lifecycle changes.
+- Update `CHANGELOG.md` and `COMPATIBILITY.md` when behavior changes.
+- Keep `:api` on Java 8 and free of Minecraft, loader, JNA, Steamworks and
+  internal implementation types. Extend it through typed services instead of
+  changing an established interface incompatibly.
+- Treat addons as trusted code in the same JVM, not sandboxed plugins. Never
+  expose tickets, passwords, invite tokens, GSLT, native handles or raw packet
+  hooks.
+- Do not commit build output, launcher instances, logs, credentials, signing
+  keys or generated `steam_appid.txt` files. The repository-root file that
+  contains only `480` is an intentional development fixture.
+- Preserve Apache 2.0 and third-party notices. Update
+  `THIRD_PARTY_NOTICES.md` when dependencies, native libraries or adapted
+  upstream files change.
 
-## Binary distribution
+In the pull request description, list:
 
-Source contributions are welcome under the repository's Apache License 2.0. A compiled
-JAR bundles Valve Steamworks redistributables that are not covered by that
-license. Stable binaries may be published only after the applicable automated
-and manual verification steps in `RELEASING.md` pass. Unverified Linux, macOS
-or dedicated combinations must be labeled experimental. Never describe a
-combination as manually verified without recorded evidence.
+- affected Minecraft versions and loaders;
+- client, integrated server or dedicated server;
+- exact commands that passed;
+- exact manual scenarios that passed or failed;
+- files deliberately left untested and why.
+
+Do not include launcher instances, locally generated HTML/checklists,
+PowerShell helpers, JavaScript previews, build output or personal test data in a
+pull request. Mandatory loader resources already present in the repository are
+the exception; for example, Forge coremod JavaScript is runtime code and must
+remain packaged.
+
+## Binary releases
+
+Source contributions use the repository's Apache License 2.0. Compiled JARs
+also contain Valve Steamworks redistributables under their own terms. Publish
+stable binaries only after the automated and manual checks in `RELEASING.md`.
+Do not mark Linux or macOS as verified without recorded evidence, and do not
+turn a build, class audit or main-menu launch into a multiplayer claim.

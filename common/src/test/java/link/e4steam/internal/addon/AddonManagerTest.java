@@ -161,7 +161,7 @@ class AddonManagerTest {
     }
 
     private static RuntimeSnapshot runtimeSnapshot() {
-        return new RuntimeSnapshot(ApiConstants.API_VERSION, "0.3.0", ApiConstants.WIRE_PROTOCOL_VERSION,
+        return new RuntimeSnapshot(ApiConstants.API_VERSION, "0.3.1", ApiConstants.WIRE_PROTOCOL_VERSION,
                 Platform.WINDOWS, Architecture.X86_64, RuntimeMode.CLIENT,
                 new LoaderInfo("test", "1.0.0"), "1.20.2", SteamRuntimeState.READY,
                 LifecyclePhase.IDLE, Collections.singleton(TransportCapability.RELIABLE_STREAM),

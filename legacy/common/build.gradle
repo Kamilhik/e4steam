@@ -31,7 +31,7 @@ dependencies {
     implementation("com.code-disaster.steamworks4j:steamworks4j-server:${rootProject.steamworks4j_version}") {
         transitive = false
     }
-    compileOnly "net.java.dev.jna:jna:5.10.0"
+    compileOnly "net.java.dev.jna:jna:5.19.1"
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"

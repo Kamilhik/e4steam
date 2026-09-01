@@ -71,7 +71,7 @@ jobs:
           java-version: "21"
 
       - name: Set up Gradle cache
-        uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
 
       - name: Make Gradle wrapper executable
         if: runner.os != 'Windows'
@@ -143,7 +143,7 @@ jobs:
           java-version: "21"
 
       - name: Set up Gradle cache
-        uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
 
       - name: Build, audit and collect all modern and retro runtime artifacts
         run: |
@@ -175,7 +175,7 @@ jobs:
           java-version: "21"
 
       - name: Set up Gradle cache
-        uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
 
       - name: Build and inspect all retro branch artifacts
         run: |

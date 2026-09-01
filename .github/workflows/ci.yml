@@ -62,7 +62,7 @@ jobs:
           persist-credentials: false
 
       - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+        uses: gradle/actions/wrapper-validation@0723195856401067f7a2779048b490ace7a47d7c # v5
 
       - name: Set up Java 21 build JDK
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
@@ -134,7 +134,7 @@ jobs:
           persist-credentials: false
 
       - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+        uses: gradle/actions/wrapper-validation@0723195856401067f7a2779048b490ace7a47d7c # v5
 
       - name: Set up Java 21 build JDK
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
@@ -166,7 +166,7 @@ jobs:
           persist-credentials: false
 
       - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+        uses: gradle/actions/wrapper-validation@0723195856401067f7a2779048b490ace7a47d7c # v5
 
       - name: Set up Java 21 orchestration JDK
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5

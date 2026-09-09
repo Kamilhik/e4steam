@@ -49,6 +49,39 @@ class AddonManagerTest {
     @AfterEach void stopExecutor() { executor.shutdownNow(); }
 
     @Test
+    void acceptsCompatibleOneXRangesAndRejectsTwoXWithoutRunningIt() {
+        AtomicBoolean legacyCalled = new AtomicBoolean();
+        AtomicBoolean currentCalled = new AtomicBoolean();
+        AtomicBoolean futureCalled = new AtomicBoolean();
+        AddonCandidate legacy = candidate(descriptor("test:legacy", Collections.emptyList(),
+                Collections.emptySet(), Collections.emptySet(),
+                new ApiVersionRange(ApiVersion.parse("1.0.0"), ApiVersion.parse("2.0.0"))),
+                context -> legacyCalled.set(true));
+        AddonCandidate current = candidate(descriptor("test:current", Collections.emptyList(),
+                Collections.emptySet(), Collections.emptySet(),
+                new ApiVersionRange(ApiVersion.parse("1.1.0"), ApiVersion.parse("2.0.0"))),
+                context -> currentCalled.set(true));
+        AddonCandidate future = candidate(descriptor("test:future", Collections.emptyList(),
+                Collections.emptySet(), Collections.emptySet(),
+                new ApiVersionRange(ApiVersion.parse("2.0.0"), ApiVersion.parse("3.0.0"))),
+                context -> futureCalled.set(true));
+
+        AddonManager manager = manager(1_000L, Collections.emptySet());
+        manager.initialize(Arrays.asList(legacy, current, future));
+
+        assertTrue(legacyCalled.get());
+        assertTrue(currentCalled.get());
+        assertTrue(!futureCalled.get());
+        assertEquals(AddonState.ACTIVE, manager.find(new AddonId("test:legacy")).get().state());
+        assertEquals(AddonState.ACTIVE, manager.find(new AddonId("test:current")).get().state());
+        AddonHandle rejected = manager.find(new AddonId("test:future")).get();
+        assertEquals(AddonState.FAILED, rejected.state());
+        assertEquals(link.e4steam.api.ApiErrorCode.INCOMPATIBLE_VERSION,
+                rejected.failure().get().error().code());
+        manager.close();
+    }
+
+    @Test
     void initializesInDependencyOrderFreezesAndClosesOwnedResources() {
         List<String> calls = Collections.synchronizedList(new ArrayList<>());
         AtomicBoolean resourceClosed = new AtomicBoolean();
@@ -152,8 +185,14 @@ class AddonManagerTest {
 
     private static AddonDescriptor descriptor(String id, List<AddonDependency> dependencies,
                                               Set<CapabilityId> requested, Set<CapabilityId> required) {
+        return descriptor(id, dependencies, requested, required, apiRange());
+    }
+
+    private static AddonDescriptor descriptor(String id, List<AddonDependency> dependencies,
+                                              Set<CapabilityId> requested, Set<CapabilityId> required,
+                                              ApiVersionRange range) {
         return new AddonDescriptor(new AddonId(id), id, ApiVersion.parse("1.0.0"),
-                apiRange(), dependencies, requested, required);
+                range, dependencies, requested, required);
     }
 
     private static ApiVersionRange apiRange() {

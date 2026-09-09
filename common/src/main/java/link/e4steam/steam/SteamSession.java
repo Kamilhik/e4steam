@@ -19,6 +19,7 @@ public final class SteamSession {
     private final Object lifecycleLock = new Object();
     private final int localPort;
     private final SteamAccessMode accessMode;
+    private final String customAccessModeId;
     private final byte[] inviteToken = new byte[SteamAddress.TOKEN_LENGTH];
     private final AtomicBoolean startRequested = new AtomicBoolean();
 
@@ -32,11 +33,21 @@ public final class SteamSession {
     }
 
     public SteamSession(int localPort, SteamAccessMode accessMode) {
+        this(localPort, accessMode, "");
+    }
+
+    public SteamSession(int localPort, SteamAccessMode accessMode, String customAccessModeId) {
         if (localPort < 1 || localPort > 65535) {
             throw new IllegalArgumentException("Invalid LAN port: " + localPort);
         }
         this.localPort = localPort;
         this.accessMode = java.util.Objects.requireNonNull(accessMode, "accessMode");
+        String custom = customAccessModeId == null ? "" : customAccessModeId.trim();
+        if (accessMode == SteamAccessMode.CUSTOM
+                && !custom.matches("[a-z][a-z0-9_.-]{0,31}:[a-z][a-z0-9_.-]{0,63}")) {
+            throw new IllegalArgumentException("Invalid custom access mode");
+        }
+        this.customAccessModeId = accessMode == SteamAccessMode.CUSTOM ? custom : "";
         SECURE_RANDOM.nextBytes(inviteToken);
     }
 
@@ -51,6 +62,8 @@ public final class SteamSession {
     public SteamAccessMode accessMode() {
         return accessMode;
     }
+
+    public String customAccessModeId() { return customAccessModeId; }
 
     public void startAsync() {
         if (!startRequested.compareAndSet(false, true)) {

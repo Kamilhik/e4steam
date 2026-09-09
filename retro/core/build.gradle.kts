@@ -7,6 +7,7 @@ val steamworksVersion = "1.10.0"
 val sharedSteamSources = fileTree(rootProject.file("../common/src/main/java")) {
     include(
         "link/e4steam/HexCodec.java",
+        "link/e4steam/E4steamConstants.java",
         "link/e4steam/internal/dedicated/DedicatedConfigFile.java",
         "link/e4steam/internal/dedicated/DedicatedServerPropertiesValidator.java",
         "link/e4steam/steam/NativePlatform.java",
@@ -18,6 +19,7 @@ val sharedSteamSources = fileTree(rootProject.file("../common/src/main/java")) {
         "link/e4steam/steam/SteamBridgeRuntime.java",
         "link/e4steam/steam/SteamClientBridge.java",
         "link/e4steam/steam/SteamConnectionBridge.java",
+        "link/e4steam/steam/SteamCustomAccessGate.java",
         "link/e4steam/steam/SteamDedicatedAddress.java",
         "link/e4steam/steam/SteamDedicatedClientBridge.java",
         "link/e4steam/steam/RetroDedicatedServerTransport.java",
@@ -26,6 +28,7 @@ val sharedSteamSources = fileTree(rootProject.file("../common/src/main/java")) {
         "link/e4steam/steam/SteamInvitationAuthorizer.java",
         "link/e4steam/steam/SteamKnownPeerSessionGate.java",
         "link/e4steam/steam/SteamLifecycle.java",
+        "link/e4steam/steam/SteamClientHealthMonitor.java",
         "link/e4steam/steam/SteamLobbyManager.java",
         "link/e4steam/steam/SteamLoopbackAuthentication.java",
         "link/e4steam/steam/SteamMinecraftIdentity.java",
@@ -37,6 +40,7 @@ val sharedSteamSources = fileTree(rootProject.file("../common/src/main/java")) {
         "link/e4steam/steam/SteamProcessGuard.java",
         "link/e4steam/steam/SteamPeerPrivacy.java",
         "link/e4steam/steam/SteamProtocol.java",
+        "link/e4steam/steam/SteamPublicJoinTracker.java",
         "link/e4steam/steam/SteamResetRetryQueue.java",
         "link/e4steam/steam/SteamRuntime.java",
         "link/e4steam/steam/SteamRuntimeBackend.java",
@@ -88,6 +92,13 @@ sourceSets.main {
 
 tasks.processResources {
     dependsOn(generateE4steamPreloadList)
+    inputs.property("version", project.version)
+    from(rootProject.file("../common/src/main/resources/e4steam-version.properties")) {
+        expand(mapOf("version" to project.version))
+    }
+    filesMatching("e4steam-version.properties") {
+        expand(mapOf("version" to project.version))
+    }
 }
 
 tasks.compileJava {

@@ -9,7 +9,7 @@ content of the mod JAR. Gradle can generate the full dependency trees through
 
 | Component | Version/source | Included in artifacts | Terms |
 | --- | --- | --- | --- |
-| e4steam core and API | 0.3.1 / API 1.0.0 | Yes | Apache License 2.0 |
+| e4steam core and API | 0.3.2 / API 1.1.0 | Yes | Apache License 2.0 |
 | inherited e4mc portions | `vgskye/e4mc-minecraft-architectury` | Yes | MIT; notice retained in `THIRD_PARTY_NOTICES.md` |
 | adapted retro seams | exact `xhyrom/e4mc-retro` revisions in `RETRO_PORTING.md` | Retro branch JARs | Apache License 2.0; attribution retained in `NOTICE` |
 
@@ -61,4 +61,4 @@ MixinExtras, GasStation and SpongeMixins registrations in modpacks.
 - No release may proceed until the maintainer confirms the applicable current
   Steamworks redistribution agreement and all manual gates in `RELEASING.md`.
 
-Report baseline: e4steam 0.3.1 release worktree, 2026-09-01.
+Report baseline: e4steam 0.3.2 development worktree, 2026-09-03.

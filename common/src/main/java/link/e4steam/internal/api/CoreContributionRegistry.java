@@ -7,8 +7,11 @@ import link.e4steam.api.Registration;
 import link.e4steam.api.ResourceScope;
 import link.e4steam.api.addon.AddonId;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 
@@ -54,10 +57,16 @@ final class CoreContributionRegistry {
     }
 
     Object find(String family, String id) {
+        OwnedContribution contribution = findOwned(family, id);
+        return contribution == null ? null : contribution.value();
+    }
+
+    OwnedContribution findOwned(String family, String id) {
         synchronized (lock) {
             Map<String, Entry> entries = families.get(family);
             Entry entry = entries == null ? null : entries.get(id);
-            return entry == null || entry.registration.isClosed() ? null : entry.value;
+            return entry == null || entry.registration.isClosed()
+                    ? null : new OwnedContribution(entry.owner, entry.value);
         }
     }
 
@@ -65,6 +74,18 @@ final class CoreContributionRegistry {
         synchronized (lock) {
             Map<String, Entry> entries = families.get(family);
             return entries == null ? 0 : entries.size();
+        }
+    }
+
+    List<Object> snapshotValues(String family) {
+        synchronized (lock) {
+            Map<String, Entry> entries = families.get(family);
+            if (entries == null || entries.isEmpty()) return Collections.emptyList();
+            ArrayList<Object> values = new ArrayList<>(entries.size());
+            for (Entry entry : entries.values()) {
+                if (!entry.registration.isClosed()) values.add(entry.value);
+            }
+            return Collections.unmodifiableList(values);
         }
     }
 
@@ -83,5 +104,16 @@ final class CoreContributionRegistry {
         private Entry(AddonId owner, Object value, CoreRegistration registration) {
             this.owner = owner; this.value = value; this.registration = registration;
         }
+    }
+
+    static final class OwnedContribution {
+        private final AddonId owner;
+        private final Object value;
+        private OwnedContribution(AddonId owner, Object value) {
+            this.owner = owner;
+            this.value = value;
+        }
+        AddonId owner() { return owner; }
+        Object value() { return value; }
     }
 }

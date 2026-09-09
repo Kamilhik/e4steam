@@ -6,9 +6,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Safe Java-service discovery used by Forge/NeoForge after their normal mod loading. */
 public final class AddonDiscoverySupport {
+    private static final Logger LOGGER = LoggerFactory.getLogger("e4steam-addon-api");
     private AddonDiscoverySupport() { }
 
     public static List<AddonCandidate> serviceLoader(ClassLoader loader) {
@@ -21,13 +24,18 @@ public final class AddonDiscoverySupport {
         while (attempts++ < link.e4steam.api.ApiLimits.MAX_REGISTRATIONS_PER_FAMILY) {
             final boolean hasNext;
             try { hasNext = iterator.hasNext(); }
-            catch (ServiceConfigurationError failure) { continue; }
+            catch (ServiceConfigurationError failure) {
+                LOGGER.warn("Ignored an unreadable e4steam addon service provider ({})",
+                        failure.getClass().getSimpleName());
+                continue;
+            }
             if (!hasNext) break;
             try {
                 E4steamAddonEntrypoint entrypoint = iterator.next();
                 candidates.add(AddonCandidate.fromEntrypoint(entrypoint, "service-provider"));
             } catch (ServiceConfigurationError | RuntimeException failure) {
-                // A broken optional provider is isolated; lifecycle diagnostics begin once metadata is valid.
+                LOGGER.warn("Ignored a malformed e4steam addon service provider ({})",
+                        failure.getClass().getSimpleName());
             }
         }
         return candidates;

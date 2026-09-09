@@ -6,13 +6,19 @@ import java.nio.file.Path;
 /** Restartable ownership of the process-global Steam API. */
 final class SteamLifecycle implements AutoCloseable {
     private final SteamApi api;
+    private final SteamClientHealthMonitor healthMonitor;
     private SteamNativeLibraryLoader nativeLoader;
     private SteamProcessGuard.Lease processLease;
     private boolean librariesLoaded;
     private boolean initialized;
 
     SteamLifecycle(SteamApi api) {
+        this(api, SteamClientHealthMonitor.forCurrentProcess());
+    }
+
+    SteamLifecycle(SteamApi api, SteamClientHealthMonitor healthMonitor) {
         this.api = api;
+        this.healthMonitor = healthMonitor;
     }
 
     void start() throws IOException {
@@ -49,11 +55,11 @@ final class SteamLifecycle implements AutoCloseable {
             acquired.close();
             throw new IOException("SteamAPI_Init failed: " + exception.getMessage(), exception);
         }
+        // A successful SteamAPI.init() is the authoritative startup result.
+        // The optional native process probe can report false across sandbox
+        // boundaries even though every required Steam interface is available.
         initialized = true;
-        if (!api.isSteamRunning()) {
-            close();
-            throw new IOException("Steam is not running or the current user is not signed in");
-        }
+        healthMonitor.reset();
     }
 
     static String initializationFailureMessage(String osName) {
@@ -83,7 +89,14 @@ final class SteamLifecycle implements AutoCloseable {
     }
 
     boolean isRunning() {
-        return initialized && api.isSteamRunning();
+        return initialized && api.isInitialized();
+    }
+
+    boolean isHealthy(long nowMillis) {
+        return isRunning() && healthMonitor.isHealthy(
+                nowMillis,
+                api::isNativeSteamClientRunning
+        );
     }
 
     Path steamApiPath() {
@@ -95,6 +108,7 @@ final class SteamLifecycle implements AutoCloseable {
 
     @Override
     public void close() {
+        healthMonitor.reset();
         if (initialized) {
             initialized = false;
             api.shutdown();

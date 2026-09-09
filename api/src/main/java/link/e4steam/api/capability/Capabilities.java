@@ -1,6 +1,6 @@
 package link.e4steam.api.capability;
 
-/** Built-in capability ids understood by the 1.0 addon API. */
+/** Built-in capability ids understood by the stable addon API. */
 public final class Capabilities {
     /** Observe safe session snapshots. */
     public static final CapabilityId SESSION_OBSERVE = id("session.observe");
@@ -54,6 +54,12 @@ public final class Capabilities {
     public static final CapabilityId DIAGNOSTICS_CONTRIBUTE = id("diagnostics.contribute");
     /** Read explicitly consented non-secret Steam profile data. */
     public static final CapabilityId STEAM_PROFILE_READ = id("steam.profile.read");
+    /** Obtain an opaque target for an explicitly selected public host session. */
+    public static final CapabilityId DIRECTORY_PUBLICATION = id("directory.publication");
+    /** Ask core to perform registry-bound attestation without exposing a raw ticket. */
+    public static final CapabilityId DIRECTORY_ATTESTATION = id("directory.attestation");
+    /** Join an opaque public target through the authenticated core transport. */
+    public static final CapabilityId DIRECTORY_JOIN = id("directory.join");
 
     private Capabilities() {
     }

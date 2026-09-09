@@ -3,6 +3,71 @@
 All notable changes to e4steam are documented here. Version numbers below
 belong to this fork and are independent of upstream e4mc releases.
 
+## 0.3.2 - 2026-09-09
+
+This release contains the Addon API and runtime changes made since `0.3.1`.
+
+### English
+
+- Embedded Addon API `1.1.0` and its runtime implementation into every current
+  Minecraft 1.17+ e4steam JAR. Addons use the API as `compileOnly`; players do
+  not install `e4steam-api` as a separate mod.
+- Preserved the complete public and protected API 1.0 binary surface. Addons
+  that need only API 1.0 can continue to declare `[1.0.0, 2.0.0)`, while API
+  1.1 addons use `[1.1.0, 2.0.0)`. Loader metadata now uses open e4steam 0.3.x
+  ranges instead of pinning one exact core version.
+- Added the Public Directory API: safe availability checks, opaque publication
+  targets, registry-bound attestation, cancellable join operations and
+  privacy-safe status snapshots. Raw Steam tickets, native handles, IP
+  addresses and connection secrets never cross the addon boundary.
+- Added capabilities for directory publication, attestation and joining, plus
+  deterministic testkit fakes for directory addons. Production attestation
+  fails closed until a trusted registry verifier is configured; loopback HMAC
+  attestation is available only for local development tests.
+- Added registered custom access modes. Core evaluates an addon's policy only
+  after the normal Steam identity, address-token, world-generation and player
+  limit checks have passed.
+- Hardened Fabric/Quilt entrypoint and Forge/NeoForge `ServiceLoader`
+  discovery. Missing, malformed or incompatible addons are isolated and
+  reported with a concise compatibility error instead of crashing e4steam.
+- Added embedded runtime-version metadata, API 1.0 backward-compatibility
+  checks and release-JAR audits for API/runtime classes, nested API copies,
+  development files, secrets and workstation paths.
+- Verified the compile-only contract of e4steam Friends and e4steam Public
+  Servers: neither addon bundles its own `link.e4steam.api` classes.
+
+### Русский
+
+Этот раздел описывает изменения Addon API после опубликованной версии `0.3.1`.
+Это ещё не объявление релиза.
+
+- Addon API `1.1.0` и его runtime-реализация встроены во все актуальные JAR
+  e4steam для Minecraft 1.17 и новее. Аддоны подключают API как `compileOnly`;
+  игроку не нужно класть `e4steam-api` в папку `mods` отдельным модом.
+- Полностью сохранена публичная и protected бинарная поверхность API 1.0.
+  Аддоны только на API 1.0 могут оставить диапазон `[1.0.0, 2.0.0)`, а для
+  функций API 1.1 используется `[1.1.0, 2.0.0)`. В metadata загрузчиков теперь
+  указывается открытый диапазон e4steam 0.3.x, а не одна точная версия core.
+- Добавлен Public Directory API: безопасная проверка доступности, непрозрачные
+  цели публикации, привязанная к реестру аттестация, отменяемые операции входа
+  и безопасные снимки состояния. Steam tickets, native handles, IP-адреса и
+  секреты подключения не передаются аддонам.
+- Добавлены capabilities публикации, аттестации и подключения через каталог, а
+  также детерминированные testkit-подмены. Production-аттестация закрыто
+  отклоняется, пока не настроен доверенный verifier; loopback HMAC доступен
+  только для локальных тестов разработки.
+- Добавлены регистрируемые режимы доступа. Политика аддона вызывается только
+  после стандартных проверок Steam identity, токена адреса, поколения мира и
+  лимита игроков.
+- Усилена загрузка аддонов через Fabric/Quilt entrypoints и Forge/NeoForge
+  `ServiceLoader`. Отсутствующий, повреждённый или несовместимый аддон не
+  роняет e4steam и получает понятную запись о несовместимости в журнале.
+- Добавлены metadata версии runtime, автоматическая проверка бинарной
+  совместимости с API 1.0 и аудит release JAR на наличие API/runtime-классов,
+  вложенных копий API, dev-файлов, секретов и локальных путей.
+- Проверен compile-only контракт e4steam Friends и e4steam Public Servers:
+  оба аддона не содержат собственных классов `link.e4steam.api`.
+
 ## 0.3.1 - 2026-09-01
 
 This section records the changes from the published `0.3.0` release to

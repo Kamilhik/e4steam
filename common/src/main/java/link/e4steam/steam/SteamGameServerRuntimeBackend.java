@@ -216,7 +216,7 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
                     (short) requested.gamePort(),
                     (short) requested.queryPort(),
                     SteamGameServerAPI.ServerMode.Authentication,
-                    "0.3.1"
+                    link.e4steam.E4steamConstants.modVersion()
             )) {
                 throw new IOException("Steam GameServer initialization was rejected");
             }

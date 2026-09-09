@@ -15,7 +15,12 @@ final class SteamworksApi implements SteamApi {
     }
 
     @Override
-    public boolean isSteamRunning() {
+    public boolean isInitialized() {
+        return SteamAPI.isSteamRunning();
+    }
+
+    @Override
+    public boolean isNativeSteamClientRunning() {
         return SteamAPI.isSteamRunning(true);
     }
 

@@ -494,6 +494,33 @@ tasks.register("releaseJars") {
                         || zip.getEntry("META-INF/THIRD_PARTY_NOTICES.md") == null) {
                     throw new GradleException("${variant.label} is missing packaged legal notices")
                 }
+                [
+                        "link/e4steam/api/ApiConstants.class",
+                        "link/e4steam/api/directory/PublicDirectoryService.class",
+                        "link/e4steam/internal/api/CorePublicDirectoryService.class",
+                        "link/e4steam/steam/SteamCustomAccessGate.class"
+                ].each { requiredApiEntry ->
+                    if (zip.getEntry(requiredApiEntry) == null) {
+                        throw new GradleException(
+                                "${variant.label} is missing Addon API 1.1 runtime entry ${requiredApiEntry}"
+                        )
+                    }
+                }
+                def runtimeVersionEntry = zip.getEntry("e4steam-version.properties")
+                if (runtimeVersionEntry == null || zip.getInputStream(runtimeVersionEntry)
+                        .getText("UTF-8").trim() != "version=${version}") {
+                    throw new GradleException(
+                            "${variant.label} does not embed the current core version"
+                    )
+                }
+                if (Collections.list(zip.entries()).any {
+                    it.name.toLowerCase(Locale.ROOT) ==~
+                            /(?:^|.*\/)e4steam-api-[^\/]*[.]jar/
+                }) {
+                    throw new GradleException(
+                            "${variant.label} contains a nested API JAR instead of one runtime class identity"
+                    )
+                }
                 def mixinsEntry = zip.getEntry("e4steam.mixins.json")
                 if (mixinsEntry == null) {
                     throw new GradleException("${variant.label} is missing e4steam.mixins.json")
@@ -699,6 +726,23 @@ tasks.register("releaseJars") {
             if (!variant.file.isFile()) {
                 throw new GradleException("Missing ${variant.label} runtime JAR: ${variant.file}")
             }
+            def zip = new java.util.zip.ZipFile(variant.file)
+            try {
+                if (zip.getEntry("link/e4steam/steam/SteamCustomAccessGate.class") == null) {
+                    throw new GradleException(
+                            "${variant.label} is missing the fail-closed addon access boundary"
+                    )
+                }
+                def runtimeVersionEntry = zip.getEntry("e4steam-version.properties")
+                if (runtimeVersionEntry == null || zip.getInputStream(runtimeVersionEntry)
+                        .getText("UTF-8").trim() != "version=${version}") {
+                    throw new GradleException(
+                            "${variant.label} does not embed the current core version"
+                    )
+                }
+            } finally {
+                zip.close()
+            }
         }
         [
                 file("api/build/libs/e4steam-api-${api_version}.jar"),
@@ -757,6 +801,34 @@ tasks.register("releaseJars") {
         File agentArtifact = new File(toolsDirectory, agentName)
         if (!agentArtifact.isFile()) {
             throw new GradleException("Missing Unix overlay stdin agent: ${agentArtifact}")
+        }
+        fileTree(publicDirectory) { include "**/*.jar" }.files.each { artifact ->
+            def zip = new java.util.zip.ZipFile(artifact)
+            try {
+                Collections.list(zip.entries()).each { entry ->
+                    String lower = entry.name.toLowerCase(Locale.ROOT)
+                    if (lower ==~ /.*(^|\/)(src|build|[.]gradle|[.]git|[.]idea)\/.*/
+                            || lower ==~ /.*[.](tmp|bak|orig)$/) {
+                        throw new GradleException(
+                                "${artifact.name} contains development-only path ${entry.name}"
+                        )
+                    }
+                    boolean textEntry = lower ==~ /.*[.](json|toml|properties|xml|mf|md|txt|lang|cfg|accesswidener)$/
+                            || lower.startsWith("meta-inf/services/")
+                    if (!entry.directory && textEntry && entry.size >= 0L && entry.size <= 1_048_576L) {
+                        String text = zip.getInputStream(entry).getText("UTF-8")
+                        if (text.contains("-----BEGIN OPENSSH PRIVATE KEY-----")
+                                || text ==~ /(?s).*mrp_[A-Za-z0-9]{30,}.*/
+                                || text ==~ /(?s).*(C:[\\\/]Users[\\\/]|file:\/\/\/[A-Za-z]:[\\\/]Users[\\\/]).*/) {
+                            throw new GradleException(
+                                    "${artifact.name} contains a secret or absolute workstation path in ${entry.name}"
+                            )
+                        }
+                    }
+                }
+            } finally {
+                zip.close()
+            }
         }
         println("Artifact audit passed and collected all 19 runtime JAR variants plus the optional Unix overlay agent in ${publicDirectory}.")
     }

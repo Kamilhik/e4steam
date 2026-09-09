@@ -29,6 +29,10 @@ test {
 }
 
 processResources {
+    inputs.property "version", project.version
+    filesMatching("e4steam-version.properties") {
+        expand "version": project.version
+    }
     from(rootProject.file("LICENSE")) {
         into "META-INF"
         rename { "LICENSE-e4steam.txt" }

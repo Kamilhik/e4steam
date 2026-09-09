@@ -27,6 +27,7 @@ public final class StdinCaptureAgent {
     }
 
     public static void premain(String agentArgs, Instrumentation instrumentation) {
+        prepareRetroForgeWindowing();
         try {
             Path capture = createOwnerOnlyTempFile();
             capture.toFile().deleteOnExit();
@@ -42,6 +43,24 @@ public final class StdinCaptureAgent {
         } catch (IOException | SecurityException unavailable) {
             // Preserve the launcher's original stdin behavior if capture setup fails.
         }
+    }
+
+    /**
+     * Forge 1.13-1.16 creates an early GLFW loading window before ordinary
+     * mods are constructed. The retro Unix relaunch is enabled by default, so
+     * disable that first window before Forge reads its own flag unless the user
+     * explicitly opts out. Fabric ignores the Forge-specific property.
+     */
+    static void prepareRetroForgeWindowing() {
+        if (!relaunchEnabled(System.getProperty("e4steam.overlayRelaunch"))) return;
+        String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
+        if (os.contains("linux") || os.contains("mac")) {
+            System.setProperty("fml.earlyprogresswindow", "false");
+        }
+    }
+
+    static boolean relaunchEnabled(String value) {
+        return value == null || Boolean.parseBoolean(value);
     }
 
     private static Path createOwnerOnlyTempFile() throws IOException {

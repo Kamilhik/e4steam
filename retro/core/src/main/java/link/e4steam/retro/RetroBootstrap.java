@@ -154,8 +154,10 @@ public final class RetroBootstrap {
 
     public static SteamAccessMode cycleAccessMode() {
         SteamAccessMode current = selectedAccessMode;
-        SteamAccessMode[] modes = SteamAccessMode.values();
-        SteamAccessMode next = modes[(current.ordinal() + 1) % modes.length];
+        SteamAccessMode next;
+        if (current == SteamAccessMode.LOCAL_ONLY) next = SteamAccessMode.FRIENDS_ONLY;
+        else if (current == SteamAccessMode.FRIENDS_ONLY) next = SteamAccessMode.INVITE_ONLY;
+        else next = SteamAccessMode.LOCAL_ONLY;
         selectedAccessMode = next;
         return next;
     }

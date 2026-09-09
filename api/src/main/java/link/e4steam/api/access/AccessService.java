@@ -47,6 +47,14 @@ public interface AccessService {
         /** Returns the fail-closed policy. */ AdmissionPolicy policy();
     }
 
+    /** Optional marker for modes that require an explicit warning before selection. */
+    interface ConfirmableAccessModeProvider extends AccessModeProvider {
+        /** Returns a bounded localization key for the confirmation title. */
+        String confirmationTitleKey();
+        /** Returns a bounded localization key for the confirmation message. */
+        String confirmationMessageKey();
+    }
+
     /** Policy called after authentication, generation, protocol, capacity, ban and replay gates. */
     interface AdmissionPolicy {
         /** Produces an allow/deny/challenge decision within the core timeout. */

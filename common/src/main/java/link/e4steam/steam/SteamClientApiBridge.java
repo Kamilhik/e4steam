@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -23,6 +24,11 @@ public final class SteamClientApiBridge {
         long authenticatedMinecraftPeer(SocketAddress remoteAddress);
         boolean sendAddonHello(SteamConnectionBridge bridge, byte[] packet);
         boolean sendAddonFrame(SteamConnectionBridge bridge, byte[] packet, boolean reliable);
+        CompletableFuture<PublicLobbyTarget> publicHostLobbyTarget();
+        CompletableFuture<Boolean> joinPublicLobby(long lobbyId);
+        PublicJoinSnapshot publicJoinSnapshot(long lobbyId);
+        void cancelGuestJoin();
+        boolean acceptDirectSteamInvite(String descriptor, String displayName);
     }
 
     private static final Delegate NOOP = new Delegate() {
@@ -38,6 +44,19 @@ public final class SteamClientApiBridge {
                 SteamConnectionBridge bridge, byte[] packet) { return false; }
         @Override public boolean sendAddonFrame(
                 SteamConnectionBridge bridge, byte[] packet, boolean reliable) { return false; }
+        @Override public CompletableFuture<PublicLobbyTarget> publicHostLobbyTarget() {
+            return CompletableFuture.completedFuture(null);
+        }
+        @Override public CompletableFuture<Boolean> joinPublicLobby(long lobbyId) {
+            return CompletableFuture.completedFuture(Boolean.FALSE);
+        }
+        @Override public PublicJoinSnapshot publicJoinSnapshot(long lobbyId) {
+            return PublicJoinSnapshot.idle();
+        }
+        @Override public void cancelGuestJoin() { }
+        @Override public boolean acceptDirectSteamInvite(String descriptor, String displayName) {
+            return false;
+        }
     };
     private static final AtomicReference<Delegate> CURRENT =
             new AtomicReference<Delegate>(NOOP);
@@ -65,6 +84,19 @@ public final class SteamClientApiBridge {
     }
     public static long authenticatedMinecraftPeer(SocketAddress remoteAddress) {
         return CURRENT.get().authenticatedMinecraftPeer(remoteAddress);
+    }
+    public static CompletableFuture<PublicLobbyTarget> publicHostLobbyTarget() {
+        return CURRENT.get().publicHostLobbyTarget();
+    }
+    public static CompletableFuture<Boolean> joinPublicLobby(long lobbyId) {
+        return CURRENT.get().joinPublicLobby(lobbyId);
+    }
+    public static PublicJoinSnapshot publicJoinSnapshot(long lobbyId) {
+        return CURRENT.get().publicJoinSnapshot(lobbyId);
+    }
+    public static void cancelGuestJoin() { CURRENT.get().cancelGuestJoin(); }
+    public static boolean acceptDirectSteamInvite(String descriptor, String displayName) {
+        return CURRENT.get().acceptDirectSteamInvite(descriptor, displayName);
     }
     static String opaquePeerId(long remoteSteamId) {
         return CURRENT.get().opaquePeerId(remoteSteamId);
@@ -145,6 +177,42 @@ public final class SteamClientApiBridge {
         public String minecraftName() { return minecraftName; }
         @Override public String toString() {
             return "SteamClientMinecraftIdentity{uuid=" + minecraftUuid + '}';
+        }
+    }
+
+    /** Credential-free public lobby projection; never contains a native handle or lobby secret. */
+    public static final class PublicLobbyTarget {
+        private final long lobbyId;
+        private final long generation;
+
+        PublicLobbyTarget(long lobbyId, long generation) {
+            this.lobbyId = lobbyId;
+            this.generation = generation;
+        }
+
+        public long lobbyId() { return lobbyId; }
+        public long generation() { return generation; }
+        @Override public String toString() {
+            return "PublicLobbyTarget{lobby=opaque,generation=" + generation + '}';
+        }
+    }
+
+    /** Sanitized state of one public-directory join operation. */
+    public static final class PublicJoinSnapshot {
+        private final String stateCode;
+        private final String detailCode;
+
+        PublicJoinSnapshot(String stateCode, String detailCode) {
+            this.stateCode = stateCode == null ? "IDLE" : stateCode;
+            this.detailCode = detailCode == null ? "" : detailCode;
+        }
+
+        static PublicJoinSnapshot idle() { return new PublicJoinSnapshot("IDLE", ""); }
+        public String stateCode() { return stateCode; }
+        public String detailCode() { return detailCode; }
+
+        @Override public String toString() {
+            return "PublicJoinSnapshot{state=" + stateCode + ", target=opaque}";
         }
     }
 }

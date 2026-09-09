@@ -2,6 +2,7 @@ package link.e4steam.internal.api;
 
 import link.e4steam.api.ApiErrorCode;
 import link.e4steam.api.ApiResult;
+import link.e4steam.api.ApiValidation;
 import link.e4steam.api.Registration;
 import link.e4steam.api.ResourceScope;
 import link.e4steam.api.access.AccessService;
@@ -32,6 +33,29 @@ final class CoreAccessService implements AccessService {
         if (!capabilities.has(Capabilities.ACCESS_MODE_REGISTER)) return denied("access.register");
         if (provider == null || provider.id() == null || provider.policy() == null) return SafeApiErrors.failure(
                 ApiErrorCode.INVALID_ARGUMENT, "access.register", "Validation");
+        try {
+            String key = ApiValidation.text(provider.displayNameKey(), "displayNameKey", 128);
+            if (!key.matches("[a-z0-9_.:-]{3,128}")) {
+                return SafeApiErrors.failure(ApiErrorCode.INVALID_ARGUMENT,
+                        "access.register", "DisplayNameKey");
+            }
+            if (provider instanceof AccessService.ConfirmableAccessModeProvider) {
+                AccessService.ConfirmableAccessModeProvider confirmable =
+                        (AccessService.ConfirmableAccessModeProvider) provider;
+                String title = ApiValidation.text(confirmable.confirmationTitleKey(),
+                        "confirmationTitleKey", 128);
+                String message = ApiValidation.text(confirmable.confirmationMessageKey(),
+                        "confirmationMessageKey", 128);
+                if (!title.matches("[a-z0-9_.:-]{3,128}")
+                        || !message.matches("[a-z0-9_.:-]{3,128}")) {
+                    return SafeApiErrors.failure(ApiErrorCode.INVALID_ARGUMENT,
+                            "access.register", "ConfirmationKey");
+                }
+            }
+        } catch (RuntimeException failure) {
+            return SafeApiErrors.failure(ApiErrorCode.INVALID_ARGUMENT,
+                    "access.register", "DisplayNameKey");
+        }
         return registry.register(FAMILY, provider.id().value(), owner, provider, resources, true);
     }
     @Override public CompletionStage<ApiResult<AdmissionDecision>> evaluate(
@@ -40,14 +64,28 @@ final class CoreAccessService implements AccessService {
         if (mode == null || context == null || !context.coreAuthenticated()
                 || !owner.equals(context.modeOwner())) return completed(SafeApiErrors.failure(
                 ApiErrorCode.SECURITY_REJECTION, "access.evaluate", "MandatoryGate"));
-        Object value = registry.find(FAMILY, mode.value());
-        if (!(value instanceof AccessModeProvider)) return completed(SafeApiErrors.failure(
+        return evaluateRegistered(registry, scheduler, mode, context);
+    }
+
+    static CompletionStage<ApiResult<AdmissionDecision>> evaluateRegistered(
+            CoreContributionRegistry registry, CoreSchedulerService scheduler,
+            AccessModeId mode, AdmissionContext context) {
+        if (registry == null || scheduler == null || mode == null || context == null
+                || !context.coreAuthenticated()) return completed(SafeApiErrors.failure(
+                ApiErrorCode.SECURITY_REJECTION, "access.evaluate", "MandatoryGate"));
+        CoreContributionRegistry.OwnedContribution contribution =
+                registry.findOwned(FAMILY, mode.value());
+        if (contribution == null || !contribution.owner().equals(context.modeOwner())
+                || !(contribution.value() instanceof AccessModeProvider)) {
+            return completed(SafeApiErrors.failure(
                 ApiErrorCode.UNAVAILABLE, "access.evaluate", "ModeUnavailable"));
+        }
+        AccessModeProvider provider = (AccessModeProvider) contribution.value();
         CompletableFuture<ApiResult<AdmissionDecision>> result = new CompletableFuture<>();
         ApiResult<link.e4steam.api.scheduler.TaskHandle> queued = scheduler.execute(
                 ExecutionContext.ADDON_WORKER, () -> {
                     try {
-                        CompletionStage<AdmissionDecision> stage = ((AccessModeProvider) value).policy().evaluate(context);
+                        CompletionStage<AdmissionDecision> stage = provider.policy().evaluate(context);
                         if (stage == null) {
                             result.complete(ApiResult.success(AdmissionDecision.deny("addon-policy-failed")));
                         } else stage.whenComplete((decision, failure) -> {

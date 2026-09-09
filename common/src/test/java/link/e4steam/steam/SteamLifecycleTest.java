@@ -30,7 +30,7 @@ class SteamLifecycleTest {
         FakeSteamApi api = new FakeSteamApi();
         SteamLifecycle lifecycle = new SteamLifecycle(api);
         lifecycle.start();
-        api.running = false;
+        api.wrapperRunning = false;
         assertFalse(lifecycle.isRunning());
         lifecycle.close();
         assertEquals(1, api.shutdownCalls);
@@ -39,11 +39,28 @@ class SteamLifecycleTest {
     @Test
     void failedSteamStartupCanBeRetried() {
         FakeSteamApi api = new FakeSteamApi();
-        api.running = false;
+        api.initResult = false;
         SteamLifecycle lifecycle = new SteamLifecycle(api);
         assertThrows(IOException.class, lifecycle::start);
-        api.running = true;
+        api.initResult = true;
         assertDoesNotThrow(lifecycle::start);
+        lifecycle.close();
+    }
+
+    @Test
+    void successfulInitializationIsNotRejectedByUnreliableNativeProbe() throws Exception {
+        FakeSteamApi api = new FakeSteamApi();
+        api.nativeClientRunning = false;
+        SteamLifecycle lifecycle = new SteamLifecycle(
+                api,
+                new SteamClientHealthMonitor(false, 100L, 3)
+        );
+
+        lifecycle.start();
+
+        assertTrue(lifecycle.isRunning());
+        assertTrue(lifecycle.isHealthy(0L));
+        assertEquals(0, api.nativeProbeCalls);
         lifecycle.close();
     }
 
@@ -60,9 +77,12 @@ class SteamLifecycleTest {
     }
 
     private static final class FakeSteamApi implements SteamApi {
-        private boolean running = true;
+        private boolean initResult = true;
+        private boolean wrapperRunning;
+        private boolean nativeClientRunning = true;
         private int loadCalls;
         private int initCalls;
+        private int nativeProbeCalls;
         private int shutdownCalls;
 
         @Override
@@ -74,12 +94,19 @@ class SteamLifecycleTest {
         @Override
         public boolean init() {
             initCalls++;
-            return true;
+            wrapperRunning = initResult;
+            return initResult;
         }
 
         @Override
-        public boolean isSteamRunning() {
-            return running;
+        public boolean isInitialized() {
+            return wrapperRunning;
+        }
+
+        @Override
+        public boolean isNativeSteamClientRunning() {
+            nativeProbeCalls++;
+            return nativeClientRunning;
         }
 
         @Override
@@ -89,6 +116,7 @@ class SteamLifecycleTest {
         @Override
         public void shutdown() {
             shutdownCalls++;
+            wrapperRunning = false;
         }
     }
 }

@@ -23,8 +23,7 @@ public final class E4steamForgeOverlayCore implements IFMLLoadingPlugin {
 
     @Override public String[] getASMTransformerClass() {
         return new String[] {
-                "link.e4steam.retro.forge.core.E4steamForgeSplashTransformer",
-                "link.e4steam.retro.forge.core.E4steamForgeGlContextTransformer"
+                "link.e4steam.retro.forge.core.E4steamForgeSplashTransformer"
         };
     }
     @Override public String getModContainerClass() { return null; }

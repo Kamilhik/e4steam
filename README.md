@@ -53,6 +53,10 @@
 > Fabric 26.2 and Forge 1.12.2 dedicated servers. Linux, macOS and the full
 > cross-platform matrix still need more manual coverage.
 
+> [!TIP]
+> **e4steam 0.3.2** embeds Addon API **1.1.0**. API 1.1 adds the safe Public
+> Directory bridge while preserving the complete public API 1.0 binary surface.
+
 e4steam opens a Minecraft singleplayer world to Steam friends without port
 forwarding or a public IP. Both players need the mod and a signed-in Steam
 client. Minecraft TCP traffic and supported voice-chat UDP traffic travel over
@@ -70,57 +74,62 @@ with the stable Steam-derived UUID. Back up the world before migrating the
 matching `world/playerdata/<old UUID>.dat`; later 0.3.0+ joins reuse the same
 Steam-derived UUID.
 
-## What's new in 0.3.1
+## What's new in 0.3.2
 
-Compared with 0.3.0, this version adds protected Steam-only dedicated-server
-entry paths to every retro Forge and Fabric artifact, prints the dedicated
-address only after the server is ready, and fixes the Forge 1.17.1 lifecycle
-crash. The Forge 1.7.x JAR now uses an external UniMixins 0.1.20+ installation
-instead of embedding duplicate component mods. Linux and macOS gain a safer,
-explicitly enabled pre-LWJGL overlay relaunch; legacy Forge on macOS keeps its
-normal window path to avoid hidden or repeatedly restarted JVMs. See the full
+Compared with 0.3.1, this version embeds Addon API 1.1 and its runtime,
+preserves compatibility with API 1.0 addons, adds the safe Public Directory
+service, improves addon discovery and compatibility diagnostics, and hardens
+Steam client health, access and public-join handling. See the full
 [changelog](CHANGELOG.md) for verification details.
 
 The repository also contains a separate loader-independent Java 8 API artifact, an
-addon testkit and a compile-checked example. API 1.0 includes scoped
+addon testkit and a compile-checked example. API 1.1 includes scoped
 identity, session, dedicated, access, lobby, negotiated network, UDP, UI,
 command, config, storage, world-settings, modpack, skin, diagnostics,
-localization and logging contracts. Addons are discovered only through the
+localization, logging and Public Directory contracts. Addons are discovered only through the
 installed mod loader or Java service metadata; core never scans or downloads
 arbitrary JAR files. See the [Addon API guide](docs/ADDON_API.md) and the
 [compatibility matrix](COMPATIBILITY.md).
 
 ### Addon API for developers
 
-The stable **e4steam Addon API 1.0.0** is published on
-[Maven Central](https://central.sonatype.com/artifact/io.github.kamilhik/e4steam-api/1.0.0).
-No custom Maven repository is required:
+The stable **e4steam Addon API 1.1.0** is published on
+[Maven Central](https://central.sonatype.com/artifact/io.github.kamilhik/e4steam-api/1.1.0).
+It remains binary-compatible with addons built against API 1.0. No custom Maven
+repository is required:
 
 ```groovy
 dependencies {
-    compileOnly("io.github.kamilhik:e4steam-api:1.0.0")
+    compileOnly("io.github.kamilhik:e4steam-api:1.1.0")
 }
 ```
 
 [Full Addon API documentation](docs/ADDON_API.md)
 
+Addons use API 1.1 with `compileOnly`. Do not put the API JAR in `mods`; e4steam
+already supplies the runtime classes.
+
 This API is not a sandbox: an installed addon is ordinary code in the same JVM
 and must come from a trusted source. Core does not expose Steam passwords,
 auth tickets, invite tokens, GSLT, native handles or raw protocol hooks.
-Public Worlds, Modpack Sync, Offline Skins and World Settings are separate
-addon ideas. Their bounded API contracts exist, but core does not include
-those user-facing features.
+Public Servers, Modpack Sync, Offline Skins and World Settings remain separate
+addons. Core 0.3.2 provides the safe directory bridge, but a Public Servers
+addon and a trusted registry verifier are still required for a real catalog.
 
 ## Addons
 
-Addon API 1.0 and addon support are stable parts of e4steam 0.3.1. Addons are
-installed as normal loader mods; check each addon's version requirements.
+Addon API 1.x and addon support are stable parts of e4steam 0.3.x. API 1.1 is
+binary-compatible with 1.0; addons are installed as normal loader mods and must
+declare a compatible API and e4steam version range. The embedded addon runtime
+is currently provided by the Minecraft 1.17+ artifacts; retro 1.7–1.16 JARs do
+not load modern addon or GUI classes.
 
 ### Client add-ons
 
 | Icon | Add-on | Description |
 | :---: | --- | --- |
 | <img src="docs/assets/addons/e4steam-friends.png" width="64" alt="e4steam Friends icon"><br><sub>CLIENT</sub> | [**e4steam Friends**](https://github.com/K2-Studio-Development/e4steam-Friends) | A Minecraft-style Steam friends screen with presence, search, invitations, joining and join requests.<br>**Minecraft 26.2 · Fabric / NeoForge** |
+| 🌐<br><sub>CLIENT / SERVER</sub> | [**e4steam Public Servers**](https://github.com/K2-Studio-Development/e4steam-Public-Servers) | Public-world and dedicated-server directory built on Addon API 1.1. Its production registry verifier is still required before public deployment.<br>**Minecraft 26.2 · Fabric / NeoForge** |
 
 Developers can start with the [Addon API guide](docs/ADDON_API.md), the
 [testkit](api-testkit) and the compile-checked [example addon](example-addon).
@@ -249,6 +258,11 @@ For `SteamAPI_Init failed`, first follow the
 > серверам NeoForge 1.21.1, Fabric 26.2 и Forge 1.12.2. Для Linux, macOS и
 > межплатформенных подключений ещё собирается полная матрица результатов.
 
+> [!TIP]
+> **e4steam 0.3.2** содержит Addon API **1.1.0**. В API 1.1 появился безопасный
+> мост Public Directory, при этом вся публичная бинарная поверхность API 1.0
+> сохранена.
+
 e4steam позволяет открыть одиночный мир Minecraft друзьям из Steam без проброса
 портов и белого IP. Мод и запущенный Steam нужны у всех игроков. TCP-трафик
 Minecraft и UDP-трафик поддерживаемых голосовых модов передаются через Steam P2P
@@ -266,57 +280,63 @@ Mojang/offline UUID стабильным UUID из SteamID. Перед пере�
 `world/playerdata/<старый UUID>.dat` сделайте резервную копию мира. Все
 следующие входы в 0.3.0 и новее используют тот же UUID, вычисленный из SteamID.
 
-## Что нового в 0.3.1
+## Что нового в 0.3.2
 
-По сравнению с 0.3.0 защищённый Steam-only вход выделенного сервера добавлен
-во все retro-сборки Forge и Fabric, адрес сервера выводится только после полной
-готовности, а вылет Forge 1.17.1 при запуске исправлен. Forge 1.7.x теперь
-использует отдельно установленный UniMixins 0.1.20+ и не создаёт дубликаты его
-внутренних модов. На Linux и macOS появился более безопасный реланч до LWJGL,
-который включается только явно; старые версии Forge на macOS сохраняют обычный
-запуск окна, чтобы JVM не исчезала из Dock и не перезапускалась несколько раз.
+По сравнению с 0.3.1 в мод встроены Addon API 1.1 и его runtime-реализация,
+сохранена совместимость с аддонами API 1.0, добавлен безопасный сервис Public
+Directory, улучшены обнаружение аддонов и сообщения о несовместимости, а также
+укреплена обработка состояния Steam, доступа и публичных подключений.
 Подробности перечислены в [changelog](CHANGELOG.md).
 
 В репозитории также есть отдельный Java 8 API JAR, не зависящий от загрузчика,
 набор средств для тестов и пример аддона, который проверяется при сборке. API
-1.0 содержит отдельные контракты для идентификаторов, сессий, выделенных
+1.1 содержит отдельные контракты для идентификаторов, сессий, выделенных
 серверов, доступа, лобби, сетевых каналов, UDP, интерфейса, команд, настроек,
-хранилища, диагностики и локализации. Аддоны обнаруживает обычный загрузчик
+хранилища, диагностики, локализации и Public Directory. Аддоны обнаруживает обычный загрузчик
 модов или Java `ServiceLoader`; ядро не ищет и не скачивает произвольные JAR.
 Подробности: [Addon API](docs/ADDON_API_RU.md) и
 [матрица совместимости](COMPATIBILITY.md).
 
 ### Addon API для разработчиков
 
-Стабильный **e4steam Addon API 1.0.0** опубликован в
-[Maven Central](https://central.sonatype.com/artifact/io.github.kamilhik/e4steam-api/1.0.0).
-Сторонний Maven-репозиторий добавлять не нужно:
+Стабильный **e4steam Addon API 1.1.0** опубликован в
+[Maven Central](https://central.sonatype.com/artifact/io.github.kamilhik/e4steam-api/1.1.0).
+Он бинарно совместим с аддонами, собранными с API 1.0. Сторонний
+Maven-репозиторий добавлять не нужно:
 
 ```groovy
 dependencies {
-    compileOnly("io.github.kamilhik:e4steam-api:1.0.0")
+    compileOnly("io.github.kamilhik:e4steam-api:1.1.0")
 }
 ```
 
 [Полная документация Addon API](docs/ADDON_API_RU.md)
 
+Аддоны подключают API 1.1 через `compileOnly`. Класть API JAR в `mods` не нужно:
+runtime-классы уже находятся в e4steam.
+
 API не является песочницей: установленный аддон — обычный код в той же JVM,
 поэтому ставить можно только доверенные моды. Ядро не выдаёт пароли Steam,
 билеты авторизации, токены приглашений, GSLT, нативные дескрипторы и доступ к
 сырым пакетам протокола.
-Для Public Worlds, Modpack Sync, Offline Skins и World Settings есть только
-ограниченные API-контракты. Самих пользовательских функций в core пока нет.
+Public Servers, Modpack Sync, Offline Skins и World Settings остаются отдельными
+аддонами. В core 0.3.2 уже есть безопасный мост каталога, но для настоящей
+публикации всё равно нужны аддон Public Servers и доверенный verifier реестра.
 
 ## Аддоны
 
-Addon API 1.0 и поддержка аддонов — стабильные части e4steam 0.3.1. Аддоны
-устанавливаются как обычные моды; точные требования указаны на их страницах.
+Addon API 1.x и поддержка аддонов — стабильные части e4steam 0.3.x. API 1.1
+бинарно совместим с 1.0. Аддоны устанавливаются как обычные моды и должны
+указывать совместимый диапазон версий API и e4steam. Встроенный runtime аддонов
+сейчас входит в JAR для Minecraft 1.17 и новее; retro-JAR 1.7–1.16 не загружают
+современные классы API и GUI.
 
 ### Клиентские аддоны
 
 | Иконка | Аддон | Описание |
 | :---: | --- | --- |
 | <img src="docs/assets/addons/e4steam-friends.png" width="64" alt="Иконка e4steam Friends"><br><sub>CLIENT</sub> | [**e4steam Friends**](https://github.com/K2-Studio-Development/e4steam-Friends) | Экран друзей Steam в стиле Minecraft: статусы, поиск, приглашения, подключение и запросы на вход.<br>**Minecraft 26.2 · Fabric / NeoForge** |
+| 🌐<br><sub>CLIENT / SERVER</sub> | [**e4steam Public Servers**](https://github.com/K2-Studio-Development/e4steam-Public-Servers) | Каталог публичных миров и выделенных серверов на Addon API 1.1. Перед публичным запуском ещё нужен production-verifier реестра.<br>**Minecraft 26.2 · Fabric / NeoForge** |
 
 Для разработчиков есть [руководство Addon API](docs/ADDON_API_RU.md),
 [testkit](api-testkit) и проверяемый сборкой [пример](example-addon).

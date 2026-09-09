@@ -1,6 +1,6 @@
 # Addon networking
 
-Addon API 1.0 provides namespaced, negotiated channels over an already
+Addon API 1.x provides namespaced, negotiated channels over an already
 authenticated e4steam session. Addons do not open Steam sessions themselves and
 never receive raw Steam/JNA handles, tickets, native buffers or core protocol
 frames.

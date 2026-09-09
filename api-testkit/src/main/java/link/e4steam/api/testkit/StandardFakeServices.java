@@ -50,6 +50,7 @@ public final class StandardFakeServices implements AutoCloseable {
     /** Fake diagnostics. */ public final DiagnosticsService diagnostics;
     /** Fake localization. */ public final LocalizationService localization;
     /** Structured logger that validates fields without writing external logs. */ public final SafeLogger logger;
+    /** Safe deterministic public-directory bridge. */ public final FakePublicDirectoryService publicDirectory;
 
     private final TestResourceScope resources = new TestResourceScope();
 
@@ -81,6 +82,7 @@ public final class StandardFakeServices implements AutoCloseable {
         this.diagnostics = new FakeDiagnostics();
         this.localization = new FakeLocalization();
         this.logger = new FakeSafeLogger();
+        this.publicDirectory = new FakePublicDirectoryService();
     }
 
     /** Registers every fake under the stable typed service key. */
@@ -103,7 +105,8 @@ public final class StandardFakeServices implements AutoCloseable {
                 .register(ApiServiceKeys.SKINS, skins)
                 .register(ApiServiceKeys.DIAGNOSTICS, diagnostics)
                 .register(ApiServiceKeys.LOCALIZATION, localization)
-                .register(ApiServiceKeys.LOGGER, logger);
+                .register(ApiServiceKeys.LOGGER, logger)
+                .register(ApiServiceKeys.PUBLIC_DIRECTORY, publicDirectory);
     }
 
     @Override public void close() { network.close(); resources.close(); }

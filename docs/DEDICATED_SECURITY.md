@@ -88,8 +88,9 @@ Addon API can carry a bounded publication proposal, but publication requires:
 - explicit server configuration permission;
 - the normal Steam authentication and ingress rules.
 
-Core 0.3.1 has no publication provider. A proposal cannot open a hidden direct
-TCP listener or weaken the admission sequence.
+Core 0.3.2 has no provider for this legacy proposal hook. Public Directory API
+1.1 is a separate opaque bridge and still cannot open a hidden direct TCP
+listener or weaken the admission sequence.
 
 ## Retro servers
 

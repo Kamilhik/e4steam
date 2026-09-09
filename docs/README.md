@@ -43,14 +43,16 @@ guides. Begin with the full [English guide](ADDON_API.md) or
 | Discovery, initialization and cleanup | [Addon lifecycle](ADDON_LIFECYCLE.md) |
 | Threads, scheduling and cancellation | [API threading](API_THREADING.md) |
 | Negotiated channels and virtual UDP | [API networking](API_NETWORKING.md) |
+| Opaque publication targets, attestation and joins | [Public Directory](PUBLIC_DIRECTORY_API.md) · [на русском](PUBLIC_DIRECTORY_API_RU.md) |
 | Capabilities and core admission rules | [Addon security](ADDON_SECURITY.md) |
 | Personal data, diagnostics and redaction | [API privacy](API_PRIVACY.md) |
 | API, mod and wire versioning | [API compatibility](API_COMPATIBILITY.md) |
 
 API `1.0.0` is published on
 [Maven Central](https://central.sonatype.com/artifact/io.github.kamilhik/e4steam-api/1.0.0).
-The repository also contains a compile-checked `example-addon` and the
-deterministic `api-testkit`.
+The 0.3.2 development line embeds backward-compatible API `1.1.0` and its
+Public Directory runtime. The repository also contains a compile-checked
+`example-addon` and the deterministic `api-testkit`.
 
 ## Contributors and maintainers
 

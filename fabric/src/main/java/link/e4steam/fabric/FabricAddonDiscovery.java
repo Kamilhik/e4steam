@@ -10,8 +10,11 @@ import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 final class FabricAddonDiscovery {
+    private static final Logger LOGGER = LoggerFactory.getLogger("e4steam-addon-api");
     private FabricAddonDiscovery() { }
 
     static List<AddonCandidate> discover() {
@@ -21,8 +24,10 @@ final class FabricAddonDiscovery {
             try {
                 candidates.add(AddonCandidate.fromEntrypoint(container.getEntrypoint(),
                         container.getProvider().getMetadata().getId()));
-            } catch (RuntimeException ignored) {
-                // A malformed optional entry point cannot prevent the core mod from starting.
+            } catch (RuntimeException failure) {
+                LOGGER.warn("Ignored malformed e4steam entrypoint from Fabric mod {} ({})",
+                        container.getProvider().getMetadata().getId(),
+                        failure.getClass().getSimpleName());
             }
         }
         return candidates;

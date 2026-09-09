@@ -1,6 +1,7 @@
 package link.e4steam.internal.api;
 
 import link.e4steam.api.ApiConstants;
+import link.e4steam.E4steamConstants;
 import link.e4steam.api.runtime.Architecture;
 import link.e4steam.api.runtime.CompatibilityFlag;
 import link.e4steam.api.runtime.LifecyclePhase;
@@ -77,7 +78,8 @@ final class CoreRuntimeService implements RuntimeService {
             flags.add(CompatibilityFlag.DEDICATED_BACKEND_AVAILABLE);
         }
         if (environment.experimental()) flags.add(CompatibilityFlag.EXPERIMENTAL_COMBINATION);
-        return new RuntimeSnapshot(ApiConstants.API_VERSION, "0.3.1", ApiConstants.WIRE_PROTOCOL_VERSION,
+        return new RuntimeSnapshot(ApiConstants.API_VERSION, E4steamConstants.modVersion(),
+                ApiConstants.WIRE_PROTOCOL_VERSION,
                 platform(), architecture(), environment.mode(), environment.loader(),
                 environment.minecraftVersion(), steamState, phase, transports, flags,
                 failureCategory);

@@ -71,7 +71,7 @@ the session before sharing the log. That invalidates the old session data.
 
 ## Addon diagnostic contributions
 
-Addon API 1.0 provides `DiagnosticsService`. An addon needs the
+Addon API 1.x provides `DiagnosticsService`. An addon needs the
 `diagnostics.contribute` capability before it can add a section. Contributions
 run away from native and caller threads, have a two-second timeout and are
 limited by field, section and total preview size. Core redaction runs again on

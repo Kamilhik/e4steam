@@ -37,7 +37,10 @@ public final class BuiltinCapabilityPolicy implements CapabilityGrantPolicy {
             Capabilities.MODPACK_STAGE,
             Capabilities.SKINS_PROVIDE,
             Capabilities.DIAGNOSTICS_CONTRIBUTE,
-            Capabilities.STEAM_PROFILE_READ
+            Capabilities.STEAM_PROFILE_READ,
+            Capabilities.DIRECTORY_PUBLICATION,
+            Capabilities.DIRECTORY_ATTESTATION,
+            Capabilities.DIRECTORY_JOIN
     )));
 
     private final Set<CapabilityId> denied;

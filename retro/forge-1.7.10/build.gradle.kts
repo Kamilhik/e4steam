@@ -24,6 +24,10 @@ dependencies {
 tasks.withType<Jar>().configureEach {
     manifest.attributes(mapOf("FMLCorePluginContainsFMLMod" to "true",
             "ForceLoadAsMod" to "true",
+            // UniMixins supplies this class at runtime. Declaring the tweak
+            // entry makes it discover this JAR's MixinConfigs without
+            // embedding a second copy of UniMixins into e4steam.
+            "TweakClass" to "org.spongepowered.asm.launch.MixinTweaker",
             "MixinConfigs" to "e4steam.retro.mixins.json"))
 }
 tasks.processResources {

@@ -30,12 +30,26 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.CompletionException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class E4steamClient {
     public static final String MOD_ID = E4steamConstants.MOD_ID;
     public static volatile SteamSession session;
     public static volatile SteamAccessMode selectedAccessMode = SteamAccessMode.FRIENDS_ONLY;
+    /** Namespaced addon mode selected alongside {@link #selectedAccessMode}. */
+    public static volatile String selectedCustomAccessMode = "";
+    private static final Set<String> CONFIRMED_CUSTOM_ACCESS =
+            Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
     public static final Logger LOGGER = LoggerFactory.getLogger(E4steamClient.MOD_ID);
+
+    public static boolean customAccessConfirmed(String modeId) {
+        return modeId != null && CONFIRMED_CUSTOM_ACCESS.contains(modeId);
+    }
+
+    public static void confirmCustomAccess(String modeId) {
+        if (modeId != null && !modeId.isEmpty()) CONFIRMED_CUSTOM_ACCESS.add(modeId);
+    }
 
     public static void init() {
         init(new RuntimeEnvironment("unknown", "unknown", "unknown", RuntimeMode.CLIENT, true),
@@ -198,7 +212,8 @@ public class E4steamClient {
     }
 
     private static void replaceAndStartSession(SteamSession previous) {
-        SteamSession replacement = new SteamSession(previous.localPort(), previous.accessMode());
+        SteamSession replacement = new SteamSession(previous.localPort(), previous.accessMode(),
+                previous.customAccessModeId());
         session = replacement;
         replacement.startAsync();
     }

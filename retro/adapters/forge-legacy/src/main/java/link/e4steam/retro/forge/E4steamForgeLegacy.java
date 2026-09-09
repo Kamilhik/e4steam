@@ -9,7 +9,7 @@ import link.e4steam.retro.RetroClientLoader;
 import link.e4steam.retro.RetroDedicatedBootstrap;
 import link.e4steam.retro.RetroVersion;
 
-@Mod(modid = "e4steam", name = "e4steam", version = "0.3.1",
+@Mod(modid = "e4steam", name = "e4steam", version = "0.3.2",
         acceptedMinecraftVersions = RetroBuildMetadata.ACCEPTED_FORGE_RANGE,
         dependencies = "required-after:unimixins@[0.1.20,)",
         acceptableRemoteVersions = "*")

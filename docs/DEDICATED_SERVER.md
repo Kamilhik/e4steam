@@ -67,7 +67,8 @@ intended players. Restarting the e4steam backend creates a new generation, so
 an old descriptor stops being useful.
 
 The server is not published in Steam's public Server Browser. Core e4steam does
-not contain a public-server browser or publication provider.
+not contain a catalog UI or registry. Addon API 1.1 provides an opaque bridge
+for a separate Public Servers addon without exposing the direct descriptor.
 
 ## Startup states
 
@@ -140,8 +141,9 @@ new Steam players; it does not save the world or terminate Minecraft.
 
 `DEDICATED_PUBLICATION_PROPOSE` lets an addon submit a bounded publication
 proposal. Core still rejects it unless an approved provider is installed and
-the server configuration permits publication. e4steam core 0.3.1 has no such
-provider and returns `public-worlds-addon-required`.
+the server configuration permits publication. e4steam core 0.3.2 has no provider
+for this legacy proposal hook and returns `public-worlds-addon-required`.
+Directory addons should use the separate `PublicDirectoryService` contract.
 
 The API never returns auth tickets, GSLT, private descriptor fields, native
 handles or raw Steam packets. See the full [Addon API guide](ADDON_API.md).

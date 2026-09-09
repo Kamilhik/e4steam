@@ -57,7 +57,8 @@ final class ScopedE4steamApi implements E4steamApi {
                 .add(ApiServiceKeys.DIAGNOSTICS, CoreProviderServices.diagnostics(descriptor.id(), capabilities,
                         contributions, resources, platform.scheduler()))
                 .add(ApiServiceKeys.LOCALIZATION, CoreStateServices.localization())
-                .add(ApiServiceKeys.LOGGER, new CoreSafeLogger(descriptor.id()));
+                .add(ApiServiceKeys.LOGGER, new CoreSafeLogger(descriptor.id()))
+                .add(ApiServiceKeys.PUBLIC_DIRECTORY, new CorePublicDirectoryService(capabilities));
     }
 
     @Override public ApiVersion apiVersion() { return ApiConstants.API_VERSION; }

@@ -31,6 +31,8 @@ public final class SteamSession {
 
     public int localPort() { return localPort; }
     public SteamAccessMode accessMode() { return accessMode; }
+    /** Retro builds do not expose addon-provided access modes. */
+    public String customAccessModeId() { return ""; }
     public SteamAddress address() { return address; }
     public State state() { return state; }
 

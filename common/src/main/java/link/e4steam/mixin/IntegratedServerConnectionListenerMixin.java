@@ -24,7 +24,8 @@ public abstract class IntegratedServerConnectionListenerMixin {
         }
         if (!Config.INSTANCE.hostEnabled.value()
                 || E4steamClient.selectedAccessMode == SteamAccessMode.LOCAL_ONLY) return;
-        SteamSession session = new SteamSession(port, E4steamClient.selectedAccessMode);
+        SteamSession session = new SteamSession(port, E4steamClient.selectedAccessMode,
+                E4steamClient.selectedCustomAccessMode);
         E4steamClient.session = session;
         session.startAsync();
     }

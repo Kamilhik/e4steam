@@ -5,6 +5,7 @@ import link.e4steam.api.command.CommandService;
 import link.e4steam.api.config.ConfigService;
 import link.e4steam.api.dedicated.DedicatedServerService;
 import link.e4steam.api.diagnostics.DiagnosticsService;
+import link.e4steam.api.directory.PublicDirectoryService;
 import link.e4steam.api.identity.IdentityService;
 import link.e4steam.api.lobby.LobbyService;
 import link.e4steam.api.localization.LocalizationService;
@@ -37,6 +38,7 @@ public final class ApiServiceKeys {
     /** Diagnostics service key. */ public static final ServiceKey<DiagnosticsService> DIAGNOSTICS = key("diagnostics", DiagnosticsService.class);
     /** Localization service key. */ public static final ServiceKey<LocalizationService> LOCALIZATION = key("localization", LocalizationService.class);
     /** Structured safe logger key. */ public static final ServiceKey<SafeLogger> LOGGER = key("logger", SafeLogger.class);
+    /** Safe publication, attestation and generic join bridge key. */ public static final ServiceKey<PublicDirectoryService> PUBLIC_DIRECTORY = key("public_directory", PublicDirectoryService.class);
 
     private ApiServiceKeys() { }
 

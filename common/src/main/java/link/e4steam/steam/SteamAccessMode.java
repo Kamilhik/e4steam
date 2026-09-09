@@ -4,7 +4,9 @@ package link.e4steam.steam;
 public enum SteamAccessMode {
     LOCAL_ONLY("text.e4steam_minecraft.access.local"),
     FRIENDS_ONLY("text.e4steam_minecraft.access.friends"),
-    INVITE_ONLY("text.e4steam_minecraft.access.invite");
+    INVITE_ONLY("text.e4steam_minecraft.access.invite"),
+    /** Public lobby activated only by a registered external access provider. */
+    CUSTOM("text.e4steam_minecraft.access.external");
 
     private final String translationKey;
 

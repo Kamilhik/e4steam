@@ -1,5 +1,7 @@
 package link.e4steam.steam;
 
+import link.e4steam.E4steamClient;
+
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -62,6 +64,29 @@ public final class SteamClientApiAdapter {
                 @Override public boolean sendAddonFrame(
                         SteamConnectionBridge bridge, byte[] packet, boolean reliable) {
                     return SteamRuntime.get().sendAddonFrame(bridge, packet, reliable);
+                }
+                @Override public java.util.concurrent.CompletableFuture<SteamClientApiBridge.PublicLobbyTarget>
+                publicHostLobbyTarget() {
+                    return SteamRuntime.get().publicHostLobbyTarget().thenApply(target -> target == null
+                            ? null : new SteamClientApiBridge.PublicLobbyTarget(
+                            target.lobbyId(), target.generation()));
+                }
+                @Override public java.util.concurrent.CompletableFuture<Boolean> joinPublicLobby(long lobbyId) {
+                    return SteamRuntime.get().joinPublicLobby(lobbyId);
+                }
+                @Override public SteamClientApiBridge.PublicJoinSnapshot publicJoinSnapshot(long lobbyId) {
+                    SteamRuntime.SafePublicJoinSnapshot snapshot =
+                            SteamRuntime.get().publicJoinSnapshot(lobbyId);
+                    return new SteamClientApiBridge.PublicJoinSnapshot(
+                            snapshot.stateCode(), snapshot.detailCode());
+                }
+                @Override public void cancelGuestJoin() {
+                    SteamRuntime.get().cancelGuestJoin();
+                }
+                @Override public boolean acceptDirectSteamInvite(String descriptor, String displayName) {
+                    if (!SteamDedicatedAddress.tryParse(descriptor).isPresent()) return false;
+                    E4steamClient.acceptDirectSteamInvite(descriptor, displayName);
+                    return true;
                 }
             });
         } catch (RuntimeException failure) {

@@ -8,6 +8,7 @@ import link.e4steam.api.command.CommandService;
 import link.e4steam.api.config.ConfigService;
 import link.e4steam.api.dedicated.DedicatedServerService;
 import link.e4steam.api.diagnostics.DiagnosticsService;
+import link.e4steam.api.directory.PublicDirectoryService;
 import link.e4steam.api.identity.IdentityService;
 import link.e4steam.api.lobby.LobbyService;
 import link.e4steam.api.localization.LocalizationService;
@@ -90,6 +91,9 @@ public interface E4steamApi {
 
     /** Returns a structured bounded logger that rejects credential-like fields. */
     default SafeLogger logger() { return ApiServiceKeys.require(services(), ApiServiceKeys.LOGGER); }
+
+    /** Returns the safe generic bridge used by public directory addons. */
+    default PublicDirectoryService publicDirectory() { return ApiServiceKeys.require(services(), ApiServiceKeys.PUBLIC_DIRECTORY); }
 
     /** Returns the bounded named-context scheduler. */
     SchedulerService scheduler();

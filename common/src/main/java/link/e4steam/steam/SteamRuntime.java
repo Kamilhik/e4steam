@@ -33,6 +33,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -132,6 +133,9 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             new SteamBridgeRegistry<>(MAX_ACTIVE_CONNECTIONS);
     private final ConcurrentHashMap<Long, Long> pendingPeers = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Long> clientReconnectDeadlines = new ConcurrentHashMap<>();
+    private final Set<SteamBridgeRegistry.Key> pendingCustomAccessEvaluations =
+            ConcurrentHashMap.newKeySet();
+    private final SteamPublicJoinTracker publicJoinTracker = new SteamPublicJoinTracker();
     private final SteamKnownPeerSessionGate knownPeerSessionGate =
             new SteamKnownPeerSessionGate(KNOWN_PEER_REACCEPT_DELAY_MILLIS);
     // Host bridges authenticate an exact localhost source port. Keep this
@@ -609,6 +613,48 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             }
             return null;
         });
+    }
+
+    /** Returns the active addon-selected public lobby without exposing its endpoint token. */
+    public CompletableFuture<PublicHostLobbyTarget> publicHostLobbyTarget() {
+        SafeSessionView before = safeSessionView();
+        if (!before.active() || !"INTEGRATED_HOST".equals(before.roleCode())) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return submitSteamTaskIfRunning(() -> {
+            SteamLobbyManager current = lobbyManager;
+            long lobbyId = current == null ? 0L : current.publicHostLobbyId();
+            SafeSessionView after = safeSessionView();
+            if (lobbyId == 0L || !after.active() || after.generation() != before.generation()) {
+                return null;
+            }
+            return new PublicHostLobbyTarget(lobbyId, after.generation());
+        });
+    }
+
+    /** Starts an explicit public-directory lobby join on the Steam worker. */
+    public CompletableFuture<Boolean> joinPublicLobby(long lobbyId) {
+        if (lobbyId == 0L) return CompletableFuture.completedFuture(Boolean.FALSE);
+        return submitSteamTaskIfRunning(() -> {
+            SteamLobbyManager current = lobbyManager;
+            return current != null && current.joinPublicLobby(lobbyId);
+        });
+    }
+
+    /** Returns a sanitized state for the exact opaque lobby requested by an addon. */
+    public SafePublicJoinSnapshot publicJoinSnapshot(long lobbyId) {
+        SteamPublicJoinTracker.Snapshot snapshot = publicJoinTracker.snapshot(lobbyId);
+        return new SafePublicJoinSnapshot(
+                snapshot.phase().name(), snapshot.detailCode());
+    }
+
+    void publicJoinBegin(long lobbyId) { publicJoinTracker.begin(lobbyId); }
+    void publicJoinAuthenticating(long lobbyId) { publicJoinTracker.authenticating(lobbyId); }
+    void publicJoinConnecting(long lobbyId) { publicJoinTracker.connecting(lobbyId); }
+    void publicJoinActive(long lobbyId) { publicJoinTracker.active(lobbyId); }
+    void publicJoinCancelled(long lobbyId) { publicJoinTracker.cancel(lobbyId); }
+    void publicJoinFailed(long lobbyId, SteamPublicJoinTracker.Phase phase, String detailCode) {
+        publicJoinTracker.fail(lobbyId, phase, detailCode);
     }
 
     /** Clears e4steam connections before an ordinary multiplayer connection. */
@@ -1165,25 +1211,26 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(SteamProtocol.MAX_ACCEPTED_STEAM_PACKET_SIZE);
 
             while (!currentGeneration.stopRequested.get()) {
-                if (!steamLifecycle.isRunning()) {
+                long nowMillis = System.currentTimeMillis();
+                if (!steamLifecycle.isHealthy(nowMillis)) {
                     throw new IOException("Steam disconnected while e4steam was active");
                 }
                 steamLifecycle.runCallbacks();
                 SteamNetworkingSocketsP2PTransport activeDedicatedTransport = dedicatedTransport;
                 if (activeDedicatedTransport != null) activeDedicatedTransport.runCallbacks();
                 drainSteamTasks();
-                acceptKnownPeerSessions(System.currentTimeMillis());
+                acceptKnownPeerSessions(nowMillis);
                 drainOutbound(sendBuffer, currentGeneration.id);
                 receivePackets(receiveBuffer);
                 receiveDedicatedPackets(receiveBuffer);
                 SteamAddonHooks.tick();
                 cleanupPeerSessions();
-                cleanupGracefulBridgeClosures(System.currentTimeMillis());
+                cleanupGracefulBridgeClosures(nowMillis);
                 SteamLobbyManager currentSocial = lobbyManager;
                 if (currentSocial != null) {
-                    currentSocial.cleanup(System.currentTimeMillis());
+                    currentSocial.cleanup(nowMillis);
                 }
-                if (shouldStopForIdle(currentGeneration, System.currentTimeMillis())) {
+                if (shouldStopForIdle(currentGeneration, nowMillis)) {
                     break;
                 }
                 try {
@@ -2216,26 +2263,75 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             sendStandaloneReset(remoteSteamId, key.connectionId());
             return;
         }
-        synchronized (peerSessionLock) {
-            pendingPeers.remove(remoteSteamId);
-            idleSessionDeadlines.remove(remoteSteamId);
-        }
         if (bridgeRegistry.contains(key)) {
             return;
         }
+        if (!hasAvailableHostSlot(registration)
+                || System.currentTimeMillis() < nextLoopbackConnectAttemptAtMillis) {
+            sendStandaloneReset(remoteSteamId, key.connectionId());
+            return;
+        }
+        if (registration.owner().accessMode() == SteamAccessMode.CUSTOM) {
+            if (!SteamCustomAccessGate.isRegistered(
+                    registration.owner().customAccessModeId())) {
+                sendStandaloneReset(remoteSteamId, key.connectionId());
+                return;
+            }
+            if (!pendingCustomAccessEvaluations.add(key)) {
+                return;
+            }
+            SteamCustomAccessGate.evaluate(
+                    registration.owner().customAccessModeId(), remoteSteamId)
+                    .whenComplete((allowed, failure) -> {
+                        CompletableFuture<Void> resumed = submitSteamTaskIfRunning(() -> {
+                            try {
+                                if (failure != null || !Boolean.TRUE.equals(allowed)
+                                        || hostRegistration != registration) {
+                                    sendStandaloneReset(remoteSteamId, key.connectionId());
+                                } else {
+                                    completeAuthorizedOpen(remoteSteamId, key, registration);
+                                }
+                            } finally {
+                                pendingCustomAccessEvaluations.remove(key);
+                            }
+                            return null;
+                        });
+                        resumed.whenComplete((ignored, submitFailure) -> {
+                            if (submitFailure != null) pendingCustomAccessEvaluations.remove(key);
+                        });
+                    });
+            return;
+        }
+        completeAuthorizedOpen(remoteSteamId, key, registration);
+    }
+
+    private boolean hasAvailableHostSlot(HostRegistration registration) {
+        if (registration == null || hostRegistration != registration) return false;
         long activeHostConnections = 0;
         for (SteamConnectionBridge bridge : bridgeRegistry.snapshot()) {
             if (bridge.isHostedBy(registration.owner()) && !bridge.isClosed()) {
                 activeHostConnections++;
             }
         }
-        if (activeHostConnections >= SteamLobbyManager.VANILLA_MAX_GUESTS) {
+        return activeHostConnections < SteamLobbyManager.VANILLA_MAX_GUESTS;
+    }
+
+    private void completeAuthorizedOpen(long remoteSteamId, SteamBridgeRegistry.Key key,
+                                        HostRegistration registration) {
+        if (registration == null || hostRegistration != registration || bridgeRegistry.contains(key)) {
+            if (hostRegistration != registration) {
+                sendStandaloneReset(remoteSteamId, key.connectionId());
+            }
+            return;
+        }
+        if (!hasAvailableHostSlot(registration)
+                || System.currentTimeMillis() < nextLoopbackConnectAttemptAtMillis) {
             sendStandaloneReset(remoteSteamId, key.connectionId());
             return;
         }
-        if (System.currentTimeMillis() < nextLoopbackConnectAttemptAtMillis) {
-            sendStandaloneReset(remoteSteamId, key.connectionId());
-            return;
+        synchronized (peerSessionLock) {
+            pendingPeers.remove(remoteSteamId);
+            idleSessionDeadlines.remove(remoteSteamId);
         }
 
         Socket socket = new Socket();
@@ -2538,6 +2634,41 @@ public final class SteamRuntime implements SteamBridgeRuntime {
         @Override public String toString() {
             return "SafeSessionView{generation=" + generation + ", role=" + roleCode
                     + ", state=" + stateCode + ", peers=" + peers.size() + '}';
+        }
+    }
+
+    /** Generation-bound, credential-free public lobby projection. */
+    public static final class PublicHostLobbyTarget {
+        private final long lobbyId;
+        private final long generation;
+
+        private PublicHostLobbyTarget(long lobbyId, long generation) {
+            this.lobbyId = lobbyId;
+            this.generation = generation;
+        }
+
+        public long lobbyId() { return lobbyId; }
+        public long generation() { return generation; }
+        @Override public String toString() {
+            return "PublicHostLobbyTarget{generation=" + generation + ", lobby=opaque}";
+        }
+    }
+
+    /** Immutable addon-safe public join state; target and Steam identity are absent. */
+    public static final class SafePublicJoinSnapshot {
+        private final String stateCode;
+        private final String detailCode;
+
+        private SafePublicJoinSnapshot(String stateCode, String detailCode) {
+            this.stateCode = stateCode == null ? "IDLE" : stateCode;
+            this.detailCode = detailCode == null ? "" : detailCode;
+        }
+
+        public String stateCode() { return stateCode; }
+        public String detailCode() { return detailCode; }
+
+        @Override public String toString() {
+            return "SafePublicJoinSnapshot{state=" + stateCode + ", target=opaque}";
         }
     }
 

@@ -2,6 +2,14 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 8
 }
 
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+}
+
+test {
+    useJUnit()
+}
+
 jar {
     archiveBaseName = "e4steam-stdin-agent"
     manifest {
@@ -33,6 +41,13 @@ tasks.register("agentJarAudit") {
             byte[] bytes = zip.getInputStream(
                     zip.getEntry("link/e4steam/agent/StdinCaptureAgent.class")
             ).readAllBytes()
+            String constants = new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+            if (!constants.contains("fml.earlyprogresswindow")
+                    || !constants.contains("e4steam.overlayRelaunch")) {
+                throw new GradleException(
+                        "stdin-agent is missing the pre-Forge Unix window guard"
+                )
+            }
             int major = ((bytes[6] & 0xff) << 8) | (bytes[7] & 0xff)
             if (major != 52) throw new GradleException("stdin-agent must remain Java 8 compatible")
         } finally {

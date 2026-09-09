@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "link.e4steam"
-version = "0.3.1"
+version = "0.3.2"
 
 subprojects {
     group = rootProject.group
@@ -711,8 +711,9 @@ tasks.register("auditRetroArtifacts") {
                         val manifest = zip.getInputStream(
                             checkNotNull(zip.getEntry("META-INF/MANIFEST.MF"))
                         ).bufferedReader(Charsets.UTF_8).use { it.readText() }
-                        check("TweakClass: org.spongepowered.asm.launch.MixinTweaker" !in manifest) {
-                            "${jar.name} claims the external UniMixins tweaker"
+                        check("TweakClass: org.spongepowered.asm.launch.MixinTweaker" in
+                                manifest.replace("\r\n ", "")) {
+                            "${jar.name} does not expose its Mixin config through external UniMixins"
                         }
                         val entrypointConstants = zip.getInputStream(
                             checkNotNull(zip.getEntry(
@@ -842,34 +843,17 @@ tasks.register("auditRetroArtifacts") {
                                 "${jar.name} splash transformer is missing $marker"
                             }
                         }
-                        val glTransformer =
-                            "link/e4steam/retro/forge/core/E4steamForgeGlContextTransformer.class"
-                        checkNotNull(zip.getEntry(glTransformer)) {
-                            "Missing the macOS LWJGL 2 context transformer from ${jar.name}"
+                        val overlayCore = checkNotNull(zip.getEntry(
+                            "link/e4steam/retro/forge/core/E4steamForgeOverlayCore.class"
+                        )) { "Missing the Unix overlay core plugin from ${jar.name}" }
+                        val overlayCoreConstants = zip.getInputStream(overlayCore).use { input ->
+                            input.readBytes().toString(Charsets.ISO_8859_1)
                         }
-                        val glClassPrefix = glTransformer.removeSuffix(".class")
-                        val glConstants = names
-                            .filter { entryName ->
-                                entryName == glTransformer ||
-                                        (entryName.startsWith("${glClassPrefix}$") &&
-                                                entryName.endsWith(".class"))
-                            }
-                            .joinToString("\n") { entryName ->
-                                zip.getInputStream(checkNotNull(zip.getEntry(entryName))).use {
-                                    input -> input.readBytes().toString(Charsets.ISO_8859_1)
-                                }
-                            }
-                        listOf(
-                            "GLAllocation",
-                            "glGenLists",
-                            "generateDisplayLists",
-                            "shouldRepairLegacyDisplayContext",
-                            "requestForeground",
-                            "reserveDisplayLists"
-                        ).forEach { marker ->
-                            check(marker in glConstants) {
-                                "${jar.name} GL context transformer is missing $marker"
-                            }
+                        check("E4steamForgeSplashTransformer" in overlayCoreConstants) {
+                            "${jar.name} does not register the Forge splash transformer"
+                        }
+                        check("E4steamForgeGlContextTransformer" !in overlayCoreConstants) {
+                            "${jar.name} still registers the LWJGL 2 transformer that breaks Cleanroom/LWJGL 3"
                         }
                         if (project.name == "forge-1.7.10") {
                             val cocoaActivator =

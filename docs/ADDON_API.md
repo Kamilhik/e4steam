@@ -1,15 +1,22 @@
-# e4steam Addon API 1.0
+# e4steam Addon API 1.1
 
 [Русская версия](ADDON_API_RU.md)
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.kamilhik/e4steam-api?label=Maven%20Central&style=flat-square)](https://central.sonatype.com/artifact/io.github.kamilhik/e4steam-api/1.0.0)
 
-The Addon API lets a normal Fabric, Forge or NeoForge mod extend e4steam
-without copying its Steam runtime or depending on Minecraft internals. API
-`1.0.0` is included in e4steam `0.3.1`, remains compatible with e4steam
-`0.3.0+`, and targets Java 8 bytecode.
-The signed release artifact, sources, Javadocs and POM are published on
+The Addon API lets a normal Fabric, Quilt, Forge or NeoForge mod extend
+e4steam without copying its Steam runtime or depending on Minecraft internals.
+API `1.1.0` is included in the e4steam `0.3.2` development line, preserves the
+complete public API 1.0 binary surface, and targets Java 8 bytecode. Addons that
+only use API 1.0 may keep the range `[1.0.0, 2.0.0)` and work with compatible
+e4steam 0.3.x releases. New Public Directory functions require e4steam 0.3.2+.
+The embedded addon runtime currently starts in Minecraft 1.17+ artifacts;
+retro 1.7–1.16 artifacts intentionally do not link modern addon or GUI classes.
+
+The signed API `1.0.0` artifact, sources, Javadocs and POM are published on
 [Maven Central](https://repo1.maven.org/maven2/io/github/kamilhik/e4steam-api/1.0.0/).
+API 1.1.0 is currently built from this repository and must remain a
+`compileOnly` dependency until its separate Maven publication.
 
 > [!IMPORTANT]
 > An addon is ordinary code running in the Minecraft JVM. The API limits what
@@ -29,6 +36,7 @@ deeper where correctness matters:
 | Capabilities, admission order and failure isolation | [Security](ADDON_SECURITY.md) |
 | Identity, logs, diagnostics and storage | [Privacy](API_PRIVACY.md) |
 | API/mod/wire/channel versions and Maven usage | [Compatibility](API_COMPATIBILITY.md) |
+| Publishing and joining public targets | [Public Directory API](PUBLIC_DIRECTORY_API.md) |
 
 For exact signatures, generate Javadocs or open the source under
 `api/src/main/java`. The compile-checked `example-addon` is the canonical code
@@ -38,17 +46,21 @@ sample; documentation examples intentionally show only the relevant part.
 
 ### 1. Add the API dependency
 
-Version `1.0.0` is available from Maven Central. Most mod projects already
-declare `mavenCentral()` in `repositories`, so no custom repository is needed.
-Add one compile-time dependency because e4steam supplies the API at runtime:
+For API 1.1 development, copy `e4steam-api-1.1.0.jar` into the addon's `libs`
+directory and add it only to the compile classpath. e4steam supplies the API at
+runtime, so the JAR must not be installed in `mods` or embedded in the addon:
 
 ~~~groovy
 dependencies {
-    compileOnly("io.github.kamilhik:e4steam-api:1.0.0")
+    compileOnly(files("libs/e4steam-api-1.1.0.jar"))
 }
 ~~~
 
-Do not shade or bundle `link.e4steam.api` classes into the addon JAR.
+New addons should use the Maven Central dependency
+`compileOnly("io.github.kamilhik:e4steam-api:1.1.0")`. Addons compiled against
+API 1.0 remain binary-compatible with this runtime. No custom repository is
+required. Do not use `implementation`, `include`, `jarJar` or Shadow, and
+verify that the final addon JAR has no `link/e4steam/api/**`.
 
 ### 2. Create an entry point
 
@@ -70,9 +82,9 @@ public final class HelloAddon implements E4steamAddonEntrypoint {
         return new AddonDescriptor(
                 new AddonId("example:hello"),
                 "Hello addon",
-                ApiVersion.parse("1.0.0"),
+                ApiVersion.parse("0.1.0"),
                 new ApiVersionRange(
-                        ApiVersion.parse("1.0.0"),
+                        ApiVersion.parse("1.1.0"),
                         ApiVersion.parse("2.0.0")
                 ),
                 Collections.emptyList(),
@@ -89,7 +101,8 @@ public final class HelloAddon implements E4steamAddonEntrypoint {
 
 Addon IDs must be namespaced lower-case identifiers such as
 `yourstudio:your_addon`. The API range has an inclusive minimum and an
-exclusive maximum, so `[1.0.0, 2.0.0)` accepts every compatible 1.x API.
+exclusive maximum, so `[1.1.0, 2.0.0)` accepts compatible API 1.1+ releases.
+Use `[1.0.0, 2.0.0)` when the addon does not call any API 1.1-only service.
 
 ### 3. Let the loader discover the addon
 
@@ -103,7 +116,7 @@ Fabric uses the `e4steam` entrypoint in `fabric.mod.json`:
     ]
   },
   "depends": {
-    "e4steam": ">=0.3.0"
+    "e4steam": ">=0.3.2"
   }
 }
 ~~~
@@ -122,6 +135,8 @@ example.hello.HelloAddon
 
 The addon must also remain a normal loader mod with its usual
 `mods.toml` or `neoforge.mods.toml`. e4steam never scans arbitrary JAR files.
+Use an open-ended loader dependency such as `>=0.3.2` or `[0.3.2,)`, not an
+exact `0.3.2` pin. API 1.0-only addons may keep `>=0.3.0`.
 
 ## Capabilities
 
@@ -139,8 +154,8 @@ Set<CapabilityId> requested = new LinkedHashSet<>(Arrays.asList(
 return new AddonDescriptor(
         new AddonId("example:status"),
         "Status addon",
-        ApiVersion.parse("1.0.0"),
-        new ApiVersionRange(ApiVersion.parse("1.0.0"), ApiVersion.parse("2.0.0")),
+        ApiVersion.parse("0.1.0"),
+        new ApiVersionRange(ApiVersion.parse("1.1.0"), ApiVersion.parse("2.0.0")),
         Collections.emptyList(),
         requested,
         requested
@@ -156,6 +171,7 @@ return new AddonDescriptor(
 | Add UI and commands | `UI_CONTRIBUTE`, `COMMANDS_REGISTER` | `api.ui()`, `api.commands()` |
 | Store addon settings and data | `CONFIG_READ`, `CONFIG_WRITE`, `STORAGE_PRIVATE` | `api.config()`, `api.storage()` |
 | Observe or administer a dedicated backend | `DEDICATED_OBSERVE`, `DEDICATED_ADMIN`, `DEDICATED_PUBLICATION_PROPOSE` | `api.dedicatedServers()` |
+| Publish or join public directory targets | `DIRECTORY_PUBLICATION`, `DIRECTORY_ATTESTATION`, `DIRECTORY_JOIN` | `api.publicDirectory()` |
 | Contribute diagnostics | `DIAGNOSTICS_CONTRIBUTE` | `api.diagnostics()` |
 
 World settings, modpack staging and skins are contracts for separate addons.
@@ -198,9 +214,20 @@ provider is active or the server configuration disallows publication. The API
 never returns Steam tickets, GSLT, raw descriptor contents, native handles or
 protocol packets.
 
-e4steam core 0.3.1 has no publication provider and returns
-`public-worlds-addon-required`; the service exists so a separate trusted addon
-can integrate without exposing the GameServer internals.
+`DedicatedServerService.proposePublication(...)` remains a separate guarded
+proposal contract. API 1.1 adds `PublicDirectoryService` for an installed
+directory addon to obtain a generation-bound opaque target and drive a safe
+join without exposing GameServer internals. Production attestation still fails
+closed until the operator configures a trusted registry verifier.
+
+## Public Directory API 1.1
+
+`context.api().publicDirectory()` provides the loader-independent bridge used
+by catalog addons. It exposes only opaque publication targets, bounded
+attestation receipts and a cancellable join state machine. Steam tickets,
+invite tokens, IP addresses, native handles and raw protocol packets stay in
+core. See the [Public Directory guide](PUBLIC_DIRECTORY_API.md) for the full
+contract, capability requirements, examples and security rules.
 
 ## Own every resource
 
@@ -264,6 +291,7 @@ See [API networking](API_NETWORKING.md), [threading](API_THREADING.md) and
 | UI and commands | `ui()`, `commands()` |
 | Config and private storage | `config()`, `storage()` |
 | Dedicated server | `dedicatedServers()` |
+| Public directory | `publicDirectory()` |
 | Optional provider contracts | `worldSettings()`, `modpacks()`, `skins()` |
 | Diagnostics, localization and logging | `diagnostics()`, `localization()`, `logger()` |
 
@@ -277,7 +305,7 @@ gradlew.bat apiChecks
 
 This verifies Java 8 bytecode, public API compatibility, forbidden
 dependencies, Javadocs, the deterministic testkit and the example addon.
-`api-testkit/build/libs/e4steam-api-testkit-1.0.0.jar` can be used in addon
+`api-testkit/build/libs/e4steam-api-testkit-1.1.0.jar` can be used in addon
 tests for deterministic fakes without starting Minecraft or Steam.
 
 The repository's `example-addon` demonstrates events, a negotiated channel,
@@ -298,8 +326,14 @@ and NeoForge on Minecraft 26.2.
 Use that project as a reference for loader packaging, client lifecycle and UI
 integration. For public API calls, follow this repository's `example-addon`.
 e4steam Friends has an isolated compatibility bridge for social data that API
-1.0 does not expose yet. Do not copy that bridge or depend on
+1.1 does not expose yet. Do not copy that bridge or depend on
 `link.e4steam.internal` classes in a new addon.
+
+[e4steam Public Servers](https://github.com/K2-Studio-Development/e4steam-Public-Servers)
+is the first API 1.1 directory consumer. Its common code compiles only against
+the public API, while Fabric and NeoForge supply their normal loader metadata.
+Its local registry tests are suitable for development; public deployment still
+requires a trusted production attestation verifier.
 
 ## Common mistakes
 
@@ -314,11 +348,12 @@ e4steam Friends has an isolated compatibility bridge for social data that API
 
 API, mod and wire versions are independent:
 
-- Addon API: `1.0.0`;
-- e4steam mod: `0.3.1`;
+- Addon API: `1.1.0` (binary-compatible with 1.0.x);
+- e4steam mod: `0.3.2`;
 - core wire protocol: `4`;
 - each addon network channel has its own version range.
 
-The public Addon API 1.0 surface is stable. Only types deliberately separated
+The public Addon API 1.1 surface is stable and preserves the complete 1.0
+binary surface. Only types deliberately separated
 under `link.e4steam.api.experimental` are outside the binary-compatibility
 guarantee; this does not make installed addons or the addon system experimental.

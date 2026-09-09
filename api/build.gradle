@@ -24,10 +24,21 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ["-Xlint:all", "-Xlint:-options", "-Werror"]
 }
 
+configurations {
+    apiCompatibilityBaseline {
+        canBeConsumed = false
+        canBeResolved = true
+        visible = false
+    }
+}
+
 dependencies {
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    apiCompatibilityBaseline("io.github.kamilhik:e4steam-api:1.0.0") {
+        transitive = false
+    }
 }
 
 test {
@@ -326,7 +337,7 @@ tasks.register("printApiSurfaceHash") {
 
 tasks.register("apiBinaryCompatibilityCheck") {
     group = "verification"
-    description = "Reject accidental public API surface changes against the 1.0.0 baseline."
+    description = "Reject accidental changes to the exact API 1.1.0 public surface."
     dependsOn jar
     doLast {
         File baseline = file("api-surface.sha256")
@@ -346,4 +357,142 @@ tasks.register("apiBinaryCompatibilityCheck") {
     }
 }
 
-check.dependsOn(apiJarAudit, apiBinaryCompatibilityCheck, javadoc)
+tasks.register("apiBackwardCompatibilityCheck") {
+    group = "verification"
+    description = "Verify that every public/protected API 1.0.0 binary symbol remains linkable."
+    dependsOn jar
+    inputs.file(jar.archiveFile)
+    inputs.files(configurations.apiCompatibilityBaseline)
+    doLast {
+        File currentArtifact = jar.archiveFile.get().asFile
+        File baselineArtifact = configurations.apiCompatibilityBaseline.singleFile
+
+        def classNames = { File artifact ->
+            def names = []
+            def zip = new java.util.zip.ZipFile(artifact)
+            try {
+                zip.entries().each { entry ->
+                    if (entry.name.startsWith("link/e4steam/api/") && entry.name.endsWith(".class")) {
+                        names.add(entry.name.substring(0, entry.name.length() - 6).replace('/', '.'))
+                    }
+                }
+            } finally {
+                zip.close()
+            }
+            names.sort()
+        }
+        def typeName = { Class<?> value -> value.name }
+        def parameterKey = { Class<?>[] values -> values.collect(typeName).join(',') }
+        def methodKey = { java.lang.reflect.Method method ->
+            method.name + '(' + parameterKey(method.parameterTypes) + ')' + typeName(method.returnType)
+        }
+        def constructorKey = { java.lang.reflect.Constructor<?> constructor ->
+            '(' + parameterKey(constructor.parameterTypes) + ')'
+        }
+        def visible = { int modifiers ->
+            java.lang.reflect.Modifier.isPublic(modifiers)
+                    || java.lang.reflect.Modifier.isProtected(modifiers)
+        }
+        def visibilityPreserved = { int oldModifiers, int newModifiers ->
+            java.lang.reflect.Modifier.isPublic(oldModifiers)
+                    ? java.lang.reflect.Modifier.isPublic(newModifiers)
+                    : visible(newModifiers)
+        }
+        def modifierCompatibility = { int oldModifiers, int newModifiers, String symbol ->
+            if (!visibilityPreserved(oldModifiers, newModifiers)) {
+                throw new GradleException("API 1.0 visibility narrowed: ${symbol}")
+            }
+            if (java.lang.reflect.Modifier.isStatic(oldModifiers)
+                    != java.lang.reflect.Modifier.isStatic(newModifiers)) {
+                throw new GradleException("API 1.0 static modifier changed: ${symbol}")
+            }
+            if (!java.lang.reflect.Modifier.isFinal(oldModifiers)
+                    && java.lang.reflect.Modifier.isFinal(newModifiers)) {
+                throw new GradleException("API 1.0 symbol became final: ${symbol}")
+            }
+            if (!java.lang.reflect.Modifier.isAbstract(oldModifiers)
+                    && java.lang.reflect.Modifier.isAbstract(newModifiers)) {
+                throw new GradleException("API 1.0 symbol became abstract: ${symbol}")
+            }
+        }
+
+        URLClassLoader oldLoader = new URLClassLoader(
+                [baselineArtifact.toURI().toURL()] as URL[], (ClassLoader) null)
+        URLClassLoader newLoader = new URLClassLoader(
+                [currentArtifact.toURI().toURL()] as URL[], (ClassLoader) null)
+        try {
+            classNames(baselineArtifact).each { name ->
+                Class<?> oldType = Class.forName(name, false, oldLoader)
+                if (!java.lang.reflect.Modifier.isPublic(oldType.modifiers)) return
+                Class<?> newType
+                try {
+                    newType = Class.forName(name, false, newLoader)
+                } catch (ClassNotFoundException missing) {
+                    throw new GradleException("API 1.0 type was removed: ${name}")
+                }
+                if (!java.lang.reflect.Modifier.isPublic(newType.modifiers)
+                        || oldType.interface != newType.interface
+                        || oldType.enum != newType.enum
+                        || oldType.annotation != newType.annotation) {
+                    throw new GradleException("API 1.0 type kind/visibility changed: ${name}")
+                }
+                modifierCompatibility(oldType.modifiers, newType.modifiers, name)
+                String oldSuper = oldType.superclass == null ? "" : oldType.superclass.name
+                String newSuper = newType.superclass == null ? "" : newType.superclass.name
+                if (oldSuper != newSuper) {
+                    throw new GradleException("API 1.0 superclass changed: ${name}")
+                }
+                Set<String> newInterfaces = newType.interfaces.collect(typeName) as Set
+                oldType.interfaces.each { required ->
+                    if (!newInterfaces.contains(required.name)) {
+                        throw new GradleException("API 1.0 interface removed from ${name}: ${required.name}")
+                    }
+                }
+
+                Map<String, java.lang.reflect.Field> newFields = newType.declaredFields
+                        .findAll { visible(it.modifiers) }
+                        .collectEntries { [(it.name): it] }
+                oldType.declaredFields.findAll { visible(it.modifiers) }.each { oldField ->
+                    java.lang.reflect.Field current = newFields[oldField.name]
+                    if (current == null || current.type.name != oldField.type.name) {
+                        throw new GradleException("API 1.0 field removed or retyped: ${name}.${oldField.name}")
+                    }
+                    modifierCompatibility(oldField.modifiers, current.modifiers,
+                            "${name}.${oldField.name}")
+                }
+
+                Map<String, java.lang.reflect.Constructor<?>> newConstructors = newType.declaredConstructors
+                        .findAll { visible(it.modifiers) }
+                        .collectEntries { [(constructorKey(it)): it] }
+                oldType.declaredConstructors.findAll { visible(it.modifiers) }.each { oldConstructor ->
+                    String key = constructorKey(oldConstructor)
+                    java.lang.reflect.Constructor<?> current = newConstructors[key]
+                    if (current == null) {
+                        throw new GradleException("API 1.0 constructor removed: ${name}${key}")
+                    }
+                    modifierCompatibility(oldConstructor.modifiers, current.modifiers,
+                            "${name}${key}")
+                }
+
+                Map<String, java.lang.reflect.Method> newMethods = newType.declaredMethods
+                        .findAll { visible(it.modifiers) }
+                        .collectEntries { [(methodKey(it)): it] }
+                oldType.declaredMethods.findAll { visible(it.modifiers) }.each { oldMethod ->
+                    String key = methodKey(oldMethod)
+                    java.lang.reflect.Method current = newMethods[key]
+                    if (current == null) {
+                        throw new GradleException("API 1.0 method removed or retyped: ${name}.${key}")
+                    }
+                    modifierCompatibility(oldMethod.modifiers, current.modifiers,
+                            "${name}.${key}")
+                }
+            }
+        } finally {
+            oldLoader.close()
+            newLoader.close()
+        }
+        println("API 1.1.0 preserves every public/protected API 1.0.0 binary symbol.")
+    }
+}
+
+check.dependsOn(apiJarAudit, apiBinaryCompatibilityCheck, apiBackwardCompatibilityCheck, javadoc)

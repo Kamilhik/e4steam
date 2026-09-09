@@ -132,8 +132,9 @@ Capability `DEDICATED_OBSERVE` позволяет читать состояни�
 
 `DEDICATED_PUBLICATION_PROPOSE` разрешает предложить внешнюю публикацию, однако
 ядро всё равно требует установленный доверенный provider и разрешение в
-конфиге. В core e4steam 0.3.1 такого провайдера нет, поэтому возвращается
-`public-worlds-addon-required`.
+конфиге. В core e4steam 0.3.2 такого провайдера для старого proposal-контракта
+нет, поэтому возвращается `public-worlds-addon-required`. Аддоны каталога
+должны использовать отдельный `PublicDirectoryService` из API 1.1.
 
 API не выдаёт auth tickets, GSLT, закрытые поля адреса, native handles и сырые
 Steam-пакеты. Подробности есть в [документации Addon API](ADDON_API_RU.md).

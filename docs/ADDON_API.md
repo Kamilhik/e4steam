@@ -329,12 +329,6 @@ e4steam Friends has an isolated compatibility bridge for social data that API
 1.1 does not expose yet. Do not copy that bridge or depend on
 `link.e4steam.internal` classes in a new addon.
 
-[e4steam Public Servers](https://github.com/K2-Studio-Development/e4steam-Public-Servers)
-is the first API 1.1 directory consumer. Its common code compiles only against
-the public API, while Fabric and NeoForge supply their normal loader metadata.
-Its local registry tests are suitable for development; public deployment still
-requires a trusted production attestation verifier.
-
 ## Common mistakes
 
 - Bundling API classes inside the addon JAR.

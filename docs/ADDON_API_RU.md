@@ -317,12 +317,6 @@ Fabric и NeoForge на Minecraft 26.2.
 Новым аддонам нельзя копировать её или зависеть от
 `link.e4steam.internal`.
 
-[e4steam Public Servers](https://github.com/K2-Studio-Development/e4steam-Public-Servers)
-— первый потребитель Public Directory API 1.1. Его общая логика компилируется
-только с публичным API, а Fabric и NeoForge содержат обычные metadata
-загрузчиков. Локальный реестр подходит для разработки; для публичного запуска
-всё ещё нужен доверенный production-verifier attestation.
-
 ## Частые ошибки
 
 - API-классы встроены внутрь JAR аддона.

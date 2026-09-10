@@ -68,7 +68,7 @@ an old descriptor stops being useful.
 
 The server is not published in Steam's public Server Browser. Core e4steam does
 not contain a catalog UI or registry. Addon API 1.1 provides an opaque bridge
-for a separate Public Servers addon without exposing the direct descriptor.
+for separately developed directory addons without exposing the direct descriptor.
 
 ## Startup states
 

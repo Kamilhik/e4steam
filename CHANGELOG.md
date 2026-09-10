@@ -65,8 +65,8 @@ This release contains the Addon API and runtime changes made since `0.3.1`.
 - Добавлены metadata версии runtime, автоматическая проверка бинарной
   совместимости с API 1.0 и аудит release JAR на наличие API/runtime-классов,
   вложенных копий API, dev-файлов, секретов и локальных путей.
-- Проверен compile-only контракт e4steam Friends и e4steam Public Servers:
-  оба аддона не содержат собственных классов `link.e4steam.api`.
+- Проверен compile-only контракт e4steam Friends: аддон не содержит
+  собственных классов `link.e4steam.api`.
 
 ## 0.3.1 - 2026-09-01
 

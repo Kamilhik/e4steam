@@ -199,7 +199,5 @@ Before publishing a directory addon:
 6. Keep registry requests bounded by size, timeout, rate and redirect policy.
 7. Complete a two-account host/guest test before making a compatibility claim.
 
-The reference consumer is
-[e4steam Public Servers](https://github.com/K2-Studio-Development/e4steam-Public-Servers).
-Its automated local-registry tests validate the contract, but production use
-still requires a trusted attestation verifier and real two-user testing.
+Automated local-registry tests validate the contract, but production use still
+requires a trusted attestation verifier and real two-user testing.

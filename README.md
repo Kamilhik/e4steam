@@ -112,9 +112,9 @@ already supplies the runtime classes.
 This API is not a sandbox: an installed addon is ordinary code in the same JVM
 and must come from a trusted source. Core does not expose Steam passwords,
 auth tickets, invite tokens, GSLT, native handles or raw protocol hooks.
-Public Servers, Modpack Sync, Offline Skins and World Settings remain separate
-addons. Core 0.3.2 provides the safe directory bridge, but a Public Servers
-addon and a trusted registry verifier are still required for a real catalog.
+Core 0.3.2 provides a safe directory bridge for third-party addons. A real
+public catalog still requires a separately developed addon and a trusted
+registry verifier.
 
 ## Addons
 
@@ -129,7 +129,6 @@ not load modern addon or GUI classes.
 | Icon | Add-on | Description |
 | :---: | --- | --- |
 | <img src="docs/assets/addons/e4steam-friends.png" width="64" alt="e4steam Friends icon"><br><sub>CLIENT</sub> | [**e4steam Friends**](https://github.com/K2-Studio-Development/e4steam-Friends) | A Minecraft-style Steam friends screen with presence, search, invitations, joining and join requests.<br>**Minecraft 26.2 · Fabric / NeoForge** |
-| 🌐<br><sub>CLIENT / SERVER</sub> | [**e4steam Public Servers**](https://github.com/K2-Studio-Development/e4steam-Public-Servers) | Public-world and dedicated-server directory built on Addon API 1.1. Its production registry verifier is still required before public deployment.<br>**Minecraft 26.2 · Fabric / NeoForge** |
 
 Developers can start with the [Addon API guide](docs/ADDON_API.md), the
 [testkit](api-testkit) and the compile-checked [example addon](example-addon).
@@ -319,9 +318,9 @@ API не является песочницей: установленный ад�
 поэтому ставить можно только доверенные моды. Ядро не выдаёт пароли Steam,
 билеты авторизации, токены приглашений, GSLT, нативные дескрипторы и доступ к
 сырым пакетам протокола.
-Public Servers, Modpack Sync, Offline Skins и World Settings остаются отдельными
-аддонами. В core 0.3.2 уже есть безопасный мост каталога, но для настоящей
-публикации всё равно нужны аддон Public Servers и доверенный verifier реестра.
+В core 0.3.2 есть безопасный мост каталога для сторонних аддонов. Для настоящего
+публичного каталога всё равно нужны отдельно разработанный аддон и доверенный
+проверяющий компонент реестра.
 
 ## Аддоны
 
@@ -336,7 +335,6 @@ Addon API 1.x и поддержка аддонов — стабильные ча
 | Иконка | Аддон | Описание |
 | :---: | --- | --- |
 | <img src="docs/assets/addons/e4steam-friends.png" width="64" alt="Иконка e4steam Friends"><br><sub>CLIENT</sub> | [**e4steam Friends**](https://github.com/K2-Studio-Development/e4steam-Friends) | Экран друзей Steam в стиле Minecraft: статусы, поиск, приглашения, подключение и запросы на вход.<br>**Minecraft 26.2 · Fabric / NeoForge** |
-| 🌐<br><sub>CLIENT / SERVER</sub> | [**e4steam Public Servers**](https://github.com/K2-Studio-Development/e4steam-Public-Servers) | Каталог публичных миров и выделенных серверов на Addon API 1.1. Перед публичным запуском ещё нужен production-verifier реестра.<br>**Minecraft 26.2 · Fabric / NeoForge** |
 
 Для разработчиков есть [руководство Addon API](docs/ADDON_API_RU.md),
 [testkit](api-testkit) и проверяемый сборкой [пример](example-addon).

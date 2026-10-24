@@ -1,9 +1,5 @@
 <div align="center">
 
-**Latest core:** [e4steam 0.3.4](https://github.com/Kamilhik/e4steam/releases/tag/v0.3.4), Minecraft 1.17–26.3, bundled Addon API 1.1.0. This release contains no retro JARs.
-
-**Public Servers:** [0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0), installed separately alongside e4steam.
-
 <img src="common/src/main/resources/assets/e4steam_minecraft/icon.png" width="180" alt="e4steam logo">
 
 # e4steam

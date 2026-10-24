@@ -76,9 +76,10 @@ def main():
         previous = state.get(name)
         if previous:
             assert previous['sha256'] == item['sha256'] and previous['projectID'] == item['projectID']
-            assert previous.get('fileID'), 'Previous request needs verification before retry: ' + name
-            print('Already accepted:', name, previous['fileID'], flush=True)
-            continue
+            if previous.get('fileID'):
+                print('Already accepted:', name, previous['fileID'], flush=True)
+                continue
+            assert previous.get('status', '').startswith('CurseForge HTTP 400:'), 'Previous request needs verification before retry: ' + name
         if item['kind'] == 'addon':
             assert all(state.get(i['filename'], {}).get('fileID') for i in items[:6])
         state[name] = {'sha256': item['sha256'], 'projectID': item['projectID'], 'status': 'request_started'}

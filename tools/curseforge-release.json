@@ -134,10 +134,7 @@
         "Server"
       ],
       "releaseType": "release",
-      "isMarkedForManualRelease": false,
-      "relations": {
-        "projects": []
-      }
+      "isMarkedForManualRelease": false
     },
     "filename": "e4steam-forge-mc1.17.1-1.18.1-v0.3.4.jar",
     "downloadURL": "https://github.com/Kamilhik/e4steam/releases/download/v0.3.4/e4steam-forge-mc1.17.1-1.18.1-v0.3.4.jar"
@@ -165,10 +162,7 @@
         "Server"
       ],
       "releaseType": "release",
-      "isMarkedForManualRelease": false,
-      "relations": {
-        "projects": []
-      }
+      "isMarkedForManualRelease": false
     },
     "filename": "e4steam-forge-mc1.18.2-1.20.2-v0.3.4.jar",
     "downloadURL": "https://github.com/Kamilhik/e4steam/releases/download/v0.3.4/e4steam-forge-mc1.18.2-1.20.2-v0.3.4.jar"
@@ -209,10 +203,7 @@
         "Server"
       ],
       "releaseType": "release",
-      "isMarkedForManualRelease": false,
-      "relations": {
-        "projects": []
-      }
+      "isMarkedForManualRelease": false
     },
     "filename": "e4steam-neoforge-mc1.20.2-26.3-v0.3.4.jar",
     "downloadURL": "https://github.com/Kamilhik/e4steam/releases/download/v0.3.4/e4steam-neoforge-mc1.20.2-26.3-v0.3.4.jar"

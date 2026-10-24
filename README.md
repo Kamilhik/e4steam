@@ -130,6 +130,7 @@ not load modern addon or GUI classes.
 | Icon | Add-on | Description |
 | :---: | --- | --- |
 | <img src="docs/assets/addons/e4steam-friends.png" width="64" alt="e4steam Friends icon"><br><sub>CLIENT</sub> | [**e4steam Friends**](https://github.com/K2-Studio-Development/e4steam-Friends) | A Minecraft-style Steam friends screen with presence, search, invitations, joining and join requests.<br>**Minecraft 26.2 · Fabric / NeoForge** |
+| <img src="docs/assets/addons/e4steam-public-servers.png" width="64" alt="e4steam Public Servers icon"><br><sub>CLIENT</sub> | [**e4steam Public Servers**](https://github.com/K2-Studio-Development/e4steam-Public-Servers) | A catalog of public player worlds through Steam: publish your world, search, filter by compatibility and free slots, and check player counts.<br>**Minecraft 1.17–26.3 · Fabric / Quilt / Forge / NeoForge** |
 
 Developers can start with the [Addon API guide](docs/ADDON_API.md), the
 [testkit](api-testkit) and the compile-checked [example addon](example-addon).
@@ -336,6 +337,7 @@ Addon API 1.x и поддержка аддонов — стабильные ча
 | Иконка | Аддон | Описание |
 | :---: | --- | --- |
 | <img src="docs/assets/addons/e4steam-friends.png" width="64" alt="Иконка e4steam Friends"><br><sub>CLIENT</sub> | [**e4steam Friends**](https://github.com/K2-Studio-Development/e4steam-Friends) | Экран друзей Steam в стиле Minecraft: статусы, поиск, приглашения, подключение и запросы на вход.<br>**Minecraft 26.2 · Fabric / NeoForge** |
+| <img src="docs/assets/addons/e4steam-public-servers.png" width="64" alt="Иконка e4steam Public Servers"><br><sub>CLIENT</sub> | [**e4steam Public Servers**](https://github.com/K2-Studio-Development/e4steam-Public-Servers) | Каталог общих миров через Steam: публикация своего мира, поиск, фильтры совместимости и свободных мест, количество игроков.<br>**Minecraft 1.17–26.3 · Fabric / Quilt / Forge / NeoForge** |
 
 Для разработчиков есть [руководство Addon API](docs/ADDON_API_RU.md),
 [testkit](api-testkit) и проверяемый сборкой [пример](example-addon).

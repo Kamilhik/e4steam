@@ -1,0 +1,54 @@
+name: Publish releases to CurseForge
+
+on:
+  workflow_dispatch:
+    inputs:
+      resume_run_id:
+        description: Previous run ID to resume using its upload journal (leave empty for first run)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: curseforge-release-publication
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'Kamilhik/e4steam' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: curseforge-publish
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Restore upload journal when resuming
+        if: inputs.resume_run_id != ''
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: curseforge-upload-journal
+          path: build/curseforge
+          run-id: ${{ inputs.resume_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download and verify all release assets
+        run: python3 tools/publish_curseforge.py
+
+      - name: Publish core first, then addon with required core dependency
+        env:
+          CURSEFORGE_API_TOKEN: ${{ secrets.CURSEFORGE_API_TOKEN }}
+        run: python3 tools/publish_curseforge.py --publish
+
+      - name: Preserve file IDs and upload outcomes
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: curseforge-upload-journal
+          path: build/curseforge/upload-state.json
+          if-no-files-found: ignore
+          retention-days: 90

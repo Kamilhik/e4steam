@@ -1,0 +1,461 @@
+[
+  {
+    "kind": "core",
+    "projectID": "1633302",
+    "sha256": "0aaef192271c57c9af3be4a8b09e62101592953bb7c97c276df4b26c289aeef3",
+    "metadata": {
+      "changelog": "# e4steam 0.3.4\n\n## English\n\n- Six runtime JARs for Minecraft **1.17–26.3**, for Fabric/Quilt, Forge and NeoForge. Choose the file matching your loader and Minecraft range. **No retro artifacts are included in this release.**\n- Bundled **Addon API 1.1.0** and Steam lobby support for [Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0). Install the addon separately; no separate API mod is required.\n- LAN settings fixes: numeric defaults, public-world naming, command permissions, screen backgrounds and blur ordering across versions.\n- Cross-version integrated-world login and Steam connection fixes, including older Forge releases.\n\nSteam must be running and signed in on each player's computer. Install compatible core and addon builds on both sides. Steam authentication and admission checks remain enabled.\n\nWindows x64 is the primary supported platform. Linux/macOS remain experimental as documented. Automated API, core, headless and artifact checks passed; this does not claim a new complete two-account/cross-platform manual test matrix for every final artifact. Historical manual results are documented in COMPATIBILITY.md.\n\n## Русский\n\n- Шесть JAR для Minecraft **1.17–26.3**: Fabric/Quilt, Forge и NeoForge. Выбери файл для своего загрузчика и диапазона игры. **Ретро-сборок в этом выпуске нет.**\n- Встроены **Addon API 1.1.0** и поддержка лобби Steam для [Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0). Аддон устанавливается отдельно; отдельный мод API не нужен.\n- Исправлены значения полей LAN, имя общего мира, права команд, фон и порядок размытия интерфейса.\n- Включены исправления входа в одиночные миры и соединений Steam на разных версиях, в том числе старых Forge.\n\nУ обоих игроков должны быть совместимые сборки и запущенный Steam с выполненным входом. Проверки Steam и допуска к игре сохранены.\n\nОсновная платформа — Windows x64; Linux/macOS остаются экспериментальными. Автоматические проверки API, ядра, серверных точек входа и артефактов пройдены. Они не заменяют ручную проверку каждой финальной сборки двумя аккаунтами. История ручных проверок находится в COMPATIBILITY.md.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.4 | Fabric / Quilt | 1.17-1.18.2",
+      "gameVersionNames": [
+        "1.17",
+        "1.17.1",
+        "1.18",
+        "1.18.1",
+        "1.18.2",
+        "Fabric",
+        "Quilt"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "fabric-api",
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    },
+    "filename": "e4steam-fabric-quilt-mc1.17-1.18.2-v0.3.4.jar",
+    "downloadURL": "https://github.com/Kamilhik/e4steam/releases/download/v0.3.4/e4steam-fabric-quilt-mc1.17-1.18.2-v0.3.4.jar"
+  },
+  {
+    "kind": "core",
+    "projectID": "1633302",
+    "sha256": "ec692ae255704971b24bdff28724ec48224d6c87c7e5d568e4252b4df15a447d",
+    "metadata": {
+      "changelog": "# e4steam 0.3.4\n\n## English\n\n- Six runtime JARs for Minecraft **1.17–26.3**, for Fabric/Quilt, Forge and NeoForge. Choose the file matching your loader and Minecraft range. **No retro artifacts are included in this release.**\n- Bundled **Addon API 1.1.0** and Steam lobby support for [Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0). Install the addon separately; no separate API mod is required.\n- LAN settings fixes: numeric defaults, public-world naming, command permissions, screen backgrounds and blur ordering across versions.\n- Cross-version integrated-world login and Steam connection fixes, including older Forge releases.\n\nSteam must be running and signed in on each player's computer. Install compatible core and addon builds on both sides. Steam authentication and admission checks remain enabled.\n\nWindows x64 is the primary supported platform. Linux/macOS remain experimental as documented. Automated API, core, headless and artifact checks passed; this does not claim a new complete two-account/cross-platform manual test matrix for every final artifact. Historical manual results are documented in COMPATIBILITY.md.\n\n## Русский\n\n- Шесть JAR для Minecraft **1.17–26.3**: Fabric/Quilt, Forge и NeoForge. Выбери файл для своего загрузчика и диапазона игры. **Ретро-сборок в этом выпуске нет.**\n- Встроены **Addon API 1.1.0** и поддержка лобби Steam для [Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0). Аддон устанавливается отдельно; отдельный мод API не нужен.\n- Исправлены значения полей LAN, имя общего мира, права команд, фон и порядок размытия интерфейса.\n- Включены исправления входа в одиночные миры и соединений Steam на разных версиях, в том числе старых Forge.\n\nУ обоих игроков должны быть совместимые сборки и запущенный Steam с выполненным входом. Проверки Steam и допуска к игре сохранены.\n\nОсновная платформа — Windows x64; Linux/macOS остаются экспериментальными. Автоматические проверки API, ядра, серверных точек входа и артефактов пройдены. Они не заменяют ручную проверку каждой финальной сборки двумя аккаунтами. История ручных проверок находится в COMPATIBILITY.md.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.4 | Fabric / Quilt | 1.19-1.21.11",
+      "gameVersionNames": [
+        "1.19",
+        "1.19.1",
+        "1.19.2",
+        "1.19.3",
+        "1.19.4",
+        "1.20",
+        "1.20.1",
+        "1.20.2",
+        "1.20.3",
+        "1.20.4",
+        "1.20.5",
+        "1.20.6",
+        "1.21",
+        "1.21.1",
+        "1.21.2",
+        "1.21.3",
+        "1.21.4",
+        "1.21.5",
+        "1.21.6",
+        "1.21.7",
+        "1.21.8",
+        "1.21.9",
+        "1.21.10",
+        "1.21.11",
+        "Fabric",
+        "Quilt"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "fabric-api",
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    },
+    "filename": "e4steam-fabric-quilt-mc1.19-1.21.11-v0.3.4.jar",
+    "downloadURL": "https://github.com/Kamilhik/e4steam/releases/download/v0.3.4/e4steam-fabric-quilt-mc1.19-1.21.11-v0.3.4.jar"
+  },
+  {
+    "kind": "core",
+    "projectID": "1633302",
+    "sha256": "ea7ed37c3c2b8b41c7e458043b051725c22e81b9f9fa318a1474831cc484854e",
+    "metadata": {
+      "changelog": "# e4steam 0.3.4\n\n## English\n\n- Six runtime JARs for Minecraft **1.17–26.3**, for Fabric/Quilt, Forge and NeoForge. Choose the file matching your loader and Minecraft range. **No retro artifacts are included in this release.**\n- Bundled **Addon API 1.1.0** and Steam lobby support for [Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0). Install the addon separately; no separate API mod is required.\n- LAN settings fixes: numeric defaults, public-world naming, command permissions, screen backgrounds and blur ordering across versions.\n- Cross-version integrated-world login and Steam connection fixes, including older Forge releases.\n\nSteam must be running and signed in on each player's computer. Install compatible core and addon builds on both sides. Steam authentication and admission checks remain enabled.\n\nWindows x64 is the primary supported platform. Linux/macOS remain experimental as documented. Automated API, core, headless and artifact checks passed; this does not claim a new complete two-account/cross-platform manual test matrix for every final artifact. Historical manual results are documented in COMPATIBILITY.md.\n\n## Русский\n\n- Шесть JAR для Minecraft **1.17–26.3**: Fabric/Quilt, Forge и NeoForge. Выбери файл для своего загрузчика и диапазона игры. **Ретро-сборок в этом выпуске нет.**\n- Встроены **Addon API 1.1.0** и поддержка лобби Steam для [Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0). Аддон устанавливается отдельно; отдельный мод API не нужен.\n- Исправлены значения полей LAN, имя общего мира, права команд, фон и порядок размытия интерфейса.\n- Включены исправления входа в одиночные миры и соединений Steam на разных версиях, в том числе старых Forge.\n\nУ обоих игроков должны быть совместимые сборки и запущенный Steam с выполненным входом. Проверки Steam и допуска к игре сохранены.\n\nОсновная платформа — Windows x64; Linux/macOS остаются экспериментальными. Автоматические проверки API, ядра, серверных точек входа и артефактов пройдены. Они не заменяют ручную проверку каждой финальной сборки двумя аккаунтами. История ручных проверок находится в COMPATIBILITY.md.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.4 | Fabric / Quilt | 26.1-26.3",
+      "gameVersionNames": [
+        "26.1",
+        "26.1.1",
+        "26.1.2",
+        "26.2",
+        "26.3",
+        "Fabric",
+        "Quilt"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "fabric-api",
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    },
+    "filename": "e4steam-fabric-quilt-mc26.1-26.3-v0.3.4.jar",
+    "downloadURL": "https://github.com/Kamilhik/e4steam/releases/download/v0.3.4/e4steam-fabric-quilt-mc26.1-26.3-v0.3.4.jar"
+  },
+  {
+    "kind": "core",
+    "projectID": "1633302",
+    "sha256": "b1a6b34ca34edff830414a676de33a7ebe6fd3a43d0f18e687b717d45d87a312",
+    "metadata": {
+      "changelog": "# e4steam 0.3.4\n\n## English\n\n- Six runtime JARs for Minecraft **1.17–26.3**, for Fabric/Quilt, Forge and NeoForge. Choose the file matching your loader and Minecraft range. **No retro artifacts are included in this release.**\n- Bundled **Addon API 1.1.0** and Steam lobby support for [Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0). Install the addon separately; no separate API mod is required.\n- LAN settings fixes: numeric defaults, public-world naming, command permissions, screen backgrounds and blur ordering across versions.\n- Cross-version integrated-world login and Steam connection fixes, including older Forge releases.\n\nSteam must be running and signed in on each player's computer. Install compatible core and addon builds on both sides. Steam authentication and admission checks remain enabled.\n\nWindows x64 is the primary supported platform. Linux/macOS remain experimental as documented. Automated API, core, headless and artifact checks passed; this does not claim a new complete two-account/cross-platform manual test matrix for every final artifact. Historical manual results are documented in COMPATIBILITY.md.\n\n## Русский\n\n- Шесть JAR для Minecraft **1.17–26.3**: Fabric/Quilt, Forge и NeoForge. Выбери файл для своего загрузчика и диапазона игры. **Ретро-сборок в этом выпуске нет.**\n- Встроены **Addon API 1.1.0** и поддержка лобби Steam для [Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0). Аддон устанавливается отдельно; отдельный мод API не нужен.\n- Исправлены значения полей LAN, имя общего мира, права команд, фон и порядок размытия интерфейса.\n- Включены исправления входа в одиночные миры и соединений Steam на разных версиях, в том числе старых Forge.\n\nУ обоих игроков должны быть совместимые сборки и запущенный Steam с выполненным входом. Проверки Steam и допуска к игре сохранены.\n\nОсновная платформа — Windows x64; Linux/macOS остаются экспериментальными. Автоматические проверки API, ядра, серверных точек входа и артефактов пройдены. Они не заменяют ручную проверку каждой финальной сборки двумя аккаунтами. История ручных проверок находится в COMPATIBILITY.md.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.4 | Forge | 1.17.1-1.18.1",
+      "gameVersionNames": [
+        "1.17.1",
+        "1.18",
+        "1.18.1",
+        "Forge"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": []
+      }
+    },
+    "filename": "e4steam-forge-mc1.17.1-1.18.1-v0.3.4.jar",
+    "downloadURL": "https://github.com/Kamilhik/e4steam/releases/download/v0.3.4/e4steam-forge-mc1.17.1-1.18.1-v0.3.4.jar"
+  },
+  {
+    "kind": "core",
+    "projectID": "1633302",
+    "sha256": "33421acbea4d904ac3cefa62ac1d4bd5f62f9e9169b81a4d16a052d2330bc6fc",
+    "metadata": {
+      "changelog": "# e4steam 0.3.4\n\n## English\n\n- Six runtime JARs for Minecraft **1.17–26.3**, for Fabric/Quilt, Forge and NeoForge. Choose the file matching your loader and Minecraft range. **No retro artifacts are included in this release.**\n- Bundled **Addon API 1.1.0** and Steam lobby support for [Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0). Install the addon separately; no separate API mod is required.\n- LAN settings fixes: numeric defaults, public-world naming, command permissions, screen backgrounds and blur ordering across versions.\n- Cross-version integrated-world login and Steam connection fixes, including older Forge releases.\n\nSteam must be running and signed in on each player's computer. Install compatible core and addon builds on both sides. Steam authentication and admission checks remain enabled.\n\nWindows x64 is the primary supported platform. Linux/macOS remain experimental as documented. Automated API, core, headless and artifact checks passed; this does not claim a new complete two-account/cross-platform manual test matrix for every final artifact. Historical manual results are documented in COMPATIBILITY.md.\n\n## Русский\n\n- Шесть JAR для Minecraft **1.17–26.3**: Fabric/Quilt, Forge и NeoForge. Выбери файл для своего загрузчика и диапазона игры. **Ретро-сборок в этом выпуске нет.**\n- Встроены **Addon API 1.1.0** и поддержка лобби Steam для [Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0). Аддон устанавливается отдельно; отдельный мод API не нужен.\n- Исправлены значения полей LAN, имя общего мира, права команд, фон и порядок размытия интерфейса.\n- Включены исправления входа в одиночные миры и соединений Steam на разных версиях, в том числе старых Forge.\n\nУ обоих игроков должны быть совместимые сборки и запущенный Steam с выполненным входом. Проверки Steam и допуска к игре сохранены.\n\nОсновная платформа — Windows x64; Linux/macOS остаются экспериментальными. Автоматические проверки API, ядра, серверных точек входа и артефактов пройдены. Они не заменяют ручную проверку каждой финальной сборки двумя аккаунтами. История ручных проверок находится в COMPATIBILITY.md.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.4 | Forge | 1.18.2-1.20.2",
+      "gameVersionNames": [
+        "1.18.2",
+        "1.19",
+        "1.19.1",
+        "1.19.2",
+        "1.19.3",
+        "1.19.4",
+        "1.20",
+        "1.20.1",
+        "1.20.2",
+        "Forge"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": []
+      }
+    },
+    "filename": "e4steam-forge-mc1.18.2-1.20.2-v0.3.4.jar",
+    "downloadURL": "https://github.com/Kamilhik/e4steam/releases/download/v0.3.4/e4steam-forge-mc1.18.2-1.20.2-v0.3.4.jar"
+  },
+  {
+    "kind": "core",
+    "projectID": "1633302",
+    "sha256": "b7c388393b7c27d188c17981073a2471c7ac52b95d5cff8b8dc8f19946d67be0",
+    "metadata": {
+      "changelog": "# e4steam 0.3.4\n\n## English\n\n- Six runtime JARs for Minecraft **1.17–26.3**, for Fabric/Quilt, Forge and NeoForge. Choose the file matching your loader and Minecraft range. **No retro artifacts are included in this release.**\n- Bundled **Addon API 1.1.0** and Steam lobby support for [Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0). Install the addon separately; no separate API mod is required.\n- LAN settings fixes: numeric defaults, public-world naming, command permissions, screen backgrounds and blur ordering across versions.\n- Cross-version integrated-world login and Steam connection fixes, including older Forge releases.\n\nSteam must be running and signed in on each player's computer. Install compatible core and addon builds on both sides. Steam authentication and admission checks remain enabled.\n\nWindows x64 is the primary supported platform. Linux/macOS remain experimental as documented. Automated API, core, headless and artifact checks passed; this does not claim a new complete two-account/cross-platform manual test matrix for every final artifact. Historical manual results are documented in COMPATIBILITY.md.\n\n## Русский\n\n- Шесть JAR для Minecraft **1.17–26.3**: Fabric/Quilt, Forge и NeoForge. Выбери файл для своего загрузчика и диапазона игры. **Ретро-сборок в этом выпуске нет.**\n- Встроены **Addon API 1.1.0** и поддержка лобби Steam для [Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0). Аддон устанавливается отдельно; отдельный мод API не нужен.\n- Исправлены значения полей LAN, имя общего мира, права команд, фон и порядок размытия интерфейса.\n- Включены исправления входа в одиночные миры и соединений Steam на разных версиях, в том числе старых Forge.\n\nУ обоих игроков должны быть совместимые сборки и запущенный Steam с выполненным входом. Проверки Steam и допуска к игре сохранены.\n\nОсновная платформа — Windows x64; Linux/macOS остаются экспериментальными. Автоматические проверки API, ядра, серверных точек входа и артефактов пройдены. Они не заменяют ручную проверку каждой финальной сборки двумя аккаунтами. История ручных проверок находится в COMPATIBILITY.md.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.4 | NeoForge | 1.20.2-26.3",
+      "gameVersionNames": [
+        "1.20.2",
+        "1.20.3",
+        "1.20.4",
+        "1.20.5",
+        "1.20.6",
+        "1.21",
+        "1.21.1",
+        "1.21.2",
+        "1.21.3",
+        "1.21.4",
+        "1.21.5",
+        "1.21.6",
+        "1.21.7",
+        "1.21.8",
+        "1.21.9",
+        "1.21.10",
+        "1.21.11",
+        "26.1",
+        "26.1.1",
+        "26.1.2",
+        "26.2",
+        "26.3",
+        "NeoForge"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": []
+      }
+    },
+    "filename": "e4steam-neoforge-mc1.20.2-26.3-v0.3.4.jar",
+    "downloadURL": "https://github.com/Kamilhik/e4steam/releases/download/v0.3.4/e4steam-neoforge-mc1.20.2-26.3-v0.3.4.jar"
+  },
+  {
+    "kind": "addon",
+    "projectID": "1764196",
+    "sha256": "9287ac2568931ef3e52fc869b90ef78c8635bc076f159f117fe837b80f290342",
+    "metadata": {
+      "changelog": "# e4steam Public Servers 0.1.0\n\n- Draggable scrollbar and wheel support in the portable public-world catalog.\n- Responsive full-window layout, dark background and correct rendering of wide buttons on old Forge releases.\n- Fixed crashes when selecting the addon in Forge's Mods screen: logoFile now references a root-level PNG.\n- Credits: Kamilchik and K2 Studio, with the Public Servers icon on every loader.\n- Removed the temporary local status website and HTTP listener from every runtime JAR.\n- Updated English/Russian README and community links; donations: https://dalink.to/kamilchik1231.\n\nSeven loader artifacts cover Minecraft 1.17–26.3. The matching e4steam core with Addon API 1.1 is required. See README.md for the compatibility matrix and docs/TESTING.md for the exact scope of manual checks.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam Public Servers 0.1.0 | Fabric / Quilt | 1.17-1.18.2",
+      "gameVersionNames": [
+        "1.17",
+        "1.17.1",
+        "1.18",
+        "1.18.1",
+        "1.18.2",
+        "Fabric",
+        "Quilt"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "e4steam",
+            "projectID": "1633302",
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    },
+    "filename": "e4steam-public-servers-fabric-quilt-mc1.17-1.18.2-0.1.0.jar",
+    "downloadURL": "https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/download/v0.1.0/e4steam-public-servers-fabric-quilt-mc1.17-1.18.2-0.1.0.jar"
+  },
+  {
+    "kind": "addon",
+    "projectID": "1764196",
+    "sha256": "a7ea09f3670a931962ff2c22926d479c51056a87618f17adba39f5aaedf07ee3",
+    "metadata": {
+      "changelog": "# e4steam Public Servers 0.1.0\n\n- Draggable scrollbar and wheel support in the portable public-world catalog.\n- Responsive full-window layout, dark background and correct rendering of wide buttons on old Forge releases.\n- Fixed crashes when selecting the addon in Forge's Mods screen: logoFile now references a root-level PNG.\n- Credits: Kamilchik and K2 Studio, with the Public Servers icon on every loader.\n- Removed the temporary local status website and HTTP listener from every runtime JAR.\n- Updated English/Russian README and community links; donations: https://dalink.to/kamilchik1231.\n\nSeven loader artifacts cover Minecraft 1.17–26.3. The matching e4steam core with Addon API 1.1 is required. See README.md for the compatibility matrix and docs/TESTING.md for the exact scope of manual checks.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam Public Servers 0.1.0 | Fabric / Quilt | 1.19-1.21.11",
+      "gameVersionNames": [
+        "1.19",
+        "1.19.1",
+        "1.19.2",
+        "1.19.3",
+        "1.19.4",
+        "1.20",
+        "1.20.1",
+        "1.20.2",
+        "1.20.3",
+        "1.20.4",
+        "1.20.5",
+        "1.20.6",
+        "1.21",
+        "1.21.1",
+        "1.21.2",
+        "1.21.3",
+        "1.21.4",
+        "1.21.5",
+        "1.21.6",
+        "1.21.7",
+        "1.21.8",
+        "1.21.9",
+        "1.21.10",
+        "1.21.11",
+        "Fabric",
+        "Quilt"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "e4steam",
+            "projectID": "1633302",
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    },
+    "filename": "e4steam-public-servers-fabric-quilt-mc1.19-1.21.11-0.1.0.jar",
+    "downloadURL": "https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/download/v0.1.0/e4steam-public-servers-fabric-quilt-mc1.19-1.21.11-0.1.0.jar"
+  },
+  {
+    "kind": "addon",
+    "projectID": "1764196",
+    "sha256": "8d7150bc73401bf401a974f4a384aa1180478815a6498080ede5f77566073992",
+    "metadata": {
+      "changelog": "# e4steam Public Servers 0.1.0\n\n- Draggable scrollbar and wheel support in the portable public-world catalog.\n- Responsive full-window layout, dark background and correct rendering of wide buttons on old Forge releases.\n- Fixed crashes when selecting the addon in Forge's Mods screen: logoFile now references a root-level PNG.\n- Credits: Kamilchik and K2 Studio, with the Public Servers icon on every loader.\n- Removed the temporary local status website and HTTP listener from every runtime JAR.\n- Updated English/Russian README and community links; donations: https://dalink.to/kamilchik1231.\n\nSeven loader artifacts cover Minecraft 1.17–26.3. The matching e4steam core with Addon API 1.1 is required. See README.md for the compatibility matrix and docs/TESTING.md for the exact scope of manual checks.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam Public Servers 0.1.0 | Fabric / Quilt | 26.1-26.3",
+      "gameVersionNames": [
+        "26.1",
+        "26.1.1",
+        "26.1.2",
+        "26.2",
+        "26.3",
+        "Fabric",
+        "Quilt"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "e4steam",
+            "projectID": "1633302",
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    },
+    "filename": "e4steam-public-servers-fabric-quilt-mc26.1-26.3-0.1.0.jar",
+    "downloadURL": "https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/download/v0.1.0/e4steam-public-servers-fabric-quilt-mc26.1-26.3-0.1.0.jar"
+  },
+  {
+    "kind": "addon",
+    "projectID": "1764196",
+    "sha256": "94d67e825aa55f8774603164745dd2fb6352e03158706ce77b322eba5fa170bb",
+    "metadata": {
+      "changelog": "# e4steam Public Servers 0.1.0\n\n- Draggable scrollbar and wheel support in the portable public-world catalog.\n- Responsive full-window layout, dark background and correct rendering of wide buttons on old Forge releases.\n- Fixed crashes when selecting the addon in Forge's Mods screen: logoFile now references a root-level PNG.\n- Credits: Kamilchik and K2 Studio, with the Public Servers icon on every loader.\n- Removed the temporary local status website and HTTP listener from every runtime JAR.\n- Updated English/Russian README and community links; donations: https://dalink.to/kamilchik1231.\n\nSeven loader artifacts cover Minecraft 1.17–26.3. The matching e4steam core with Addon API 1.1 is required. See README.md for the compatibility matrix and docs/TESTING.md for the exact scope of manual checks.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam Public Servers 0.1.0 | Forge | 1.17.1-1.18.1",
+      "gameVersionNames": [
+        "1.17.1",
+        "1.18",
+        "1.18.1",
+        "Forge"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "e4steam",
+            "projectID": "1633302",
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    },
+    "filename": "e4steam-public-servers-forge-mc1.17.1-1.18.1-0.1.0.jar",
+    "downloadURL": "https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/download/v0.1.0/e4steam-public-servers-forge-mc1.17.1-1.18.1-0.1.0.jar"
+  },
+  {
+    "kind": "addon",
+    "projectID": "1764196",
+    "sha256": "9da39c89f081b3635c272bb2661fa8d97bdb3b4d9bf745d9c667f49e01f91f2e",
+    "metadata": {
+      "changelog": "# e4steam Public Servers 0.1.0\n\n- Draggable scrollbar and wheel support in the portable public-world catalog.\n- Responsive full-window layout, dark background and correct rendering of wide buttons on old Forge releases.\n- Fixed crashes when selecting the addon in Forge's Mods screen: logoFile now references a root-level PNG.\n- Credits: Kamilchik and K2 Studio, with the Public Servers icon on every loader.\n- Removed the temporary local status website and HTTP listener from every runtime JAR.\n- Updated English/Russian README and community links; donations: https://dalink.to/kamilchik1231.\n\nSeven loader artifacts cover Minecraft 1.17–26.3. The matching e4steam core with Addon API 1.1 is required. See README.md for the compatibility matrix and docs/TESTING.md for the exact scope of manual checks.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam Public Servers 0.1.0 | Forge | 1.18.2-1.20.2",
+      "gameVersionNames": [
+        "1.18.2",
+        "1.19",
+        "1.19.1",
+        "1.19.2",
+        "1.19.3",
+        "1.19.4",
+        "1.20",
+        "1.20.1",
+        "1.20.2",
+        "Forge"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "e4steam",
+            "projectID": "1633302",
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    },
+    "filename": "e4steam-public-servers-forge-mc1.18.2-1.20.2-0.1.0.jar",
+    "downloadURL": "https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/download/v0.1.0/e4steam-public-servers-forge-mc1.18.2-1.20.2-0.1.0.jar"
+  },
+  {
+    "kind": "addon",
+    "projectID": "1764196",
+    "sha256": "aa5e36a0c2a4ba735522c31cd4a7c6c50f14bc0e90c1f3d5b6ba1ebc7c268825",
+    "metadata": {
+      "changelog": "# e4steam Public Servers 0.1.0\n\n- Draggable scrollbar and wheel support in the portable public-world catalog.\n- Responsive full-window layout, dark background and correct rendering of wide buttons on old Forge releases.\n- Fixed crashes when selecting the addon in Forge's Mods screen: logoFile now references a root-level PNG.\n- Credits: Kamilchik and K2 Studio, with the Public Servers icon on every loader.\n- Removed the temporary local status website and HTTP listener from every runtime JAR.\n- Updated English/Russian README and community links; donations: https://dalink.to/kamilchik1231.\n\nSeven loader artifacts cover Minecraft 1.17–26.3. The matching e4steam core with Addon API 1.1 is required. See README.md for the compatibility matrix and docs/TESTING.md for the exact scope of manual checks.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam Public Servers 0.1.0 | NeoForge | 1.20.2-1.21.11",
+      "gameVersionNames": [
+        "1.20.2",
+        "1.20.3",
+        "1.20.4",
+        "1.20.5",
+        "1.20.6",
+        "1.21",
+        "1.21.1",
+        "1.21.2",
+        "1.21.3",
+        "1.21.4",
+        "1.21.5",
+        "1.21.6",
+        "1.21.7",
+        "1.21.8",
+        "1.21.9",
+        "1.21.10",
+        "1.21.11",
+        "NeoForge"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "e4steam",
+            "projectID": "1633302",
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    },
+    "filename": "e4steam-public-servers-neoforge-mc1.20.2-1.21.11-0.1.0.jar",
+    "downloadURL": "https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/download/v0.1.0/e4steam-public-servers-neoforge-mc1.20.2-1.21.11-0.1.0.jar"
+  },
+  {
+    "kind": "addon",
+    "projectID": "1764196",
+    "sha256": "61078a8ce7b05d4763311048fbb2d47809d44092aaf9e0ec9da3176fe83b4339",
+    "metadata": {
+      "changelog": "# e4steam Public Servers 0.1.0\n\n- Draggable scrollbar and wheel support in the portable public-world catalog.\n- Responsive full-window layout, dark background and correct rendering of wide buttons on old Forge releases.\n- Fixed crashes when selecting the addon in Forge's Mods screen: logoFile now references a root-level PNG.\n- Credits: Kamilchik and K2 Studio, with the Public Servers icon on every loader.\n- Removed the temporary local status website and HTTP listener from every runtime JAR.\n- Updated English/Russian README and community links; donations: https://dalink.to/kamilchik1231.\n\nSeven loader artifacts cover Minecraft 1.17–26.3. The matching e4steam core with Addon API 1.1 is required. See README.md for the compatibility matrix and docs/TESTING.md for the exact scope of manual checks.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam Public Servers 0.1.0 | NeoForge | 26.1-26.3",
+      "gameVersionNames": [
+        "26.1",
+        "26.1.1",
+        "26.1.2",
+        "26.2",
+        "26.3",
+        "NeoForge"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "e4steam",
+            "projectID": "1633302",
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    },
+    "filename": "e4steam-public-servers-neoforge-mc26.1-26.3-0.1.0.jar",
+    "downloadURL": "https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/download/v0.1.0/e4steam-public-servers-neoforge-mc26.1-26.3-0.1.0.jar"
+  }
+]

@@ -268,15 +268,17 @@ tasks.register("dependencyLicenseAudit") {
     }
 }
 
+def includeRetroInRelease = providers.gradleProperty("includeRetro").map { it.toBoolean() }.getOrElse(false)
+
 tasks.register("releaseJars") {
     group = "build"
-    description = "Build, audit and collect all six modern and thirteen retro runtime JAR variants."
+    description = "Build and audit six Minecraft 1.17+ runtime JARs; opt into retro with -PincludeRetro=true."
     dependsOn(
             legacyReleaseJars,
-            retroReleaseJars,
+            (includeRetroInRelease ? [retroReleaseJars] : []),
             headlessEntrypointAudit,
             dependencyLicenseAudit,
-            ":stdin-agent:check",
+            (findProject(":stdin-agent") != null ? [":stdin-agent:check"] : []),
             ":common:test",
             ":api:jar",
             ":api:sourcesJar",
@@ -329,14 +331,14 @@ tasks.register("releaseJars") {
                 ],
                 [
                         label: "Fabric/Quilt Modern",
-                        publicName: "e4steam-fabric-quilt-mc26.1-26.2-v${version}.jar",
+                        publicName: "e4steam-fabric-quilt-mc26.1-26.3-v${version}.jar",
                         file: file("fabric/build/libs/e4steam-fabric-${version}-modern.jar"),
                         major: 61,
                         loginMixin: "ServerLoginPacketListenerImplMixin",
                         metadata: ["fabric.mod.json": [
                                 '"id": "e4steam"',
                                 '"icon": "assets/e4steam_minecraft/icon.png"',
-                                '"minecraft": ">=26.1- <26.3-"',
+                                '"minecraft": ">=26.1- <26.4-"',
                                 '"java": ">=25"'
                         ]]
                 ],
@@ -354,7 +356,7 @@ tasks.register("releaseJars") {
                 ],
                 [
                         label: "NeoForge",
-                        publicName: "e4steam-neoforge-mc1.20.2-26.2-v${version}.jar",
+                        publicName: "e4steam-neoforge-mc1.20.2-26.3-v${version}.jar",
                         file: file("neoforge/build/libs/e4steam-neoforge-${version}.jar"),
                         major: 61,
                         loginMixin: "ServerLoginPacketListenerImplMixin",
@@ -362,12 +364,12 @@ tasks.register("releaseJars") {
                                 "META-INF/mods.toml": [
                                         'modId = "e4steam"',
                                         'logoFile = "assets/e4steam_minecraft/icon.png"',
-                                        'versionRange = "[1.20.2,26.3)"'
+                                        'versionRange = "[1.20.2,26.4)"'
                                 ],
                                 "META-INF/neoforge.mods.toml": [
                                         'modId = "e4steam"',
                                         'logoFile = "assets/e4steam_minecraft/icon.png"',
-                                        'versionRange = "[1.20.2,26.3)"'
+                                        'versionRange = "[1.20.2,26.4)"'
                                 ]
                         ]
                 ]
@@ -397,6 +399,7 @@ tasks.register("releaseJars") {
                     file: file("retro/${projectName}/build/libs/${publicName}")
             ]
         }
+        if (!includeRetroInRelease) retroVariants = []
         def requiredNatives = [
                 "steam_api64.dll": [
                         size: 319584L,
@@ -526,6 +529,10 @@ tasks.register("releaseJars") {
                     throw new GradleException("${variant.label} is missing e4steam.mixins.json")
                 }
                 String mixinsConfig = zip.getInputStream(mixinsEntry).getText("UTF-8")
+                if (mixinsConfig.contains('"ClientTerrainDiagnosticsMixin"')
+                        || zip.getEntry("link/e4steam/mixin/ClientTerrainDiagnosticsMixin.class") != null) {
+                    throw new GradleException("${variant.label} includes the version-specific terrain diagnostic mixin")
+                }
                 if (!mixinsConfig.contains('"' + variant.loginMixin + '"')) {
                     throw new GradleException(
                             "${variant.label} does not enable authenticated offline-launcher login"
@@ -783,7 +790,7 @@ tasks.register("releaseJars") {
             }
         }
         String agentName = "e4steam-stdin-agent-v${version}.jar"
-        copy {
+        if (findProject(":stdin-agent") != null) copy {
             from file("stdin-agent/build/libs/e4steam-stdin-agent-${version}.jar")
             into toolsDirectory
             rename { agentName }
@@ -799,7 +806,7 @@ tasks.register("releaseJars") {
             )
         }
         File agentArtifact = new File(toolsDirectory, agentName)
-        if (!agentArtifact.isFile()) {
+        if (findProject(":stdin-agent") != null && !agentArtifact.isFile()) {
             throw new GradleException("Missing Unix overlay stdin agent: ${agentArtifact}")
         }
         fileTree(publicDirectory) { include "**/*.jar" }.files.each { artifact ->
@@ -830,6 +837,6 @@ tasks.register("releaseJars") {
                 zip.close()
             }
         }
-        println("Artifact audit passed and collected all 19 runtime JAR variants plus the optional Unix overlay agent in ${publicDirectory}.")
+        println("Artifact audit passed and collected ${variants.size() + retroVariants.size()} runtime JAR variants plus the optional Unix overlay agent in ${publicDirectory}.")
     }
 }

@@ -26,24 +26,20 @@ import java.net.SocketAddress;
 public abstract class PlayerListMixin {
     @Shadow public abstract UserBanList getBans();
 
-    @Shadow public abstract UserWhiteList getWhiteList();
+
 
     @Shadow public abstract MinecraftServer getServer();
 
     @Inject(method = "/^<init>$/", at = @At("TAIL"))
     void injectListLoads(CallbackInfo ci) {
         if (Config.INSTANCE.restoreDedicatedCommands.value()) {
-            Mirror.setUsingWhitelist(getServer(), (PlayerList) (Object) this, Config.INSTANCE.useWhiteList.value());
+
             try {
                 this.getBans().load();
             } catch (IOException e) {
                 E4steamClient.LOGGER.warn("Failed to load user banlist: ", e);
             }
-            try {
-                this.getWhiteList().load();
-            } catch (IOException e) {
-                E4steamClient.LOGGER.warn("Failed to load whitelist: ", e);
-            }
+
         }
     }
 
@@ -58,4 +54,11 @@ public abstract class PlayerListMixin {
             cir.setReturnValue(null);
         }
     }
+    @Inject(method = "getMaxPlayers", at = @At("HEAD"), cancellable = true)
+    private void e4steam$lanCapacity(CallbackInfoReturnable<Integer> cir) {
+        link.e4steam.lan.LanSettings.Snapshot settings =
+                link.e4steam.lan.LanSettings.active(getServer());
+        if (settings != null) cir.setReturnValue(settings.maxPlayers());
+    }
+
 }

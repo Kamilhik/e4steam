@@ -117,8 +117,8 @@ public final class E4steamDedicated {
                             "e4steam dedicated is draining");
                     return 1;
                 }))
-                .then(identityCommand("allow", true, false))
-                .then(identityCommand("unallow", false, false))
+
+
                 .then(identityCommand("ban", true, true))
                 .then(identityCommand("unban", false, true)));
     }

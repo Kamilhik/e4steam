@@ -13,15 +13,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Releases an invitation and its loopback listener when Connect is canceled. */
 @Mixin(ConnectScreen.class)
 public abstract class ConnectScreenMixin {
-    // Mapped 1.20.2 name of ConnectScreen's cancel-button lambda.
+    // Runtime aliases include Forge 1.20.1 and 1.20.2 cancel-button lambdas.
     @Inject(
-            method = "/^(method_19800|lambda\\$init\\$0|lambda.*cancel.*|m_95529_)$/",
+            method = "/^(method_19800|lambda\\$init\\$0|lambda.*cancel.*|m_95529_|m_290022_)$/",
             at = @At("HEAD"),
+            remap = false,
             require = 0
     )
     private void e4steam$cancelSteamConnection(Button button, CallbackInfo ci) {
         SteamClientBridge.cancelPending();
         SteamDedicatedClientBridge.cancelPending();
-        SteamRuntime.get().cancelGuestJoin();
+        SteamRuntime.get().cancelClientConnection();
     }
 }

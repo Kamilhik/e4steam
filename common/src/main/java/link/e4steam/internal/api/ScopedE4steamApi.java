@@ -38,7 +38,8 @@ final class ScopedE4steamApi implements E4steamApi {
                 .add(ApiServiceKeys.DEDICATED, CoreStateServices.dedicated(capabilities))
                 .add(ApiServiceKeys.ACCESS, new CoreAccessService(descriptor.id(), capabilities,
                         contributions, resources, platform.scheduler()))
-                .add(ApiServiceKeys.LOBBIES, CoreStateServices.lobbies(capabilities))
+                .add(ApiServiceKeys.LOBBIES, new CoreLobbyService(descriptor.id(), capabilities,
+                        platform.scheduler(), resources))
                 .add(ApiServiceKeys.NETWORK, new CoreNetworkService(descriptor.id(), capabilities,
                         contributions, resources, platform.network()))
                 .add(ApiServiceKeys.UDP, new CoreUdpService(descriptor.id(), capabilities,
@@ -58,7 +59,7 @@ final class ScopedE4steamApi implements E4steamApi {
                         contributions, resources, platform.scheduler()))
                 .add(ApiServiceKeys.LOCALIZATION, CoreStateServices.localization())
                 .add(ApiServiceKeys.LOGGER, new CoreSafeLogger(descriptor.id()))
-                .add(ApiServiceKeys.PUBLIC_DIRECTORY, new CorePublicDirectoryService(capabilities));
+                .add(ApiServiceKeys.PUBLIC_DIRECTORY, new CorePublicDirectoryService(capabilities, descriptor.id().value()));
     }
 
     @Override public ApiVersion apiVersion() { return ApiConstants.API_VERSION; }

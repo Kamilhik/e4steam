@@ -5,7 +5,9 @@
   "minVersion": "0.8",
   "mixins": [
     "ServerLoginPacketListenerImplMixin",
-    "ServerConnectionListenerMixin"
+    "ServerConnectionListenerMixin",
+    "ConnectionDiagnosticsMixin",
+    "SkinRestorationLoginMixin"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -15,13 +17,16 @@
     "IntegratedServerConnectionListenerMixin",
     "BanPlayerCommandsMixin",
     "ConnectScreenMixin",
+    "ClientJoinLifecycleMixin",
     "JoinMultiplayerScreenMixin",
     "MultiplayerOptionsScreenMixin",
     "PardonCommandMixin",
     "PauseScreenMixin",
     "ShareToLanScreenMixin",
-    "WhitelistCommandMixin",
     "PlayerListMixin",
-    "ServerNameResolverMixin"
+    "ServerNameResolverMixin",
+    "IntegratedServerLanMixin",
+    "WorldOptionsScreenMixin",
+    "LanSettingsRenderMixin"
   ]
 }

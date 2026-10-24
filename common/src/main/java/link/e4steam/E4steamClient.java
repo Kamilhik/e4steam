@@ -12,6 +12,7 @@ import link.e4steam.internal.addon.AddonCandidate;
 import link.e4steam.internal.api.CoreApiPlatform;
 import link.e4steam.internal.api.RuntimeEnvironment;
 import link.e4steam.api.runtime.RuntimeMode;
+import link.e4steam.lan.ModernLanSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.ConnectScreen;
@@ -62,6 +63,7 @@ public class E4steamClient {
         // window. The call is a no-op outside the Unix overlay relaunch path.
         SteamRuntime.relaunchForOverlayIfNeeded();
         Config.INSTANCE.id(); // Touch to initialize for McQoy
+        ModernLanSettings.initialize();
         SteamRuntime.preloadCompatibilityClasses();
         SteamClientApiAdapter.install();
         CoreApiPlatform.start(environment, addons);
@@ -73,7 +75,7 @@ public class E4steamClient {
             BanListCommands.register(dispatcher);
             BanPlayerCommands.register(dispatcher);
             PardonCommand.register(dispatcher);
-            WhitelistCommand.register(dispatcher);
+
         }
         dispatcher.register(
                 Commands.literal("e4steam")
@@ -338,6 +340,24 @@ public class E4steamClient {
         showSteamJoinFailure(reason);
     }
 
+    public static boolean tracksMinecraftLogin() { return true; }
+
+    /** Ends an expired Minecraft login instead of leaving the connection screen spinning. */
+    public static void showSteamJoinTimeout(Component reason) {
+        Minecraft minecraft = Minecraft.getInstance();
+        Screen expiredScreen = MinecraftUiCompat.currentScreen(minecraft);
+        minecraft.execute(() -> {
+            if (MinecraftUiCompat.currentScreen(minecraft) != expiredScreen) return;
+            if (minecraft.level == null && MinecraftUiCompat.currentScreen(minecraft) instanceof ConnectScreen) {
+                SteamRuntime.get().cancelClientConnection();
+                MinecraftUiCompat.setScreen(minecraft, new DisconnectedScreen(
+                        multiplayerScreen(), Mirror.translatable("connect.failed"), reason));
+            } else {
+                showSteamJoinFailure(reason);
+            }
+        });
+    }
+
     /** Displays a localized invitation/join error on the Minecraft thread. */
     public static void showSteamJoinFailure(Component reason) {
         Minecraft minecraft = Minecraft.getInstance();
@@ -409,7 +429,7 @@ public class E4steamClient {
                     }
 
                     // Integrated-server shutdown can block while the world is
-                    // saved. Start the 30-second connection window only after
+                    // saved. Start the Minecraft connection timeout only after
                     // that completes, and revalidate that the lobby survived.
                     SteamRuntime.get().beginGuestConnect(endpoint).whenComplete((armed, armFailure) ->
                             minecraft.execute(() -> {

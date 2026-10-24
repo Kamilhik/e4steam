@@ -80,26 +80,31 @@ final class VoiceChatUdpEndpoint {
     }
 
     private static int simpleVoiceChatPort() {
-        try {
-            Class<?> voicechat = Class.forName("de.maxhenkel.voicechat.Voicechat", false, contextClassLoader());
-            Field serverEventsField = voicechat.getField("SERVER");
-            Object serverEvents = serverEventsField.get(null);
-            if (serverEvents == null) {
-                return 0;
+        // The Steam worker may inherit a loader that cannot see loader-managed mods.
+        ClassLoader[] loaders = {contextClassLoader(), VoiceChatUdpEndpoint.class.getClassLoader()};
+        for (ClassLoader loader : loaders) {
+            try {
+                Class<?> voicechat = Class.forName("de.maxhenkel.voicechat.Voicechat", false, loader);
+                Object events = voicechat.getField("SERVER").get(null);
+                int port = simpleVoiceChatPort(events);
+                if (port > 0) return port;
+            } catch (ClassNotFoundException ignored) {
+                // Try the mod's own class loader before declaring voice chat absent.
+            } catch (ReflectiveOperationException | LinkageError | RuntimeException exception) {
+                E4steamClient.LOGGER.debug("Could not read the active Simple Voice Chat UDP port", exception);
             }
-            Method getServer = serverEvents.getClass().getMethod("getServer");
-            Object server = getServer.invoke(serverEvents);
-            if (server == null) {
-                return 0;
-            }
-            Object result = server.getClass().getMethod("getPort").invoke(server);
-            return result instanceof Number ? ((Number) result).intValue() : 0;
-        } catch (ClassNotFoundException ignored) {
-            return 0;
-        } catch (ReflectiveOperationException | LinkageError exception) {
-            E4steamClient.LOGGER.debug("Could not read the active Simple Voice Chat UDP port", exception);
-            return 0;
         }
+        return 0;
+    }
+
+    static int simpleVoiceChatPort(Object serverEvents) throws ReflectiveOperationException {
+        if (serverEvents == null) return 0;
+        Object server = serverEvents.getClass().getMethod("getServer").invoke(serverEvents);
+        if (server == null) return 0;
+        Object result = server.getClass().getMethod("getPort").invoke(server);
+        if (!(result instanceof Number)) return 0;
+        int port = ((Number) result).intValue();
+        return port > 0 && port <= 65535 ? port : 0;
     }
 
     private static PlasmoPort plasmoVoicePort() {

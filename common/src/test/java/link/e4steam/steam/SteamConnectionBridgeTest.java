@@ -96,6 +96,38 @@ class SteamConnectionBridgeTest {
         bridge.close(false);
     }
 
+    @Test
+    void largeChunkBurstRemainsByteExactAcrossNegotiationAndTcpWriter() throws Exception {
+        FakeRuntime runtime = new FakeRuntime();
+        try (ServerSocket listener = new ServerSocket(0);
+             Socket client = new Socket("127.0.0.1", listener.getLocalPort());
+             Socket local = listener.accept()) {
+            client.setSoTimeout(5_000);
+            SteamConnectionBridge bridge = new SteamConnectionBridge(runtime, 77L, 42, local, true, null);
+            runtime.bridge = bridge;
+            try {
+                bridge.requireAddonNegotiation();
+                bridge.start();
+                byte[] expected = new byte[3 * 1024 * 1024];
+                new java.util.Random(263L).nextBytes(expected);
+                int chunkSize = SteamProtocol.DATA_CHUNK_SIZE;
+                for (int offset = 0; offset < 1024 * 1024; offset += chunkSize)
+                    bridge.acceptSteamData(java.util.Arrays.copyOfRange(expected, offset, offset + chunkSize));
+                bridge.markAddonNegotiated();
+                for (int offset = 1024 * 1024; offset < expected.length; offset += chunkSize)
+                    bridge.acceptSteamData(java.util.Arrays.copyOfRange(expected, offset, offset + chunkSize));
+                byte[] actual = new byte[expected.length];
+                int offset = 0;
+                while (offset < actual.length) {
+                    int read = client.getInputStream().read(actual, offset, actual.length - offset);
+                    assertTrue(read > 0, "bridge closed before the chunk burst completed");
+                    offset += read;
+                }
+                assertArrayEquals(expected, actual);
+            } finally { bridge.close(false); }
+        }
+    }
+
     private static final class FakeRuntime implements SteamBridgeRuntime {
         private SteamConnectionBridge bridge;
         private volatile boolean unregistered;

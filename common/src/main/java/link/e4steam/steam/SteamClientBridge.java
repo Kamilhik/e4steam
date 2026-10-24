@@ -67,9 +67,9 @@ public final class SteamClientBridge {
         synchronized (PENDING_LOCK) {
             pending = PENDING_ACCEPTS.toArray(new PendingAccept[PENDING_ACCEPTS.size()]);
             PENDING_ACCEPTS.clear();
-        }
-        for (PendingAccept accept : pending) {
-            accept.cancel();
+            for (PendingAccept accept : pending) {
+                accept.cancel();
+            }
         }
     }
 
@@ -88,15 +88,17 @@ public final class SteamClientBridge {
             socket.setTcpNoDelay(true);
             socket.setKeepAlive(true);
 
-            activity = pending.takeActivityForHandoff();
-            PENDING_ACCEPTS.remove(pending);
-            if (activity == null) {
-                throw new IOException("Steam connection was cancelled");
+            // Cancellation must observe either a pending listener or its registered bridge.
+            synchronized (PENDING_LOCK) {
+                activity = pending.takeActivityForHandoff();
+                PENDING_ACCEPTS.remove(pending);
+                if (activity == null) {
+                    throw new IOException("Steam connection was cancelled");
+                }
+                int connectionId = runtime.nextConnectionId(address.steamId());
+                bridge = runtime.registerClientBridge(address.steamId(), connectionId, socket, activity);
+                activity = null;
             }
-
-            int connectionId = runtime.nextConnectionId(address.steamId());
-            bridge = runtime.registerClientBridge(address.steamId(), connectionId, socket, activity);
-            activity = null;
             if (!runtime.sendOpen(bridge, address.token())) {
                 throw new IOException("Steam outbound queue is unavailable");
             }

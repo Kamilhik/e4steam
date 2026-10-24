@@ -145,7 +145,7 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
 
-      - name: Build, audit and collect all modern and retro runtime artifacts
+      - name: Build, audit and collect the Minecraft 1.17+ runtime artifacts
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace --max-workers=1 \

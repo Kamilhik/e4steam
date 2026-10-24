@@ -23,6 +23,9 @@ public abstract class LegacyServerLoginPacketListenerImplMixin {
 
     @Shadow @Final private Connection connection;
     @Shadow public GameProfile gameProfile;
+    @org.spongepowered.asm.mixin.Unique
+    private final link.e4steam.skin.SkinRestoration.LoginState e4steam$skins = new link.e4steam.skin.SkinRestoration.LoginState();
+
     private long e4steam$authenticatedSteamId;
 
     private long e4steam$authenticatedSteamId() {
@@ -56,17 +59,13 @@ public abstract class LegacyServerLoginPacketListenerImplMixin {
     }
 
     /** Binds the UUID to Steam while preserving the Minecraft nickname. */
-    @Inject(method = "handleAcceptedLogin", at = @At("HEAD"))
+    @Inject(method = "handleAcceptedLogin", at = @At("HEAD"), cancellable = true)
     private void e4steam$bindLegacyProfileToSteamIdentity(CallbackInfo ci) {
         long authenticatedSteamId = e4steam$authenticatedSteamId();
-        if (authenticatedSteamId == 0) {
-            return;
-        }
-        String minecraftName = gameProfile.getName();
-        gameProfile = new GameProfile(
-                SteamMinecraftIdentity.uuid(authenticatedSteamId),
-                SteamMinecraftIdentity.preserveMinecraftName(minecraftName)
-        );
+        if (gameProfile == null) return;
+        if (authenticatedSteamId != 0L) gameProfile = link.e4steam.steam.SteamMinecraftProfile.bind(gameProfile, authenticatedSteamId);
+        if (!e4steam$skins.prepare(gameProfile)) { ci.cancel(); return; }
+        gameProfile = (GameProfile)e4steam$skins.profile();
     }
 
     /** Forge negotiation may need longer than the vanilla 600-tick budget. */

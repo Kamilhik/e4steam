@@ -46,11 +46,11 @@ class DedicatedAdmissionGateTest {
     }
 
     @Test
-    void bansWhitelistCapacityAndAddonPolicyRemainMandatory() {
+    void whitelistDoesNotBlockAuthenticatedPlayersButBansAndCapacityRemain() {
         assertEquals("banned", gate(true, true, true, 0, 8, new AtomicBoolean())
                 .evaluate(request(31L, 3L, (byte) 1), 3L).toCompletableFuture().join().reason());
-        assertEquals("not-whitelisted", gate(true, false, false, 0, 8, new AtomicBoolean())
-                .evaluate(request(32L, 3L, (byte) 2), 3L).toCompletableFuture().join().reason());
+        assertTrue(gate(true, false, false, 0, 8, new AtomicBoolean())
+                .evaluate(request(32L, 3L, (byte) 2), 3L).toCompletableFuture().join().allowed());
         assertEquals("capacity-reached", gate(true, false, true, 8, 8, new AtomicBoolean())
                 .evaluate(request(33L, 3L, (byte) 3), 3L).toCompletableFuture().join().reason());
     }

@@ -25,6 +25,7 @@ final class CorePublicDirectoryService implements PublicDirectoryService {
     private static final String DEDICATED_PREFIX = "ds_";
 
     private final CoreCapabilityService capabilities;
+    private final String ownerPrefix;
     private final SecureRandom random = new SecureRandom();
     private final Map<JoinOperationId, JoinOperation> operations = new LinkedHashMap<>();
     private final Map<JoinOperationId, Long> integratedTargets = new LinkedHashMap<>();
@@ -32,7 +33,11 @@ final class CorePublicDirectoryService implements PublicDirectoryService {
     private final Set<String> consumedHandles = new LinkedHashSet<>();
 
     CorePublicDirectoryService(CoreCapabilityService capabilities) {
+        this(capabilities, "");
+    }
+    CorePublicDirectoryService(CoreCapabilityService capabilities, String owner) {
         this.capabilities = capabilities;
+        this.ownerPrefix = owner.isEmpty() ? "" : owner.replace(':', '-') + ':';
     }
 
     @Override public ApiResult<DirectoryAvailability> availability() {
@@ -82,7 +87,8 @@ final class CorePublicDirectoryService implements PublicDirectoryService {
         }
         CompletableFuture<ApiResult<PublicationTarget>> result = new CompletableFuture<>();
         SteamClientApiBridge.publicHostLobbyTarget().whenComplete((target, failure) -> {
-            if (failure != null || target == null || target.lobbyId() == 0L || target.generation() <= 0L) {
+            if (failure != null || target == null || target.lobbyId() == 0L || target.generation() <= 0L
+                    || (!ownerPrefix.isEmpty() && !target.accessMode().startsWith(ownerPrefix))) {
                 result.complete(unavailable("directory.publication-target", "NoActivePublicWorld"));
                 return;
             }

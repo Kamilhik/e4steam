@@ -33,6 +33,10 @@ public class AgnosImpl {
         return false;
     }
 
+    public static boolean paceMinecraftTrafficForLoader() {
+        return false;
+    }
+
     public static Path jarPath() {
         var clazz = FMLLoader.class;
         try {

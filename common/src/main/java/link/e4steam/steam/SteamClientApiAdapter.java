@@ -20,6 +20,12 @@ public final class SteamClientApiAdapter {
                 @Override public String statusCode() {
                     return SteamRuntime.get().safeStatusCode();
                 }
+                @Override public link.e4steam.api.lobby.LobbyService addonLobbies(String owner) {
+                    return SteamRuntime.get().addonLobbies(owner);
+                }
+                @Override public void releaseAddonLobbies(String owner) {
+                    SteamRuntime.get().releaseAddonLobbies(owner);
+                }
                 @Override public String failureCategory() {
                     return SteamRuntime.get().safeFailureCategory();
                 }
@@ -69,7 +75,7 @@ public final class SteamClientApiAdapter {
                 publicHostLobbyTarget() {
                     return SteamRuntime.get().publicHostLobbyTarget().thenApply(target -> target == null
                             ? null : new SteamClientApiBridge.PublicLobbyTarget(
-                            target.lobbyId(), target.generation()));
+                            target.lobbyId(), target.generation(), target.accessMode()));
                 }
                 @Override public java.util.concurrent.CompletableFuture<Boolean> joinPublicLobby(long lobbyId) {
                     return SteamRuntime.get().joinPublicLobby(lobbyId);

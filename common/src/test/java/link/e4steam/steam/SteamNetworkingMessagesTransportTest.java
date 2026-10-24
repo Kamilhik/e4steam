@@ -18,6 +18,15 @@ class SteamNetworkingMessagesTransportTest {
     private static final long REMOTE_ID = 76561198000000001L;
 
     @Test
+    void raisesOnlyTheSendRateCeilingBeforeRelayInitialization() {
+        FakeNativeAccess access = new FakeNativeAccess();
+        SteamNetworkingMessagesTransport transport = transport(access);
+        assertEquals(11, access.configOption);
+        assertEquals(4 * 1024 * 1024, access.configValue);
+        transport.close();
+    }
+
+    @Test
     void sendsWithSteamNetworkingSocketsEquivalentFlags() throws Exception {
         FakeNativeAccess nativeAccess = new FakeNativeAccess();
         SteamNetworkingMessagesTransport transport = transport(nativeAccess);
@@ -148,6 +157,24 @@ class SteamNetworkingMessagesTransportTest {
         transport.close();
     }
 
+    @Test
+    void reportsReliableQueueBackpressureByBytesOrEstimatedDelay() {
+        FakeNativeAccess nativeAccess = new FakeNativeAccess();
+        SteamNetworkingMessagesTransport transport = transport(nativeAccess);
+
+        nativeAccess.connectionState = 3;
+        nativeAccess.pendingReliable = 256 * 1024;
+        assertTrue(transport.isReliableQueueBackpressured(REMOTE_ID, 256 * 1024, 250_000L));
+
+        nativeAccess.pendingReliable = 1;
+        nativeAccess.queueMicros = 250_000L;
+        assertTrue(transport.isReliableQueueBackpressured(REMOTE_ID, 256 * 1024, 250_000L));
+
+        nativeAccess.queueMicros = 249_999L;
+        assertFalse(transport.isReliableQueueBackpressured(REMOTE_ID, 256 * 1024, 250_000L));
+        transport.close();
+    }
+
     private static SteamNetworkingMessagesTransport transport(FakeNativeAccess nativeAccess) {
         return new SteamNetworkingMessagesTransport(
                 nativeAccess,
@@ -164,6 +191,13 @@ class SteamNetworkingMessagesTransportTest {
     }
 
     private static final class FakeNativeAccess implements SteamNetworkingMessagesTransport.NativeAccess {
+        private int configOption;
+        private int configValue;
+        @Override public boolean setGlobalConfigInt32(int option, int value) {
+            configOption = option;
+            configValue = value;
+            return true;
+        }
         private SteamNetworkingMessagesTransport.SessionRequestCallback requestCallback;
         private SteamNetworkingMessagesTransport.SessionFailedCallback failedCallback;
         private final ArrayDeque<Memory> queuedMessages = new ArrayDeque<>();
@@ -174,6 +208,7 @@ class SteamNetworkingMessagesTransportTest {
         private int releaseCount;
         private int connectionState;
         private int pendingReliable;
+        private long queueMicros;
         private int receiveCalls;
 
         @Override
@@ -206,6 +241,7 @@ class SteamNetworkingMessagesTransportTest {
         @Override
         public int getSessionConnectionInfo(Pointer identity, Pointer realTimeStatus) {
             realTimeStatus.setInt(40, pendingReliable);
+            realTimeStatus.setLong(48, queueMicros);
             return connectionState;
         }
 

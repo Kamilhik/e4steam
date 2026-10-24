@@ -69,6 +69,20 @@ public final class SteamRuntime implements SteamBridgeRuntime {
     // bounded inbound queue before its writer gets scheduled, which looks
     // like an infinitely falling player followed by a disconnect.
     private static final int MAX_PACKETS_PER_TICK = 32;
+    // Limit a single worker pass to a modest burst. Forge login/chunk traffic can
+    // otherwise arrive as 1 MiB bursts and stall the guest client while the host
+    // remains smooth.
+    private static final int MAX_RECEIVED_DATA_BYTES_PER_TICK = 128 * 1024;
+    // Steam's API can accept reliable messages much faster than the selected
+    // route can transmit them. Keep the native queue short so chat/keepalive data
+    // does not sit behind seconds of Forge registry and chunk traffic.
+    private static final int MAX_STEAM_PENDING_RELIABLE_BYTES = 256 * 1024;
+    private static final long MAX_STEAM_RELIABLE_QUEUE_MICROS = 250_000L;
+    // Forge can emit large registry/chunk bursts while Steam still reports an
+    // empty native queue. Pace that loader independently so the guest's chat,
+    // keepalive and input are not delayed behind seconds of buffered traffic.
+    private static final long FORGE_RELIABLE_DATA_BYTES_PER_SECOND = 4L * 1024 * 1024;
+    private static final int FORGE_RELIABLE_DATA_BURST_BYTES = 64 * 1024;
     private static final long OUTBOUND_SEND_RETRY_DELAY_MILLIS = 25;
     private static final long OUTBOUND_SEND_RETRY_TIMEOUT_MILLIS = 30_000;
     private static final int MAX_RESET_RETRIES = 64;
@@ -148,6 +162,11 @@ public final class SteamRuntime implements SteamBridgeRuntime {
     // Forge 1.17/1.18.
     private final ConcurrentHashMap<Long, long[]> idleSessionDeadlines = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<SteamTask<?>> steamTasks = new ConcurrentLinkedQueue<>();
+    private final SteamReliableDataPacer<SteamConnectionBridge> reliableDataPacer =
+            new SteamReliableDataPacer<>(
+                    FORGE_RELIABLE_DATA_BYTES_PER_SECOND,
+                    FORGE_RELIABLE_DATA_BURST_BYTES
+            );
 
     // A reliable packet rejected by Steam with temporary backpressure stays
     // ahead of the regular queue. Re-enqueuing it at the tail would reorder
@@ -166,6 +185,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
     private volatile SteamUser user;
     private volatile SteamUtils utils;
     private volatile SteamLobbyManager lobbyManager;
+    private volatile SteamAddonLobbyDirectory addonLobbyDirectory;
     private volatile HostRegistration hostRegistration;
     private volatile long nextLoopbackConnectAttemptAtMillis;
     private long nextKnownPeerAcceptAtMillis;
@@ -415,7 +435,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 ? "session_" + Long.toUnsignedString(generationId, 36)
                 : dedicatedSessionId(generationId);
         return new SafeSessionView(sessionId,
-                generationId, role, stateCode, SteamLobbyManager.VANILLA_LOBBY_CAPACITY, ordered);
+                generationId, role, stateCode, link.e4steam.lan.LanSettings.steamLobbyCapacity(), ordered);
     }
 
     /** Returns the local Steam-derived Minecraft projection without exposing the SteamID. */
@@ -605,6 +625,40 @@ public final class SteamRuntime implements SteamBridgeRuntime {
         waitForSteamTask(task, STEAM_TASK_TIMEOUT, "opening the Steam friends overlay");
     }
 
+    /** Cancels the connection screen without touching bridges hosted for other players. */
+    public void cancelClientConnection() {
+        cancelGuestJoin();
+        SteamClientBridge.cancelPending();
+        SteamDedicatedClientBridge.cancelPending();
+        for (SteamConnectionBridge bridge : bridgeRegistry.snapshot()) {
+            if (!bridge.isHostSide()) bridge.close(true);
+        }
+    }
+
+    void closeClientBridges(long remoteSteamId) {
+        for (SteamConnectionBridge bridge : bridgeRegistry.snapshot()) {
+            if (!bridge.isHostSide() && bridge.remoteSteamId() == remoteSteamId) bridge.close(true);
+        }
+    }
+
+    /** Called only after Minecraft has handled the game login packet. */
+    public void clientMinecraftJoined(SocketAddress address) {
+        if (!(address instanceof InetSocketAddress)) return;
+        InetSocketAddress endpoint = (InetSocketAddress) address;
+        if (endpoint.getAddress() == null || !endpoint.getAddress().isLoopbackAddress()) return;
+        for (SteamConnectionBridge bridge : bridgeRegistry.snapshot()) {
+            if (bridge.isHostSide() || bridge.isClosed() || bridge.localPort() != endpoint.getPort()) continue;
+            submitSteamTaskIfRunning(() -> {
+                SteamLobbyManager current = lobbyManager;
+                if (current != null && !bridge.isClosed() && bridgeRegistry.snapshot().contains(bridge)) {
+                    current.clientMinecraftJoined(bridge);
+                }
+                return null;
+            });
+            break;
+        }
+    }
+
     public void cancelGuestJoin() {
         submitSteamTaskIfRunning(() -> {
             SteamLobbyManager current = lobbyManager;
@@ -628,7 +682,9 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             if (lobbyId == 0L || !after.active() || after.generation() != before.generation()) {
                 return null;
             }
-            return new PublicHostLobbyTarget(lobbyId, after.generation());
+            HostRegistration host = hostRegistration;
+            if (host == null) return null;
+            return new PublicHostLobbyTarget(lobbyId, after.generation(), host.owner().customAccessModeId());
         });
     }
 
@@ -638,6 +694,50 @@ public final class SteamRuntime implements SteamBridgeRuntime {
         return submitSteamTaskIfRunning(() -> {
             SteamLobbyManager current = lobbyManager;
             return current != null && current.joinPublicLobby(lobbyId);
+        });
+    }
+
+    /** Native operations remain on the existing Steam worker; the scoped API dispatches completions. */
+    public link.e4steam.api.lobby.LobbyService addonLobbies(String owner) {
+        return new link.e4steam.api.lobby.LobbyService() {
+            @Override public java.util.concurrent.CompletionStage<link.e4steam.api.ApiResult<LobbySnapshot>> create(CreateRequest request) {
+                return lobbyResult(submitSteamTaskIfRunning(() -> addonDirectory().create(owner, request))
+                        .thenCompose(value -> value));
+            }
+            @Override public java.util.concurrent.CompletionStage<link.e4steam.api.ApiResult<LobbySnapshot>> updateMetadata(LobbyId id, Metadata metadata) {
+                return lobbyResult(submitSteamTaskIfRunning(() -> addonDirectory().update(owner, id, metadata)));
+            }
+            @Override public java.util.concurrent.CompletionStage<link.e4steam.api.ApiResult<SearchPage>> search(SearchQuery query) {
+                return lobbyResult(submitSteamTaskIfRunning(() -> addonDirectory().search(owner, query))
+                        .thenCompose(value -> value));
+            }
+            @Override public java.util.concurrent.CompletionStage<link.e4steam.api.ApiResult<Boolean>> leave(LobbyId id) {
+                return lobbyResult(submitSteamTaskIfRunning(() -> addonDirectory().leave(owner, id)));
+            }
+            @Override public java.util.concurrent.CompletionStage<link.e4steam.api.ApiResult<LobbySnapshot>> join(LobbyId id) {
+                CompletableFuture<link.e4steam.api.ApiResult<LobbySnapshot>> unavailable = new CompletableFuture<>();
+                unavailable.completeExceptionally(new UnsupportedOperationException("Use the directory connection service"));
+                return unavailable;
+            }
+        };
+    }
+
+    // Keep the lambda descriptor erased to Object. Quilt's lazy class lookup can
+    // fail to resolve a not-yet-loaded nested API snapshot during lambda linkage.
+    private static <T> CompletableFuture<link.e4steam.api.ApiResult<T>> lobbyResult(CompletableFuture<T> future) {
+        return future.thenApply(link.e4steam.api.ApiResult::success);
+    }
+
+    private SteamAddonLobbyDirectory addonDirectory() throws IOException {
+        if (lobbyManager == null) throw new IOException("Steam matchmaking unavailable");
+        if (addonLobbyDirectory == null) addonLobbyDirectory = new SteamAddonLobbyDirectory();
+        return addonLobbyDirectory;
+    }
+
+    public void releaseAddonLobbies(String owner) {
+        submitSteamTaskIfRunning(() -> {
+            if (addonLobbyDirectory != null) addonLobbyDirectory.release(owner);
+            return null;
         });
     }
 
@@ -863,9 +963,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
         }
         submitSteamTaskIfRunning(() -> {
             SteamLobbyManager current = lobbyManager;
-            if (current != null) {
-                current.clientBridgeOpened(remoteSteamId);
-            }
+            if (current != null && !bridge.isClosed()) current.clientBridgeOpened(bridge);
             return null;
         });
         return bridge;
@@ -1103,7 +1201,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             submitSteamTaskIfRunning(() -> {
                 SteamLobbyManager current = lobbyManager;
                 if (current != null) {
-                    current.clientBridgeClosed(bridge.remoteSteamId(), finalAnotherBridgeExists);
+                    current.clientBridgeClosed(bridge, finalAnotherBridgeExists);
                 }
                 return null;
             });
@@ -1226,6 +1324,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 SteamAddonHooks.tick();
                 cleanupPeerSessions();
                 cleanupGracefulBridgeClosures(nowMillis);
+                if (addonLobbyDirectory != null) addonLobbyDirectory.tick(nowMillis);
                 SteamLobbyManager currentSocial = lobbyManager;
                 if (currentSocial != null) {
                     currentSocial.cleanup(nowMillis);
@@ -1278,6 +1377,9 @@ public final class SteamRuntime implements SteamBridgeRuntime {
 
             SteamLobbyManager currentSocial = lobbyManager;
             lobbyManager = null;
+            SteamAddonLobbyDirectory directory = addonLobbyDirectory;
+            addonLobbyDirectory = null;
+            if (directory != null) directory.close();
             if (currentSocial != null) {
                 try {
                     currentSocial.close();
@@ -1364,6 +1466,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                     || !resetRetries.isEmpty()
                     || !idleSessionDeadlines.isEmpty()
                     || !steamTasks.isEmpty()
+                    || (addonLobbyDirectory != null && addonLobbyDirectory.keepsRuntimeAlive())
                     || (currentSocial != null && currentSocial.keepsRuntimeAlive());
             if (keepAlive) {
                 currentGeneration.idleSinceMillis = 0;
@@ -1695,10 +1798,32 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 return;
             }
 
+            // Drop stale DATA before any readiness or native queue gate. A closed
+            // bridge may still be registered until its terminal RESET is submitted.
+            SteamBridgeRegistry.Key key = new SteamBridgeRegistry.Key(
+                    packet.remoteSteamId(), packet.connectionId());
+            SteamConnectionBridge currentBridge = bridgeRegistry.get(key);
+            if (!isPacketCurrent(packet, currentBridge)) {
+                clearRetriedPacket(packet);
+                continue;
+            }
+            if (packet == retryOutboundPacket && now >= retryOutboundDeadlineMillis) {
+                E4steamClient.LOGGER.warn(
+                        "Steam outbound stalled for 30s: kind={}, side={}, ready={}, dataReady={}",
+                        packet.kind(), packet.bridge() == null ? "none"
+                                : packet.bridge().isHostSide() ? "host" : "guest",
+                        packet.bridge() == null || packet.bridge().isOutboundReady(now),
+                        packet.bridge() == null || packet.bridge().isOutboundDataReady(now));
+                clearRetriedPacket(packet);
+                if (packet.bridge() != null) packet.bridge().close(true);
+                continue;
+            }
+
             SteamConnectionBridge queuedBridge = packet.bridge();
             if (packet.kind() != SteamOutboundQueue.Kind.RESET
                     && queuedBridge != null
                     && !queuedBridge.isOutboundReady(now)) {
+                queuedBridge.diagnosticWait("bridge-delay");
                 if (retryOutboundPacket != packet) {
                     retryOutboundPacket = packet;
                     retryOutboundDeadlineMillis = now + OUTBOUND_SEND_RETRY_TIMEOUT_MILLIS;
@@ -1709,6 +1834,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             if (packet.kind() == SteamOutboundQueue.Kind.DATA
                     && queuedBridge != null
                     && !queuedBridge.isOutboundDataReady(now)) {
+                queuedBridge.diagnosticWait("peer-or-addon-handshake");
                 if (retryOutboundPacket != packet) {
                     retryOutboundPacket = packet;
                     retryOutboundDeadlineMillis = now + OUTBOUND_SEND_RETRY_TIMEOUT_MILLIS;
@@ -1716,15 +1842,33 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 retryOutboundNotBeforeMillis = now + 10;
                 return;
             }
-
-            SteamBridgeRegistry.Key key = new SteamBridgeRegistry.Key(
+            if (packet.kind() == SteamOutboundQueue.Kind.DATA
+                    && current.isReliableQueueBackpressured(
                     packet.remoteSteamId(),
-                    packet.connectionId()
-            );
-            SteamConnectionBridge currentBridge = bridgeRegistry.get(key);
-            if (!isPacketCurrent(packet, currentBridge)) {
-                clearRetriedPacket(packet);
-                continue;
+                    MAX_STEAM_PENDING_RELIABLE_BYTES,
+                    MAX_STEAM_RELIABLE_QUEUE_MICROS)) {
+                if (queuedBridge != null) queuedBridge.diagnosticWait("steam-native-backpressure");
+                if (retryOutboundPacket != packet) {
+                    retryOutboundPacket = packet;
+                    retryOutboundDeadlineMillis = now + OUTBOUND_SEND_RETRY_TIMEOUT_MILLIS;
+                }
+                retryOutboundNotBeforeMillis = now + 10;
+                return;
+            }
+            if (packet.kind() == SteamOutboundQueue.Kind.DATA
+                    && queuedBridge != null
+                    && Agnos.paceMinecraftTrafficForLoader()
+                    && !reliableDataPacer.tryAcquire(
+                    queuedBridge,
+                    packet.payload().length,
+                    System.nanoTime())) {
+                queuedBridge.diagnosticWait("forge-pacer");
+                if (retryOutboundPacket != packet) {
+                    retryOutboundPacket = packet;
+                    retryOutboundDeadlineMillis = now + OUTBOUND_SEND_RETRY_TIMEOUT_MILLIS;
+                }
+                retryOutboundNotBeforeMillis = now + 5;
+                return;
             }
 
             buffer.clear();
@@ -1745,6 +1889,8 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             boolean accepted = result == 1;
             SteamConnectionBridge packetBridge = packet.bridge();
             if (accepted) {
+                if (packet.kind() == SteamOutboundQueue.Kind.DATA && packetBridge != null)
+                    packetBridge.diagnosticSent(packet.payload().length);
                 clearRetriedPacket(packet);
                 if (packet.kind() == SteamOutboundQueue.Kind.DEDICATED_OPEN) {
                     E4steamClient.LOGGER.info(
@@ -1808,6 +1954,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 if (retryOutboundPacket != packet) {
                     retryOutboundPacket = packet;
                     retryOutboundDeadlineMillis = now + OUTBOUND_SEND_RETRY_TIMEOUT_MILLIS;
+                    if (packetBridge != null) packetBridge.diagnosticWait("native-send-result-" + result);
                     E4steamClient.LOGGER.debug(
                             "Steam applied outbound backpressure for {}; preserving and retrying {}",
                             Long.toUnsignedString(packet.remoteSteamId()),
@@ -1986,6 +2133,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
 
     private void clearOutbound() {
         outbound.clear();
+        reliableDataPacer.clear();
         retryOutboundPacket = null;
         retryOutboundNotBeforeMillis = 0;
         retryOutboundDeadlineMillis = 0;
@@ -2001,6 +2149,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
 
     private void purgeOutbound(SteamConnectionBridge bridge) {
         outbound.purge(bridge);
+        reliableDataPacer.remove(bridge);
         resetRetries.purge(bridge);
         SteamOutboundQueue.Packet<SteamConnectionBridge> retry = retryOutboundPacket;
         if (retry != null && retry.bridge() == bridge) {
@@ -2048,6 +2197,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
 
     private void receivePackets(ByteBuffer buffer) throws Exception {
         SteamNetworkingMessagesTransport current = Objects.requireNonNull(transport);
+        int receivedDataBytes = 0;
         for (int received = 0; received < MAX_PACKETS_PER_TICK; received++) {
             int size = current.availablePacketSize(CHANNEL);
             if (size == 0) {
@@ -2086,6 +2236,12 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 continue; // App ID 480 is shared, so unrelated traffic is expected.
             }
             dispatchFrame(packet.remoteSteamId(), frame);
+            if (frame.type() == SteamProtocol.DATA) {
+                receivedDataBytes += frame.payload().length;
+                if (receivedDataBytes >= MAX_RECEIVED_DATA_BYTES_PER_TICK) {
+                    return;
+                }
+            }
         }
     }
 
@@ -2313,7 +2469,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 activeHostConnections++;
             }
         }
-        return activeHostConnections < SteamLobbyManager.VANILLA_MAX_GUESTS;
+        return activeHostConnections < link.e4steam.lan.LanSettings.steamGuestLimit();
     }
 
     private void completeAuthorizedOpen(long remoteSteamId, SteamBridgeRegistry.Key key,
@@ -2388,14 +2544,18 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 bridge.close(true);
                 return;
             }
-            startHostUdpBridge(bridge, registration.udpEndpoint());
+            // Voice chat opens asynchronously and integrated worlds can change UDP ports.
+            // Resolve for each joining guest, and use one snapshot on both ends.
+            VoiceChatUdpEndpoint udpEndpoint = VoiceChatUdpEndpoint.resolve(
+                    registration.localPort(), registration.udpEndpoint().hostPort());
+            startHostUdpBridge(bridge, udpEndpoint);
             // Do this on every loader. OPEN_ACK makes the client release its
             // Minecraft handshake; BRIDGE_READY makes the host release its
             // response. The bounded fallback keeps older 0.2.x peers usable.
             bridge.waitForPeerReadyUntil(
                     System.currentTimeMillis() + BRIDGE_READY_FALLBACK_MILLIS
             );
-            if (!sendOpenAck(bridge, registration.udpEndpoint())) {
+            if (!sendOpenAck(bridge, udpEndpoint)) {
                 bridge.close(true);
                 return;
             }
@@ -2521,6 +2681,11 @@ public final class SteamRuntime implements SteamBridgeRuntime {
 
     private void cleanupGracefulBridgeClosures(long nowMillis) {
         for (SteamConnectionBridge bridge : bridgeRegistry.snapshot()) {
+            if (bridge.diagnosticDue(nowMillis)) {
+                SteamNetworkingMessagesTransport current = transport;
+                bridge.diagnosticSnapshot(nowMillis, current == null ? "unavailable"
+                        : current.diagnosticState(bridge.remoteSteamId()));
+            }
             bridge.closeIfGracefulCloseTimedOut(nowMillis);
         }
     }
@@ -2641,11 +2806,14 @@ public final class SteamRuntime implements SteamBridgeRuntime {
     public static final class PublicHostLobbyTarget {
         private final long lobbyId;
         private final long generation;
+        private final String accessMode;
 
-        private PublicHostLobbyTarget(long lobbyId, long generation) {
+        private PublicHostLobbyTarget(long lobbyId, long generation, String accessMode) {
             this.lobbyId = lobbyId;
             this.generation = generation;
+            this.accessMode = accessMode;
         }
+        public String accessMode() { return accessMode; }
 
         public long lobbyId() { return lobbyId; }
         public long generation() { return generation; }

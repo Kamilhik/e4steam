@@ -121,9 +121,6 @@ public final class DedicatedAdmissionGate {
     private Result mandatoryAfterAuthentication(long steamId) {
         try {
             if (policy.banned(steamId)) return Result.deny("banned");
-            if (policy.whitelistRequired() && !policy.whitelisted(steamId)) {
-                return Result.deny("not-whitelisted");
-            }
             int capacity = policy.capacity();
             int players = policy.players();
             if (capacity < 1 || players < 0 || players >= capacity) {

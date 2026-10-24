@@ -27,4 +27,8 @@ public class AgnosImpl {
     public static boolean autoRestartBrokenSteamSessionForHandshake() {
         return true;
     }
+
+    public static boolean paceMinecraftTrafficForLoader() {
+        return true;
+    }
 }

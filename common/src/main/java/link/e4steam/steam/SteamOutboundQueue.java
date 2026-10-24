@@ -2,6 +2,8 @@ package link.e4steam.steam;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Semaphore;
+import java.util.IdentityHashMap;
+import java.util.Map;
 
 /**
  * Bounded, category-aware outbound queue. Reliable Minecraft data, unreliable
@@ -54,6 +56,8 @@ final class SteamOutboundQueue<B> {
     private final Semaphore openSlots;
     private final Semaphore standaloneResetSlots;
     private final int terminalReserve;
+    private final int perBridgeDataCapacity;
+    private final Map<B, Integer> dataPacketsByBridge = new IdentityHashMap<>();
 
     SteamOutboundQueue(
             int totalCapacity,
@@ -70,6 +74,9 @@ final class SteamOutboundQueue<B> {
         openSlots = new Semaphore(openCapacity);
         standaloneResetSlots = new Semaphore(standaloneResetCapacity);
         terminalReserve = Math.max(1, Math.min(64, totalCapacity / 16));
+        // Keep one slow guest from buffering tens of MiB of the Minecraft TCP
+        // stream ahead of latency-sensitive packets such as chat and keepalives.
+        perBridgeDataCapacity = Math.max(1, Math.min(8, dataCapacity));
     }
 
     boolean offerData(long remoteSteamId, int connectionId, byte[] payload, B bridge) {
@@ -101,6 +108,11 @@ final class SteamOutboundQueue<B> {
                     && packets.remainingCapacity() <= terminalReserve) {
                 return false;
             }
+            if (packet.kind() == Kind.DATA && packet.bridge() != null
+                    && dataPacketsByBridge.getOrDefault(packet.bridge(), 0)
+                    >= perBridgeDataCapacity) {
+                return false;
+            }
             if (category != null && !category.tryAcquire()) {
                 return false;
             }
@@ -109,6 +121,9 @@ final class SteamOutboundQueue<B> {
                     category.release();
                 }
                 return false;
+            }
+            if (packet.kind() == Kind.DATA && packet.bridge() != null) {
+                dataPacketsByBridge.merge(packet.bridge(), 1, Integer::sum);
             }
             return true;
         }
@@ -178,6 +193,13 @@ final class SteamOutboundQueue<B> {
     }
 
     private void releaseSlot(Packet<B> packet) {
+        if (packet.kind() == Kind.DATA && packet.bridge() != null) {
+            Integer count = dataPacketsByBridge.get(packet.bridge());
+            if (count != null) {
+                if (count <= 1) dataPacketsByBridge.remove(packet.bridge());
+                else dataPacketsByBridge.put(packet.bridge(), count - 1);
+            }
+        }
         Semaphore category = categorySlots(packet);
         if (category != null) {
             category.release();

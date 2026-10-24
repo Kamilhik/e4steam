@@ -29,6 +29,8 @@ public final class SteamClientApiBridge {
         PublicJoinSnapshot publicJoinSnapshot(long lobbyId);
         void cancelGuestJoin();
         boolean acceptDirectSteamInvite(String descriptor, String displayName);
+        default link.e4steam.api.lobby.LobbyService addonLobbies(String owner) { return null; }
+        default void releaseAddonLobbies(String owner) { }
     }
 
     private static final Delegate NOOP = new Delegate() {
@@ -73,6 +75,10 @@ public final class SteamClientApiBridge {
     }
 
     public static String statusCode() { return CURRENT.get().statusCode(); }
+    public static link.e4steam.api.lobby.LobbyService addonLobbies(String owner) {
+        return CURRENT.get().addonLobbies(owner);
+    }
+    public static void releaseAddonLobbies(String owner) { CURRENT.get().releaseAddonLobbies(owner); }
     public static String failureCategory() { return CURRENT.get().failureCategory(); }
     public static SessionView sessionView() { return CURRENT.get().sessionView(); }
     public static MinecraftIdentity localIdentity() { return CURRENT.get().localIdentity(); }
@@ -184,11 +190,17 @@ public final class SteamClientApiBridge {
     public static final class PublicLobbyTarget {
         private final long lobbyId;
         private final long generation;
+        private final String accessMode;
 
         PublicLobbyTarget(long lobbyId, long generation) {
+            this(lobbyId, generation, "");
+        }
+        PublicLobbyTarget(long lobbyId, long generation, String accessMode) {
             this.lobbyId = lobbyId;
             this.generation = generation;
+            this.accessMode = accessMode;
         }
+        public String accessMode() { return accessMode; }
 
         public long lobbyId() { return lobbyId; }
         public long generation() { return generation; }

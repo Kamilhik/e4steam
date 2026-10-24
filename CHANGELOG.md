@@ -3,6 +3,67 @@
 All notable changes to e4steam are documented here. Version numbers below
 belong to this fork and are independent of upstream e4mc releases.
 
+## 0.3.4
+
+### English
+- Ship six runtime variants for Minecraft 1.17–26.3. This release contains no retro JARs.
+- Bundle Addon API 1.1.0 and the Steam lobby runtime needed by Public Servers 0.1.0. No separate API mod is required.
+- Include the tested LAN screen, numeric defaults, world naming, command permission and background/blur fixes.
+- Include cross-version login and connection fixes for integrated worlds, including older Forge releases.
+- Preserve Steam authentication and admission checks. Public Servers remains a separate addon.
+
+### Русский
+- Выпущены шесть вариантов ядра для Minecraft 1.17–26.3. Ретро-JAR в этот выпуск не входят.
+- Встроены Addon API 1.1.0 и реализация лобби Steam для Public Servers 0.1.0. Отдельный мод API не нужен.
+- Включены проверенные исправления экрана LAN, числовых значений по умолчанию, имени мира, прав команд, фона и размытия.
+- Включены исправления входа и соединения с одиночными мирами на разных версиях, в том числе старых Forge.
+- Сохранены проверки Steam и допуска к игре. Public Servers устанавливается отдельным аддоном.
+
+### 0.3.2-beta.4 — Minecraft 26.3 LAN fix
+
+### English
+- Add Fabric/Quilt and NeoForge runtime JARs with metadata covering Minecraft 26.3.
+- Keep the modern Fabric artifact and NeoForge artifact ranges aligned through 26.3.
+- Keep LAN numeric fields working after Minecraft 26.3 removed `EditBox.setFilter`.
+- Widen and restyle the LAN settings panel for the 26.3 interface; brand its
+  world-options entry as e4steam LAN and add a tooltip.
+- Apply both the world command permission and guest command access on modern
+  Minecraft, so enabling LAN commands also enables command-gated actions.
+- Draw the custom LAN panel through the extracted screen-rendering hook used by
+  Minecraft 26.1 and later.
+- Carry the Minecraft 1.21.1 startup fix from beta.3 into this candidate.
+
+### Русский
+- Добавлены JAR для Fabric/Quilt и NeoForge с совместимостью Minecraft 26.3.
+- Диапазоны версий в метаданных Fabric и NeoForge включают Minecraft 26.3.
+- Исправлен вылет настроек LAN: Minecraft 26.3 удалил `EditBox.setFilter`.
+- Обновлён экран LAN для интерфейса 26.3: панель стала шире, секции получили
+  аккуратные рамки, а кнопка настроек помечена e4steam и снабжена подсказкой.
+- Для команд LAN обновляются и разрешение мира, и права гостей; команды и
+  зависящие от них действия получают нужные полномочия.
+- Фон панели LAN рисуется через новый экранный хук Minecraft 26.1 и новее.
+- Сохранено исправление запуска Minecraft 1.21.1 из beta.3.
+
+## 0.3.2-beta.1
+
+### English
+- Carry the netdiag.8 LAN, skin and voice fixes across modern and retro runtime adapters.
+- Refresh connected players' permissions when LAN cheats change; retain the published port.
+- Refresh the LAN screen and retain typed values during resize.
+- Restore missing Mojang skin textures by name without changing identity; defer to an installed SkinRestorer.
+- Remove the built-in e4steam whitelist. Keep Steam authentication, bans and capacity checks.
+- Keep vanilla TAB behavior; the netdiag.9 TAB change is reverted.
+- Document the public-directory verifier limitation and modern Addon API availability.
+
+### Русский
+- Исправления netdiag.8 для LAN, скинов и голосового чата перенесены на современные и старые ветки.
+- При переключении команд обновляются права подключённых игроков; порт опубликованного мира заблокирован.
+- Обновлён экран LAN, введённые значения сохраняются при изменении размера окна.
+- Добавлена загрузка отсутствующих текстур скина Mojang по нику с сохранением личности игрока. Установленный SkinRestorer получает приоритет.
+- Убран встроенный белый список e4steam. Сохранены проверка Steam, баны и лимит игроков.
+- Изменение TAB из netdiag.9 отменено.
+- Описаны ограничение проверки владельца внешнего каталога и доступность Addon API.
+
 ## 0.3.2 - 2026-09-09
 
 This release contains the Addon API and runtime changes made since `0.3.1`.

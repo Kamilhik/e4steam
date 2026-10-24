@@ -257,3 +257,21 @@ Source: [sisby-folk/kaleido-config](https://github.com/sisby-folk/kaleido-config
 ## Valve Steamworks redistributables
 
 The packaged `steam_api` native libraries are Valve Steamworks redistributables supplied by the steamworks4j artifact. They are not covered by this project's Apache License 2.0. Their use and redistribution remain subject to the applicable Steamworks SDK terms and Valve agreements. App ID 480 is used only as Valve's shared development/test example and does not grant this project ownership of Spacewar or Steam infrastructure.
+# LAN settings design reference
+
+The integrated LAN settings feature was independently implemented in e4steam
+after studying the behavior of rikka0w0/LanServerProperties at commit
+`f30c879b10d2c6e7b1db290d90219f6c9875fa58`:
+https://github.com/rikka0w0/LanServerProperties
+
+That revision declares CC0-1.0 in Fabric metadata and MIT License in Forge and
+NeoForge metadata, but does not provide a complete root license text. e4steam
+does not copy or redistribute its source files, artwork, translation files,
+UUIDFixer, mixins, loader entrypoints, or packaged mod. Its LAN settings code
+is new e4steam code under this project's Apache-2.0 license. The reference
+project is credited here for the feature design; this notice does not
+relicense or resolve the reference project's differing license declarations.
+
+## Skin restoration
+
+The automatic Mojang skin fallback is inspired by [Suiranoil/SkinRestorer](https://github.com/Suiranoil/SkinRestorer), licensed under MIT. The license is included at `META-INF/licenses/SkinRestorer-MIT.txt`. e4steam supplies its own bounded, optional lookup; it does not include the upstream commands or alternative skin services. An installed SkinRestorer takes precedence.

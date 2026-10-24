@@ -1,5 +1,13 @@
 # e4steam compatibility
 
+## Release 0.3.4
+
+This release ships only Minecraft 1.17–26.3 runtime JARs and bundles Addon API
+1.1.0 for Public Servers 0.1.0. It reuses the fixes exercised during beta testing;
+rebuilding with the final version creates new hashes. The automated release audits
+verify those final artifacts. No new claim of a complete two-account or cross-OS
+manual matrix is made. Retro source remains available but has no 0.3.4 artifacts.
+
 Use this file to answer two different questions:
 
 1. **Is there a release JAR for my Minecraft version and loader?** Read the
@@ -16,6 +24,20 @@ all the others.
 If you only want to install the mod, begin with
 [Getting started](docs/GETTING_STARTED.md) or
 [«Начало работы»](docs/GETTING_STARTED_RU.md).
+
+## 0.3.2-beta.4 candidate checks (2026-10-23)
+
+- Modern API/backward-compatibility, common tests, headless, license and modern
+  loader builds passed. The Public Servers beta.13 seven-JAR audit passed.
+- Twelve of thirteen retro branches built. Forge 1.7.10 could not resolve its
+  generated Minecraft dependency from JitPack (HTTP 404/read timeout), so a
+  complete 19-JAR release audit did not finish.
+- NeoForge 26.3 launched with e4steam beta.4 and Public Servers beta.13 before
+  the final LAN visual changes. The final JAR is installed in the test profile;
+  opening the redesigned screen and two-account Steam tests remain outstanding.
+
+This candidate is not ready for publication until the missing retro artifact,
+final screen interaction and required multiplayer evidence are resolved.
 
 ## Quick answer
 
@@ -44,6 +66,21 @@ In plain language:
 | 🧱 | A release JAR was built and inspected for that branch. This is not a launch or join result. |
 | ⏳ | The artifact or code exists, but the stated manual scenario has not been recorded yet. |
 | — | e4steam does not provide that combination. |
+
+## 0.3.2-beta.1 automated checks (2026-10-11)
+
+All 19 runtime JAR variants were built and passed the release artifact audit.
+The common suite completed 220 tests: 214 passed and 6 skipped. The LAN screen
+harness checked 12 combinations of language, viewport size and world state,
+including input validation, resize preservation and the published port lock.
+
+Skin restoration was checked against the actual Authlib libraries shipped for
+Minecraft 1.7.10, 1.12.2, 1.16.5, 1.20.2 and 1.21.11. Each check covered signed
+textures, preserved player identity, existing texture priority and completion
+of the login state. These are component checks, not Minecraft launch results.
+
+No new two-client Steam multiplayer run has been recorded for this beta.
+The older manual evidence below applies only to its stated version and scope.
 
 ## 0.3.1 automated platform status
 

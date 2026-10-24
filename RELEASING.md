@@ -1,5 +1,14 @@
 # Release checklist
 
+## 0.3.4 release scope
+
+Publish exactly six runtime JARs for Minecraft 1.17–26.3. Retro artifacts are
+excluded from this release. Run `apiChecks test headlessEntrypointAudit releaseJars`;
+`releaseJars` defaults to the modern matrix. Historical retro instructions below
+apply only to an explicit `-PincludeRetro=true` build. API 1.1.0 is bundled in core.
+Linux/macOS claims and manual-test limitations remain as documented.
+
+
 e4steam 0.3.1 is a full release. Windows x64 clients, integrated worlds and
 dedicated servers are supported. The listed retro artifacts are normal release
 files, not experimental builds. Linux x64 and macOS remain experimental until

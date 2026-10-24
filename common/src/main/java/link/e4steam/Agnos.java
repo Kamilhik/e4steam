@@ -29,4 +29,9 @@ public class Agnos {
     public static boolean autoRestartBrokenSteamSessionForHandshake() {
         return false;
     }
+
+    @ExpectPlatform
+    public static boolean paceMinecraftTrafficForLoader() {
+        return false;
+    }
 }

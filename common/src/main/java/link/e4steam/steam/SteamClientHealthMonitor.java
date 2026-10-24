@@ -21,6 +21,8 @@ final class SteamClientHealthMonitor {
     private boolean probeScheduled;
     private long nextProbeMillis;
     private int consecutiveFailures;
+    private boolean nativeProbeConfirmed;
+    private boolean unconfirmedProbeReported;
 
     SteamClientHealthMonitor(
             boolean nativeProbeEnabled,
@@ -115,11 +117,24 @@ final class SteamClientHealthMonitor {
 
         nextProbeMillis = saturatedAdd(nowMillis, probeIntervalMillis);
         if (nativeProbe.getAsBoolean()) {
+            nativeProbeConfirmed = true;
             consecutiveFailures = 0;
             return true;
         }
 
-        consecutiveFailures++;
+        if (consecutiveFailures < failureThreshold) consecutiveFailures++;
+        // A process probe that has never seen the successfully initialized client
+        // cannot establish that it disappeared. Keep probing so a later positive
+        // result enables normal shutdown detection for this lifecycle.
+        if (!nativeProbeConfirmed) {
+            if (consecutiveFailures >= failureThreshold && !unconfirmedProbeReported) {
+                unconfirmedProbeReported = true;
+                org.apache.logging.log4j.LogManager.getLogger("e4steam").warn(
+                        "Steam native client probe has never confirmed the initialized client; "
+                                + "keeping the API session active and continuing probes");
+            }
+            return true;
+        }
         return consecutiveFailures < failureThreshold;
     }
 
@@ -127,6 +142,8 @@ final class SteamClientHealthMonitor {
         probeScheduled = false;
         nextProbeMillis = 0L;
         consecutiveFailures = 0;
+        nativeProbeConfirmed = false;
+        unconfirmedProbeReported = false;
     }
 
     private static long saturatedAdd(long left, long right) {

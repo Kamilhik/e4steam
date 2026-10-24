@@ -261,10 +261,7 @@ public final class DedicatedServerController implements AutoCloseable {
                 || accessStore.banned(SteamMinecraftIdentity.uuid(steamId));
     }
 
-    public boolean whitelistRequired() {
-        return config.accessMode()
-                != DedicatedServerService.DedicatedAccessMode.UNLISTED;
-    }
+    public boolean whitelistRequired() { return false; }
 
     public boolean isWhitelisted(long steamId) {
         return config.isWhitelisted(steamId) || accessStore.whitelisted(steamId)

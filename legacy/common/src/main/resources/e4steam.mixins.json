@@ -16,13 +16,15 @@
     "IntegratedServerConnectionListenerMixin",
     "BanPlayerCommandsMixin",
     "ConnectScreenMixin",
+    "ClientJoinLifecycleMixin",
     "JoinMultiplayerScreenMixin",
     "MultiplayerOptionsScreenMixin",
     "PardonCommandMixin",
     "PauseScreenMixin",
     "ShareToLanScreenMixin",
-    "WhitelistCommandMixin",
     "PlayerListMixin",
-    "ServerNameResolverMixin"
+    "ServerNameResolverMixin",
+    "IntegratedServerLanMixin",
+    "LanSettingsRenderMixin"
   ]
 }

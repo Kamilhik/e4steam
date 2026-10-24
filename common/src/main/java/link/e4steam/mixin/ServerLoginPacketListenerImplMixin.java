@@ -69,10 +69,20 @@ public abstract class ServerLoginPacketListenerImplMixin {
         if (authenticatedSteamId == 0) {
             return original;
         }
-        return new GameProfile(
-                SteamMinecraftIdentity.uuid(authenticatedSteamId),
-                SteamMinecraftIdentity.profileName(original)
-        );
+        return link.e4steam.steam.SteamMinecraftProfile.bind(original, authenticatedSteamId);
+    }
+
+    /** The pre-1.20.2 login state machine stores its accepted profile in a field. */
+    @Inject(method="/^(handleAcceptedLogin|acceptPlayer|method_14384|m_10055_)$/", at=@At("HEAD"), require=0, remap=false)
+    private void e4steam$bindOlderProfile(CallbackInfo ci) {
+        long peer=e4steam$authenticatedSteamId();
+        if (peer==0L) return;
+        java.lang.reflect.Field field=link.e4steam.lan.LanReflection.field(this,"gameProfile","profile","field_14160","f_10021_");
+        if (field==null) return;
+        try {
+            GameProfile original=(GameProfile)field.get(this);
+            field.set(this,link.e4steam.steam.SteamMinecraftProfile.bind(original,peer));
+        } catch (IllegalAccessException failure) { throw new IllegalStateException("Cannot bind accepted Steam profile",failure); }
     }
 
     /** Forge can send a large registry snapshot before accepting the player. */

@@ -25,6 +25,13 @@ public abstract class PauseScreenMixin extends Screen {
 
     @Inject(method = "init", at = @At("TAIL"))
     private void e4steam$addInviteButton(CallbackInfo ci) {
+        if (minecraft != null && minecraft.getSingleplayerServer() != null) {
+            addRenderableWidget(MinecraftUiCompat.button(
+                    Mirror.translatable("text.e4steam_minecraft.lan.settings"),
+                    button -> MinecraftUiCompat.setScreen(minecraft,
+                            new link.e4steam.lan.LanSettingsScreen(this)),
+                    4, 6, 150, 20));
+        }
         SteamSession session = E4steamClient.session;
         if (session == null
                 || session.state == SteamSession.State.STOPPED

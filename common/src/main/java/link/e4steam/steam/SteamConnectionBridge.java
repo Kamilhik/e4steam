@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * rejected during that late bootstrap step.</p>
  */
 public final class SteamConnectionBridge {
+    public static final boolean NETWORK_DIAGNOSTICS = link.e4steam.E4steamConstants.modVersion().contains("netdiag");
     private static final Logger LOGGER = LogManager.getLogger("e4steam");
     // Eight MiB at the current 32 KiB protocol chunk size. This absorbs
     // registry/chunk bursts while remaining bounded for multiple players.
@@ -61,6 +62,34 @@ public final class SteamConnectionBridge {
 
     private volatile Thread readerThread;
     private volatile Thread writerThread;
+    private final AtomicLong tcpReadBytes = new AtomicLong();
+    private final AtomicLong steamSentBytes = new AtomicLong();
+    private final AtomicLong steamReceivedBytes = new AtomicLong();
+    private final AtomicLong tcpWrittenBytes = new AtomicLong();
+    private final AtomicLong localQueueRetries = new AtomicLong();
+    private volatile String outboundWait = "none";
+    private long nextDiagnosticMillis;
+
+    void diagnosticWait(String reason) { outboundWait = reason; }
+
+    void diagnosticSent(int wireBytes) {
+        if (NETWORK_DIAGNOSTICS) steamSentBytes.addAndGet(wireBytes);
+        outboundWait = "none";
+    }
+
+    boolean diagnosticDue(long now) {
+        return NETWORK_DIAGNOSTICS && now >= nextDiagnosticMillis;
+    }
+
+    void diagnosticSnapshot(long now, String nativeState) {
+        if (!NETWORK_DIAGNOSTICS) return;
+        nextDiagnosticMillis = now + 5_000;
+        LOGGER.info("[E4NET] bridge={} localPort={} side={} closed={} tcpRead={} steamSentWire={} steamReceived={} tcpWritten={} inboundChunks={} queueRetries={} wait={} peerReady={} addonReady={} native=[{}]",
+                Integer.toUnsignedString(connectionId), socket.getLocalPort(), hostSide ? "host" : "guest", closed.get(),
+                tcpReadBytes.get(), steamSentBytes.get(), steamReceivedBytes.get(), tcpWrittenBytes.get(),
+                inbound.size(), localQueueRetries.get(), outboundWait, peerReady.get(),
+                addonNegotiationReady.get(), nativeState);
+    }
 
     SteamConnectionBridge(
             SteamBridgeRuntime runtime,
@@ -158,15 +187,16 @@ public final class SteamConnectionBridge {
     }
 
     void markAddonNegotiated() {
-        java.util.List<byte[]> pending;
         synchronized (addonNegotiationLock) {
-            if (addonNegotiationReady.getAndSet(true)) return;
-            pending = new java.util.ArrayList<>(preNegotiationData);
+            if (addonNegotiationReady.get()) return;
+            // Publish readiness only after the buffered prefix has entered the TCP
+            // writer queue. Otherwise a concurrently received chunk can overtake it.
+            for (byte[] payload : preNegotiationData) {
+                if (!enqueueSteamData(payload)) break;
+            }
             preNegotiationData.clear();
             preNegotiationBytes = 0;
-        }
-        for (byte[] payload : pending) {
-            if (!enqueueSteamData(payload)) break;
+            addonNegotiationReady.set(true);
         }
     }
 
@@ -209,6 +239,7 @@ public final class SteamConnectionBridge {
         if (closed.get()) {
             return;
         }
+        if (NETWORK_DIAGNOSTICS && payload != null) steamReceivedBytes.addAndGet(payload.length);
         synchronized (addonNegotiationLock) {
             if (!addonNegotiationReady.get()) {
                 if (payload == null || payload.length == 0
@@ -221,8 +252,8 @@ public final class SteamConnectionBridge {
                 preNegotiationBytes += payload.length;
                 return;
             }
+            enqueueSteamData(payload);
         }
-        enqueueSteamData(payload);
     }
 
     private boolean enqueueSteamData(byte[] payload) {
@@ -284,6 +315,7 @@ public final class SteamConnectionBridge {
         if (!closed.compareAndSet(false, true)) {
             return;
         }
+        diagnosticSnapshot(System.currentTimeMillis(), "closing; notifyRemote=" + notifyRemote);
 
         try {
             runtime.closeUdpBridge(this);
@@ -349,10 +381,12 @@ public final class SteamConnectionBridge {
                 }
 
                 byte[] payload = Arrays.copyOf(buffer, read);
+                if (NETWORK_DIAGNOSTICS) tcpReadBytes.addAndGet(read);
                 sendDataWithBackpressure(payload);
             }
         } catch (IOException exception) {
             if (!closed.get()) {
+                if (NETWORK_DIAGNOSTICS) LOGGER.warn("[E4NET] local TCP read failed: {}", exception.toString());
                 LOGGER.debug("Local TCP reader for a Steam bridge stopped", exception);
                 close(true);
             }
@@ -365,6 +399,7 @@ public final class SteamConnectionBridge {
             if (runtime.sendData(this, payload)) {
                 return;
             }
+            if (NETWORK_DIAGNOSTICS) localQueueRetries.incrementAndGet();
             if (System.currentTimeMillis() >= deadline) {
                 throw new IOException("Steam outbound queue remained full for 30 seconds");
             }
@@ -388,6 +423,7 @@ public final class SteamConnectionBridge {
                     inboundDataSlots.release();
                     output.write(data.payload());
                     output.flush();
+                    if (NETWORK_DIAGNOSTICS) tcpWrittenBytes.addAndGet(data.payload().length);
                     continue;
                 }
 
@@ -401,6 +437,7 @@ public final class SteamConnectionBridge {
             Thread.currentThread().interrupt();
         } catch (IOException exception) {
             if (!closed.get()) {
+                if (NETWORK_DIAGNOSTICS) LOGGER.warn("[E4NET] local TCP write failed: {}", exception.toString());
                 LOGGER.debug("Local TCP writer for a Steam bridge stopped", exception);
                 close(true);
             }

@@ -14,6 +14,7 @@ final class SteamGuestJoinState {
     private Phase phase = Phase.RESOLVING;
     private long deadlineMillis;
     private boolean claimed;
+    private Object bridge;
 
     SteamGuestJoinState(long deadlineMillis) {
         this.deadlineMillis = deadlineMillis;
@@ -44,6 +45,14 @@ final class SteamGuestJoinState {
         return true;
     }
 
+    void bridgeOpened(Object bridge) {
+        if (phase == Phase.CONNECTING) this.bridge = bridge;
+    }
+
+    boolean ownsBridge(Object bridge) {
+        return bridge != null && this.bridge == bridge;
+    }
+
     void connected() {
         if (phase == Phase.CONNECTING) {
             phase = Phase.CONNECTED;
@@ -63,12 +72,14 @@ final class SteamGuestJoinState {
     void cancel() {
         if (phase != Phase.LOST) {
             phase = Phase.CANCELED;
+            bridge = null;
             deadlineMillis = Long.MIN_VALUE;
         }
     }
 
     void loseLobby() {
         phase = Phase.LOST;
+        bridge = null;
         deadlineMillis = Long.MIN_VALUE;
     }
 

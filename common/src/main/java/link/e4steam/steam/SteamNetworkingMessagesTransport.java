@@ -29,6 +29,8 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
     private static final int STEAM_IDENTITY_VALUE_SIZE = Long.BYTES;
 
     private static final int RESULT_OK = 1;
+    private static final int CONFIG_SEND_RATE_MAX = 11;
+    private static final int SEND_RATE_CEILING = 4 * 1024 * 1024;
     private static final int SEND_NO_NAGLE = 1;
     private static final int SEND_NO_DELAY = 4;
     private static final int SEND_RELIABLE = 8;
@@ -50,6 +52,7 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
     private static final long STATUS_PENDING_UNRELIABLE_OFFSET = 36;
     private static final long STATUS_PENDING_RELIABLE_OFFSET = 40;
     private static final long STATUS_SENT_UNACKED_RELIABLE_OFFSET = 44;
+    private static final long STATUS_QUEUE_TIME_OFFSET = 48;
     private static final long REAL_TIME_STATUS_SIZE = 128;
 
     private static final long CONNECTION_INFO_END_REASON_OFFSET = 176;
@@ -88,6 +91,7 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
     }
 
     interface NativeAccess {
+        default boolean setGlobalConfigInt32(int option, int value) { return false; }
         int send(Pointer identity, Pointer data, int size, int flags, int channel);
 
         int receive(int channel, Pointer[] messages, int maxMessages);
@@ -141,6 +145,10 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
         this.nativeAccess = Objects.requireNonNull(nativeAccess, "nativeAccess");
         this.listener = Objects.requireNonNull(listener, "listener");
         try {
+            // Only raise the ceiling, never the minimum: Steam retains congestion
+            // control on slower routes. Apply before any peer session is created.
+            boolean configured = nativeAccess.setGlobalConfigInt32(CONFIG_SEND_RATE_MAX, SEND_RATE_CEILING);
+            LOGGER.info("Steam send-rate ceiling: requested={} bytes/s, applied={}", SEND_RATE_CEILING, configured);
             nativeAccess.setCallbacks(requestCallback, failedCallback);
             nativeAccess.setDebugOutput(4, debugOutputCallback);
             nativeAccess.initializeRelayNetworkAccess();
@@ -282,6 +290,42 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
                 || realTimeStatus.getInt(STATUS_SENT_UNACKED_RELIABLE_OFFSET) > 0;
     }
 
+    /**
+     * Stops the Java bridge from blindly filling Steam's native reliable queue.
+     * Steam accepts reliable messages before they reach the wire, so a successful
+     * send alone is not evidence that the peer can consume another Forge chunk
+     * burst without adding seconds of latency.
+     */
+    boolean isReliableQueueBackpressured(
+            long remoteSteamId,
+            int maxPendingBytes,
+            long maxQueueMicros
+    ) {
+        if (closed) {
+            return true;
+        }
+        realTimeStatus.clear();
+        int state = nativeAccess.getSessionConnectionInfo(identity(remoteSteamId), realTimeStatus);
+        if (state <= 0) {
+            return false;
+        }
+        int pendingReliable = realTimeStatus.getInt(STATUS_PENDING_RELIABLE_OFFSET);
+        long queueMicros = realTimeStatus.getLong(STATUS_QUEUE_TIME_OFFSET);
+        return pendingReliable >= maxPendingBytes
+                || (queueMicros >= 0L && queueMicros >= maxQueueMicros);
+    }
+
+    String diagnosticState(long remoteSteamId) {
+        if (closed) return "closed";
+        realTimeStatus.clear();
+        int state = nativeAccess.getSessionConnectionInfo(identity(remoteSteamId), realTimeStatus);
+        return "state=" + state + ",pingMs=" + realTimeStatus.getInt(4)
+                + ",sendBytesPerSec=" + realTimeStatus.getInt(32)
+                + ",pendingReliable=" + realTimeStatus.getInt(STATUS_PENDING_RELIABLE_OFFSET)
+                + ",unackedReliable=" + realTimeStatus.getInt(STATUS_SENT_UNACKED_RELIABLE_OFFSET)
+                + ",queueMicros=" + realTimeStatus.getLong(STATUS_QUEUE_TIME_OFFSET);
+    }
+
     @Override
     public void close() {
         if (closed) {
@@ -391,6 +435,7 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
     }
 
     private interface FlatApi extends Library {
+        byte SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(Pointer self, int option, int value);
         Pointer SteamAPI_SteamNetworkingMessages_SteamAPI_v002();
 
         Pointer SteamAPI_SteamGameServerNetworkingMessages_SteamAPI_v002();
@@ -469,6 +514,15 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
             }
             if (messages == null || utils == null) {
                 throw new IOException("Steam Networking Messages is unavailable after SteamAPI initialization");
+            }
+        }
+
+        @Override
+        public boolean setGlobalConfigInt32(int option, int value) {
+            try {
+                return api.SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(utils, option, value) != 0;
+            } catch (UnsatisfiedLinkError unavailable) {
+                return false;
             }
         }
 

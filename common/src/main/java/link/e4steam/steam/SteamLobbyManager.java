@@ -54,6 +54,7 @@ final class SteamLobbyManager implements AutoCloseable {
     private SteamSession hostLobbyOwner;
     private SteamAccessMode hostLobbyAccessMode;
     private long hostLobbyId;
+    private int appliedHostCapacity;
     private long guestLobbyId;
     private long guestHostSteamId;
     private long guestInviterSteamId;
@@ -341,8 +342,15 @@ final class SteamLobbyManager implements AutoCloseable {
                 || requestedLobbyId != 0;
     }
 
-    void clientBridgeOpened(long remoteSteamId) {
-        if (guestLobbyId != 0 && guestHostSteamId == remoteSteamId) {
+    void clientBridgeOpened(SteamConnectionBridge bridge) {
+        if (guestLobbyId != 0 && guestHostSteamId == bridge.remoteSteamId()) {
+            guestJoinState.bridgeOpened(bridge);
+            if (!E4steamClient.tracksMinecraftLogin()) clientMinecraftJoined(bridge);
+        }
+    }
+
+    void clientMinecraftJoined(SteamConnectionBridge bridge) {
+        if (guestLobbyId != 0 && guestJoinState.ownsBridge(bridge)) {
             guestJoinState.connected();
             if (guestDirectoryJoin) {
                 runtime.publicJoinActive(guestLobbyId);
@@ -350,8 +358,8 @@ final class SteamLobbyManager implements AutoCloseable {
         }
     }
 
-    void clientBridgeClosed(long remoteSteamId, boolean anotherBridgeExists) {
-        if (guestLobbyId != 0 && guestHostSteamId == remoteSteamId && !anotherBridgeExists) {
+    void clientBridgeClosed(SteamConnectionBridge bridge, boolean anotherBridgeExists) {
+        if (guestLobbyId != 0 && guestJoinState.ownsBridge(bridge) && !anotherBridgeExists) {
             leaveGuestLobby();
         }
     }
@@ -380,7 +388,7 @@ final class SteamLobbyManager implements AutoCloseable {
                 && endpoint != null
                 && endpoint.equals(guestEndpoint)) {
             boolean started = guestJoinState.beginConnect(
-                    System.currentTimeMillis() + GUEST_JOIN_TIMEOUT_MILLIS
+                    System.currentTimeMillis() + 120_000L
             );
             if (started && guestDirectoryJoin) {
                 runtime.publicJoinConnecting(guestLobbyId);
@@ -391,6 +399,11 @@ final class SteamLobbyManager implements AutoCloseable {
     }
 
     void cleanup(long now) {
+        int capacity = link.e4steam.lan.LanSettings.steamLobbyCapacity();
+        if (hostLobbyId != 0 && appliedHostCapacity != capacity) {
+            if (matchmaking.setLobbyMemberLimit(SteamID.createFromNativeHandle(hostLobbyId), capacity))
+                appliedHostCapacity = capacity;
+        }
         canceledJoinLobbyDeadlines.entrySet().removeIf(entry -> entry.getValue() <= now);
         if (requestedLobbyId != 0 && requestedJoinDeadlineMillis <= now) {
             long timedOutLobby = requestedLobbyId;
@@ -404,16 +417,13 @@ final class SteamLobbyManager implements AutoCloseable {
             return;
         }
         if (guestLobbyId != 0 && guestJoinState.expired(now)) {
-            if (runtime.hasClientBridgeForRemote(guestHostSteamId)) {
-                guestJoinState.connected();
-                return;
-            }
             if (guestDirectoryJoin) {
                 runtime.publicJoinFailed(guestLobbyId,
                         SteamPublicJoinTracker.Phase.FAILED, "minecraft-connect-timeout");
             }
+            runtime.closeClientBridges(guestHostSteamId);
             leaveGuestLobby();
-            E4steamClient.showSteamJoinFailure(Mirror.translatable("text.e4steam_minecraft.joinConnectTimeout"));
+            E4steamClient.showSteamJoinTimeout(Mirror.translatable("text.e4steam_minecraft.joinConnectTimeout"));
         }
     }
 
@@ -483,6 +493,7 @@ final class SteamLobbyManager implements AutoCloseable {
         hostLobbyOwner = owner;
         hostLobbyAccessMode = accessMode;
         hostLobbyId = lobbyId;
+        appliedHostCapacity = 0;
         friends.clearRichPresence();
         friends.setRichPresence("status", "Hosting a Minecraft LAN world");
         if (accessMode == SteamAccessMode.FRIENDS_ONLY || accessMode == SteamAccessMode.CUSTOM) {
@@ -509,7 +520,7 @@ final class SteamLobbyManager implements AutoCloseable {
             call = createLobbyCompat(
                     matchmaking,
                     accessMode,
-                    VANILLA_LOBBY_CAPACITY
+                    link.e4steam.lan.LanSettings.steamLobbyCapacity()
             );
         } catch (ReflectiveOperationException exception) {
             clearPendingHost();

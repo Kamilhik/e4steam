@@ -1,5 +1,9 @@
 <div align="center">
 
+**Latest core:** [e4steam 0.3.4](https://github.com/Kamilhik/e4steam/releases/tag/v0.3.4), Minecraft 1.17–26.3, bundled Addon API 1.1.0. This release contains no retro JARs.
+
+**Public Servers:** [0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers/releases/tag/v0.1.0), installed separately alongside e4steam.
+
 <img src="common/src/main/resources/assets/e4steam_minecraft/icon.png" width="180" alt="e4steam logo">
 
 # e4steam
@@ -20,7 +24,7 @@
 
 [![Version](https://img.shields.io/github/v/release/Kamilhik/e4steam?display_name=tag&sort=semver&style=flat-square)](https://github.com/Kamilhik/e4steam/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/Kamilhik/e4steam/ci.yml?branch=main&label=build&style=flat-square)](https://github.com/Kamilhik/e4steam/actions/workflows/ci.yml)
-[![Addon API](https://img.shields.io/maven-central/v/io.github.kamilhik/e4steam-api?label=Addon%20API&style=flat-square)](https://central.sonatype.com/artifact/io.github.kamilhik/e4steam-api/1.0.0)
+[![Addon API](https://img.shields.io/maven-central/v/io.github.kamilhik/e4steam-api?label=Addon%20API&style=flat-square)](https://central.sonatype.com/artifact/io.github.kamilhik/e4steam-api/1.1.0)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
 
 **🇷🇺 Русская версия находится ниже — [открыть](#русская-версия)**
@@ -40,7 +44,7 @@
 | Browse every guide | [Documentation index](docs/README.md) |
 
 > [!IMPORTANT]
-> **e4steam 0.3.1 is a full release.** Windows x64 is the primary supported
+> **e4steam 0.3.4 supports Minecraft 1.17–26.3.** Windows x64 is the primary supported
 > platform, including integrated worlds and dedicated servers. Linux x64 and
 > macOS are available as experimental builds. e4steam permanently uses Valve's
 > shared test App ID 480 (Spacewar), so it filters unrelated App ID 480 traffic.
@@ -54,7 +58,7 @@
 > cross-platform matrix still need more manual coverage.
 
 > [!TIP]
-> **e4steam 0.3.2** embeds Addon API **1.1.0**. API 1.1 adds the safe Public
+> **e4steam 0.3.4** embeds Addon API **1.1.0**. API 1.1 adds the safe Public
 > Directory bridge while preserving the complete public API 1.0 binary surface.
 
 e4steam opens a Minecraft singleplayer world to Steam friends without port
@@ -74,13 +78,14 @@ with the stable Steam-derived UUID. Back up the world before migrating the
 matching `world/playerdata/<old UUID>.dat`; later 0.3.0+ joins reuse the same
 Steam-derived UUID.
 
-## What's new in 0.3.2
+## What's new in 0.3.4
 
-Compared with 0.3.1, this version embeds Addon API 1.1 and its runtime,
-preserves compatibility with API 1.0 addons, adds the safe Public Directory
-service, improves addon discovery and compatibility diagnostics, and hardens
-Steam client health, access and public-join handling. See the full
-[changelog](CHANGELOG.md) for verification details.
+This release bundles Addon API 1.1.0 and the Steam lobby runtime used by
+[Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers).
+It includes LAN settings, public-world naming, command-permission, login and
+cross-version interface fixes. Six runtime JARs cover Minecraft 1.17–26.3;
+retro JARs are excluded. See the [changelog](CHANGELOG.md) and
+[compatibility matrix](COMPATIBILITY.md) for verification details.
 
 The repository also contains a separate loader-independent Java 8 API artifact, an
 addon testkit and a compile-checked example. API 1.1 includes scoped
@@ -244,7 +249,7 @@ For `SteamAPI_Init failed`, first follow the
 <summary><h2>🇷🇺 Русская версия — нажмите, чтобы открыть</h2></summary>
 
 > [!IMPORTANT]
-> **e4steam 0.3.1 — полноценный релиз.** Основная поддерживаемая платформа —
+> **e4steam 0.3.4 для Minecraft 1.17–26.3.** Основная поддерживаемая платформа —
 > Windows x64, включая открытые миры и выделенные серверы. Сборки для Linux x64
 > и macOS пока экспериментальные. Мод постоянно использует общий тестовый
 > Steam App ID 480 (Spacewar) и фильтрует посторонний трафик этого App ID.
@@ -279,7 +284,7 @@ Mojang/offline UUID стабильным UUID из SteamID. Перед пере�
 `world/playerdata/<старый UUID>.dat` сделайте резервную копию мира. Все
 следующие входы в 0.3.0 и новее используют тот же UUID, вычисленный из SteamID.
 
-## Что нового в 0.3.2
+## Что нового в 0.3.4
 
 По сравнению с 0.3.1 в мод встроены Addon API 1.1 и его runtime-реализация,
 сохранена совместимость с аддонами API 1.0, добавлен безопасный сервис Public

@@ -59,6 +59,22 @@ class SteamOutboundQueueTest {
     }
 
     @Test
+    void oneBridgeCannotBuildAnUnboundedReliableBacklog() {
+        SteamOutboundQueue<Object> queue = new SteamOutboundQueue<>(32, 32, 1, 1, 1, 1);
+        Object slowBridge = new Object();
+        Object healthyBridge = new Object();
+
+        for (int index = 0; index < 8; index++) {
+            assertTrue(queue.offerData(1, 1, new byte[]{1}, slowBridge));
+        }
+        assertFalse(queue.offerData(1, 1, new byte[]{1}, slowBridge));
+        assertTrue(queue.offerData(2, 2, new byte[]{2}, healthyBridge));
+
+        assertNotNull(queue.poll());
+        assertTrue(queue.offerData(1, 1, new byte[]{3}, slowBridge));
+    }
+
+    @Test
     void steamBackpressureResultsAreRetriedInsteadOfDisconnectingMinecraft() {
         assertTrue(SteamRuntime.isRetryableSendFailure(SteamResult.LimitExceeded));
         assertTrue(SteamRuntime.isRetryableSendFailure(SteamResult.Busy));

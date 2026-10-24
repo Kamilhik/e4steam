@@ -66,3 +66,9 @@ logs/
 # Keep only the repository-root test fixture under version control.
 **/steam_appid.txt
 !/steam_appid.txt
+
+# Local diagnostic attach agents and status reports.
+/work-diagnostics/
+
+# Local Gradle project caches
+.gradle*/

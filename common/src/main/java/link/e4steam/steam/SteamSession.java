@@ -70,6 +70,7 @@ public final class SteamSession {
             return;
         }
 
+        E4steamClient.LOGGER.info("Starting Steam share: mode={}, addonMode={}", accessMode, customAccessModeId);
         Thread thread = new Thread(this::start, "e4steam-steam-session-start");
         thread.setDaemon(true);
         thread.start();

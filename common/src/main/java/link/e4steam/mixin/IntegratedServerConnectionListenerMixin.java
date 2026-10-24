@@ -32,6 +32,7 @@ public abstract class IntegratedServerConnectionListenerMixin {
 
     @Inject(method = "stop", at = @At("TAIL"))
     private void e4steam$stopSteamBridge(CallbackInfo ci) {
+        link.e4steam.lan.LanSettings.closed();
         SteamSession session = E4steamClient.session;
         if (session == null) return;
         session.stop();

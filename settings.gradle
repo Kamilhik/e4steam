@@ -8,7 +8,9 @@ pluginManagement {
     }
 }
 
-include("api", "api-testkit", "example-addon", "common", "stdin-agent")
+include("api", "api-testkit", "example-addon", "common")
+// The optional local Unix overlay helper is not part of the mod source distribution.
+if (file("stdin-agent").isDirectory()) include("stdin-agent")
 providers.gradleProperty("enabled_platforms")
         .getOrElse("fabric,forge,neoforge")
         .split(",")

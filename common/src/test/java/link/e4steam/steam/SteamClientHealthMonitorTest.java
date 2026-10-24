@@ -26,17 +26,45 @@ class SteamClientHealthMonitorTest {
         }));
         assertTrue(monitor.isHealthy(100L, () -> {
             calls.incrementAndGet();
-            return false;
+            return true;
         }));
         assertTrue(monitor.isHealthy(200L, () -> {
             calls.incrementAndGet();
             return false;
         }));
-        assertFalse(monitor.isHealthy(300L, () -> {
+        assertTrue(monitor.isHealthy(300L, () -> {
             calls.incrementAndGet();
             return false;
         }));
-        assertTrue(calls.get() == 3);
+        assertFalse(monitor.isHealthy(400L, () -> {
+            calls.incrementAndGet();
+            return false;
+        }));
+        assertTrue(calls.get() == 4);
+    }
+
+    @Test
+    void unconfirmedProcessProbeDoesNotTerminateInitializedSession() {
+        SteamClientHealthMonitor monitor = new SteamClientHealthMonitor(true, 5_000L, 3);
+        for (long now = 0; now <= 120_000L; now += 5_000L) {
+            assertTrue(monitor.isHealthy(now, () -> false));
+        }
+        assertTrue(monitor.isHealthy(125_000L, () -> true));
+        assertTrue(monitor.isHealthy(130_000L, () -> false));
+        assertTrue(monitor.isHealthy(135_000L, () -> false));
+        assertFalse(monitor.isHealthy(140_000L, () -> false));
+    }
+
+    @Test
+    void resetRequiresFreshProbeConfirmation() {
+        SteamClientHealthMonitor monitor = new SteamClientHealthMonitor(true, 10L, 1);
+        assertTrue(monitor.isHealthy(0L, () -> true));
+        assertTrue(monitor.isHealthy(10L, () -> true));
+        assertFalse(monitor.isHealthy(20L, () -> false));
+        monitor.reset();
+        assertTrue(monitor.isHealthy(30L, () -> false));
+        assertTrue(monitor.isHealthy(40L, () -> false));
+        assertTrue(monitor.isHealthy(50L, () -> false));
     }
 
     @Test

@@ -7,8 +7,10 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.network.chat.Component;
+import net.minecraft.client.gui.components.EditBox;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
@@ -96,6 +98,30 @@ public final class MinecraftUiCompat {
     }
 
     /**
+     * Keeps numeric fields restricted to digits across Minecraft versions.
+     * EditBox.setFilter was removed in 26.3, so sanitize edits through its
+     * stable responder API instead of linking to that version-specific method.
+     */
+    public static void numericResponder(EditBox input, Consumer<String> responder) {
+        boolean[] updating = {false};
+        input.setResponder(value -> {
+            if (updating[0]) {
+                return;
+            }
+            String digits = value.replaceAll("[^0-9]", "");
+            if (!digits.equals(value)) {
+                updating[0] = true;
+                try {
+                    input.setValue(digits);
+                } finally {
+                    updating[0] = false;
+                }
+            }
+            responder.accept(digits);
+        });
+    }
+
+    /**
      * Creates Minecraft's generic progress/message screen without linking the
      * caller to the Mojang class name that changed in 1.21.
      */
@@ -109,7 +135,7 @@ public final class MinecraftUiCompat {
                 for (Constructor<?> constructor : screenType.getDeclaredConstructors()) {
                     Class<?>[] parameterTypes = constructor.getParameterTypes();
                     if (parameterTypes.length != 1
-                            || !parameterTypes[0].isAssignableFrom(message.getClass())) {
+                            || !Component.class.isAssignableFrom(parameterTypes[0])) {
                         continue;
                     }
                     constructor.setAccessible(true);
@@ -157,26 +183,87 @@ public final class MinecraftUiCompat {
         }
     }
 
-    /** Adds a chat message after Minecraft 26.x moved chat from Gui to Hud. */
+    /** Adds a chat message across the Minecraft 26.x chat method rename. */
     public static void addChatMessage(Minecraft minecraft, Component message) {
         try {
             minecraft.gui.getChat().addMessage(message);
         } catch (NoSuchMethodError ignored) {
             try {
-                Object hud = minecraft.gui.getClass().getField("hud").get(minecraft.gui);
-                Object chat = hud.getClass().getMethod("getChat").invoke(hud);
-                Method addMessage = Arrays.stream(chat.getClass().getMethods())
-                        .filter(method -> method.getName().equals("addClientSystemMessage")
-                                || method.getName().equals("addMessage"))
-                        .filter(method -> method.getParameterCount() == 1)
-                        .filter(method -> method.getParameterTypes()[0].isAssignableFrom(message.getClass()))
-                        .findFirst()
-                        .orElseThrow(() -> new NoSuchMethodException("ChatComponent system-message method"));
-                addMessage.invoke(chat, message);
+                Object chat = resolveChatComponent(minecraft.gui);
+                invokeChatMessage(chat, message);
             } catch (ReflectiveOperationException failure) {
                 throw new IllegalStateException("No compatible chat message API was found", failure);
             }
         }
+    }
+
+    /** Resolves both the direct Gui chat and versions with a nested HUD. */
+    static Object resolveChatComponent(Object gui) throws ReflectiveOperationException {
+        try {
+            return readZeroArgumentMember(gui, "getChat", "chat");
+        } catch (NoSuchFieldException directChatMissing) {
+            Object hud = readZeroArgumentMember(gui, "hud", "getHud");
+            try {
+                return readZeroArgumentMember(hud, "getChat", "chat");
+            } catch (ReflectiveOperationException nestedChatMissing) {
+                nestedChatMissing.addSuppressed(directChatMissing);
+                throw nestedChatMissing;
+            }
+        }
+    }
+
+    static void invokeChatMessage(Object chat, Component message)
+            throws ReflectiveOperationException {
+        Method addMessage = Arrays.stream(chat.getClass().getMethods())
+                .filter(method -> method.getName().equals("addClientSystemMessage")
+                        || method.getName().equals("addMessage"))
+                .filter(method -> method.getParameterCount() == 1)
+                .filter(method -> method.getParameterTypes()[0].isAssignableFrom(message.getClass()))
+                .findFirst()
+                .orElseThrow(() -> new NoSuchMethodException("ChatComponent system-message method"));
+        addMessage.invoke(chat, message);
+    }
+
+    /**
+     * Reads a zero-argument accessor or field without requiring the member to
+     * be public. Minecraft 26.1 keeps the HUD behind a non-public member, while
+     * adjacent versions expose an accessor instead.
+     */
+    static Object readZeroArgumentMember(Object owner, String... names)
+            throws ReflectiveOperationException {
+        if (owner == null) {
+            throw new NoSuchFieldException("Cannot read a member from null");
+        }
+        for (String name : names) {
+            try {
+                return owner.getClass().getMethod(name).invoke(owner);
+            } catch (NoSuchMethodException ignored) {
+                // The member can be package-private/private in newer clients.
+            }
+
+            for (Class<?> type = owner.getClass(); type != null; type = type.getSuperclass()) {
+                try {
+                    Method method = type.getDeclaredMethod(name);
+                    method.setAccessible(true);
+                    return method.invoke(owner);
+                } catch (NoSuchMethodException ignored) {
+                    // Continue through the hierarchy, then try a field.
+                }
+            }
+
+            for (Class<?> type = owner.getClass(); type != null; type = type.getSuperclass()) {
+                try {
+                    Field field = type.getDeclaredField(name);
+                    field.setAccessible(true);
+                    return field.get(owner);
+                } catch (NoSuchFieldException ignored) {
+                    // Continue through the hierarchy and then try the next name.
+                }
+            }
+        }
+        throw new NoSuchFieldException(
+                "None of the compatible members exist: " + Arrays.toString(names)
+        );
     }
 
     /**
@@ -428,11 +515,12 @@ public final class MinecraftUiCompat {
     }
 
     private static Object createTooltip(Class<?> tooltipType, Component message) {
+        if (tooltipType.isPrimitive() || tooltipType == String.class) return null;
         for (Method method : tooltipType.getDeclaredMethods()) {
             if (!Modifier.isStatic(method.getModifiers())
                     || method.getParameterCount() != 1
                     || !tooltipType.isAssignableFrom(method.getReturnType())
-                    || !method.getParameterTypes()[0].isAssignableFrom(message.getClass())) {
+                    || !Component.class.isAssignableFrom(method.getParameterTypes()[0])) {
                 continue;
             }
             try {
@@ -445,7 +533,7 @@ public final class MinecraftUiCompat {
         for (Constructor<?> constructor : tooltipType.getDeclaredConstructors()) {
             Class<?>[] parameterTypes = constructor.getParameterTypes();
             if (parameterTypes.length == 1
-                    && parameterTypes[0].isAssignableFrom(message.getClass())) {
+                    && Component.class.isAssignableFrom(parameterTypes[0])) {
                 try {
                     constructor.setAccessible(true);
                     return constructor.newInstance(message);

@@ -27,7 +27,7 @@ def prepare():
         assert hashlib.sha256(path.read_bytes()).hexdigest() == item['sha256'], 'Hash mismatch: ' + name
         assert item['metadata']['releaseType'] == 'release'
         if item['kind'] == 'addon':
-            assert {'slug': 'e4steam', 'projectID': '1633302', 'type': 'requiredDependency'} in item['metadata']['relations']['projects']
+            assert {'slug': 'e4steam', 'projectID': 1633302, 'type': 'requiredDependency'} in item['metadata']['relations']['projects']
         item['path'] = str(path)
     return items
 

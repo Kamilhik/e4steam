@@ -232,7 +232,7 @@
         "projects": [
           {
             "slug": "e4steam",
-            "projectID": "1633302",
+            "projectID": 1633302,
             "type": "requiredDependency"
           }
         ]
@@ -284,7 +284,7 @@
         "projects": [
           {
             "slug": "e4steam",
-            "projectID": "1633302",
+            "projectID": 1633302,
             "type": "requiredDependency"
           }
         ]
@@ -317,7 +317,7 @@
         "projects": [
           {
             "slug": "e4steam",
-            "projectID": "1633302",
+            "projectID": 1633302,
             "type": "requiredDependency"
           }
         ]
@@ -347,7 +347,7 @@
         "projects": [
           {
             "slug": "e4steam",
-            "projectID": "1633302",
+            "projectID": 1633302,
             "type": "requiredDependency"
           }
         ]
@@ -383,7 +383,7 @@
         "projects": [
           {
             "slug": "e4steam",
-            "projectID": "1633302",
+            "projectID": 1633302,
             "type": "requiredDependency"
           }
         ]
@@ -427,7 +427,7 @@
         "projects": [
           {
             "slug": "e4steam",
-            "projectID": "1633302",
+            "projectID": 1633302,
             "type": "requiredDependency"
           }
         ]
@@ -459,7 +459,7 @@
         "projects": [
           {
             "slug": "e4steam",
-            "projectID": "1633302",
+            "projectID": 1633302,
             "type": "requiredDependency"
           }
         ]

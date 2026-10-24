@@ -51,7 +51,13 @@ def upload(item, token):
     except urllib.error.HTTPError as error:
         text = error.read().decode('utf-8', errors='replace')
         category = 'Cloudflare security challenge' if 'Just a moment' in text or 'cf-chl-' in text else 'API rejection'
-        raise RuntimeError('CurseForge HTTP ' + str(error.code) + ': ' + category) from None
+        detail = ''
+        if category == 'API rejection':
+            try:
+                detail = ': ' + json.dumps(json.loads(text), ensure_ascii=False).replace(token, '[REDACTED]')[:1600]
+            except ValueError:
+                detail = ': ' + text.replace(token, '[REDACTED]')[:500] if '<html' not in text.lower() else ''
+        raise RuntimeError('CurseForge HTTP ' + str(error.code) + ': ' + category + detail) from None
     assert isinstance(result, dict) and isinstance(result.get('id'), int), 'Upload result has no file ID'
     return result['id']
 

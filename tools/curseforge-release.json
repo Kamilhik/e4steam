@@ -14,7 +14,9 @@
         "1.18.1",
         "1.18.2",
         "Fabric",
-        "Quilt"
+        "Quilt",
+        "Client",
+        "Server"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,
@@ -64,7 +66,9 @@
         "1.21.10",
         "1.21.11",
         "Fabric",
-        "Quilt"
+        "Quilt",
+        "Client",
+        "Server"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,
@@ -95,7 +99,9 @@
         "26.2",
         "26.3",
         "Fabric",
-        "Quilt"
+        "Quilt",
+        "Client",
+        "Server"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,
@@ -123,7 +129,9 @@
         "1.17.1",
         "1.18",
         "1.18.1",
-        "Forge"
+        "Forge",
+        "Client",
+        "Server"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,
@@ -152,7 +160,9 @@
         "1.20",
         "1.20.1",
         "1.20.2",
-        "Forge"
+        "Forge",
+        "Client",
+        "Server"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,
@@ -194,7 +204,9 @@
         "26.1.2",
         "26.2",
         "26.3",
-        "NeoForge"
+        "NeoForge",
+        "Client",
+        "Server"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,
@@ -220,7 +232,8 @@
         "1.18.1",
         "1.18.2",
         "Fabric",
-        "Quilt"
+        "Quilt",
+        "Client"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,
@@ -271,7 +284,8 @@
         "1.21.10",
         "1.21.11",
         "Fabric",
-        "Quilt"
+        "Quilt",
+        "Client"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,
@@ -303,7 +317,8 @@
         "26.2",
         "26.3",
         "Fabric",
-        "Quilt"
+        "Quilt",
+        "Client"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,
@@ -332,7 +347,8 @@
         "1.17.1",
         "1.18",
         "1.18.1",
-        "Forge"
+        "Forge",
+        "Client"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,
@@ -367,7 +383,8 @@
         "1.20",
         "1.20.1",
         "1.20.2",
-        "Forge"
+        "Forge",
+        "Client"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,
@@ -410,7 +427,8 @@
         "1.21.9",
         "1.21.10",
         "1.21.11",
-        "NeoForge"
+        "NeoForge",
+        "Client"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,
@@ -441,7 +459,8 @@
         "26.1.2",
         "26.2",
         "26.3",
-        "NeoForge"
+        "NeoForge",
+        "Client"
       ],
       "releaseType": "release",
       "isMarkedForManualRelease": false,

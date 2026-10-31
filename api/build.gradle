@@ -36,7 +36,7 @@ dependencies {
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
-    apiCompatibilityBaseline("io.github.kamilhik:e4steam-api:1.0.0") {
+    apiCompatibilityBaseline("io.github.kamilhik:e4steam-api:1.1.0") {
         transitive = false
     }
 }

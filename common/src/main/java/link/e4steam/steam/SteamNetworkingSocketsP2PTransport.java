@@ -85,7 +85,7 @@ final class SteamNetworkingSocketsP2PTransport implements AutoCloseable {
         void invoke(Pointer statusChanged);
     }
 
-    private interface FlatApi extends Library {
+    interface FlatApi extends Library {
         Pointer SteamAPI_SteamNetworkingSockets_SteamAPI_v012();
         Pointer SteamAPI_SteamGameServerNetworkingSockets_SteamAPI_v012();
         Pointer SteamAPI_SteamNetworkingUtils_SteamAPI_v004();
@@ -168,20 +168,27 @@ final class SteamNetworkingSocketsP2PTransport implements AutoCloseable {
                 steamApiLibrary, true, 0L, listener);
     }
 
-    @SuppressWarnings("deprecation")
     private SteamNetworkingSocketsP2PTransport(
             Path steamApiLibrary,
             boolean gameServer,
             long clientRemoteSteamId,
             SessionListener listener
     ) throws IOException {
-        Objects.requireNonNull(steamApiLibrary, "steamApiLibrary");
+        this(loadApi(steamApiLibrary), gameServer, clientRemoteSteamId, listener);
+    }
+
+    /** Inject the native boundary for deterministic disconnect/reconnect regression tests. */
+    SteamNetworkingSocketsP2PTransport(
+            FlatApi nativeApi,
+            boolean gameServer,
+            long clientRemoteSteamId,
+            SessionListener listener
+    ) throws IOException {
         this.gameServer = gameServer;
         this.clientRemoteSteamId = clientRemoteSteamId;
         this.listener = Objects.requireNonNull(listener, "listener");
+        this.api = Objects.requireNonNull(nativeApi, "nativeApi");
         try {
-            api = (FlatApi) Native.loadLibrary(
-                    steamApiLibrary.toAbsolutePath().normalize().toString(), FlatApi.class);
             sockets = gameServer
                     ? api.SteamAPI_SteamGameServerNetworkingSockets_SteamAPI_v012()
                     : api.SteamAPI_SteamNetworkingSockets_SteamAPI_v012();
@@ -274,6 +281,12 @@ final class SteamNetworkingSocketsP2PTransport implements AutoCloseable {
 
     synchronized int availablePacketSize() throws IOException {
         ensureOpen();
+        // A normal dedicated disconnect retires its handle while the shared Steam runtime stays alive.
+        // ReceiveMessagesOnConnection(0) returns -1; polling it used to poison the whole runtime.
+        if (!gameServer && clientConnection == INVALID_HANDLE) {
+            releasePendingMessages();
+            return 0;
+        }
         if (pendingMessages.isEmpty()) {
             Pointer[] messages = new Pointer[RECEIVE_BATCH_SIZE];
             int count;
@@ -283,6 +296,17 @@ final class SteamNetworkingSocketsP2PTransport implements AutoCloseable {
             } else {
                 count = api.SteamAPI_ISteamNetworkingSockets_ReceiveMessagesOnConnection(
                         sockets, clientConnection, messages, RECEIVE_BATCH_SIZE);
+            }
+            if (count < 0 && !gameServer) {
+                int connection = clientConnection;
+                forgetConnection(connection, clientRemoteSteamId);
+                try {
+                    listener.onSessionFailed(clientRemoteSteamId, RESULT_NO_CONNECTION,
+                            "dedicated connection is no longer readable");
+                } catch (Throwable ignored) {
+                }
+                closeConnection(connection, "e4steam released an unreadable connection");
+                return 0;
             }
             if (count < 0 || count > RECEIVE_BATCH_SIZE) {
                 throw new IOException("Steam returned an invalid P2P message count: " + count);
@@ -432,6 +456,8 @@ final class SteamNetworkingSocketsP2PTransport implements AutoCloseable {
         if (closed || callback == null) return;
         int connection = callback.getInt(0);
         if (connection == INVALID_HANDLE) return;
+        if (!gameServer && connection != clientConnection
+                && !peersByConnection.containsKey(connection)) return;
         connectionInfo.clear();
         if (api.SteamAPI_ISteamNetworkingSockets_GetConnectionInfo(
                 sockets, connection, connectionInfo) == 0) return;
@@ -464,6 +490,9 @@ final class SteamNetworkingSocketsP2PTransport implements AutoCloseable {
         }
         if (state == STATE_CLOSED_BY_PEER || state == STATE_PROBLEM_DETECTED_LOCALLY
                 || state < 0) {
+            // Closing a retired handle can emit a late callback after a replacement was accepted.
+            // Such a callback must not end the new peer's authentication or close its bridges.
+            if (!peersByConnection.containsKey(connection)) return;
             int reason = connectionInfo.getInt(CONNECTION_INFO_END_REASON_OFFSET);
             String detail = readFixedString(
                     connectionInfo, CONNECTION_INFO_END_DEBUG_OFFSET,
@@ -492,6 +521,16 @@ final class SteamNetworkingSocketsP2PTransport implements AutoCloseable {
             api.SteamAPI_ISteamNetworkingSockets_CloseConnection(
                     sockets, connection, 0, detail, (byte) 0);
         } catch (Throwable ignored) {
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static FlatApi loadApi(Path library) throws IOException {
+        Objects.requireNonNull(library, "steamApiLibrary");
+        try {
+            return (FlatApi) Native.loadLibrary(library.toAbsolutePath().normalize().toString(), FlatApi.class);
+        } catch (UnsatisfiedLinkError | RuntimeException failure) {
+            throw new IOException("Could not bind Steam Networking Sockets", failure);
         }
     }
 

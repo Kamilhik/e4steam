@@ -186,6 +186,8 @@ public final class SteamRuntime implements SteamBridgeRuntime {
     private volatile SteamUtils utils;
     private volatile SteamLobbyManager lobbyManager;
     private volatile SteamAddonLobbyDirectory addonLobbyDirectory;
+    private volatile SteamNamedWorldDirectory namedWorldDirectory;
+    private volatile SteamAnonymousServerDirectory anonymousServerDirectory;
     private volatile HostRegistration hostRegistration;
     private volatile long nextLoopbackConnectAttemptAtMillis;
     private long nextKnownPeerAcceptAtMillis;
@@ -697,6 +699,72 @@ public final class SteamRuntime implements SteamBridgeRuntime {
         });
     }
 
+    /** Premium publishes an opt-in name; resolution is available to every client. */
+    public CompletableFuture<String> publishNamedWorld(SteamSession owner, String name, String worldId) {
+        String normalized = SteamNamedAddress.normalize(name);
+        UUID world = UUID.fromString(worldId);
+        return submitSteamTaskIfRunning(() -> {
+            HostRegistration hosting = hostRegistration;
+            if (hosting == null || hosting.owner() != owner || owner.state != SteamSession.State.STARTED)
+                throw new IOException("Мир ещё не открыт через Steam.");
+            long lobby = lobbyManager == null ? 0 : lobbyManager.hostLobbyId(owner);
+            if (lobby == 0) throw new IOException("Steam-лобби ещё не готово.");
+            if (namedWorldDirectory == null) namedWorldDirectory = new SteamNamedWorldDirectory(this);
+            return namedWorldDirectory.publish(owner, normalized, world, lobby);
+        }).thenCompose(Function.identity());
+    }
+
+    public CompletableFuture<Void> stopNamedWorld(SteamSession owner) {
+        return submitSteamTaskIfRunning(() -> {
+            if (namedWorldDirectory != null) namedWorldDirectory.stop(owner);
+            return null;
+        });
+    }
+
+    /** Runs on Minecraft's resolver thread. Steam-native calls stay on the existing worker. */
+    public InetSocketAddress openNamedWorld(String name, java.util.function.BooleanSupplier connecting) throws IOException {
+        String normalized = SteamNamedAddress.normalize(name);
+        try (Activity activity = acquireActivity()) {
+            awaitReady();
+            SteamNamedAddress.Identity pinned = SteamNamePins.get(normalized);
+            CompletableFuture<List<SteamNamedAddress.Target>> search = submitSteamTask(() -> {
+                if (namedWorldDirectory == null) namedWorldDirectory = new SteamNamedWorldDirectory(this);
+                return namedWorldDirectory.search(normalized);
+            }).thenCompose(Function.identity());
+            List<SteamNamedAddress.Target> found = awaitNamed(search, connecting);
+            SteamNamedAddress.Target target = SteamNamedAddress.choose(found, pinned, link.e4steam.MinecraftVersion.current());
+            CompletableFuture<SteamAddress> joined = submitSteamTask(() -> {
+                if (lobbyManager == null) throw new IOException("Steam недоступен.");
+                return lobbyManager.joinNamedLobby(normalized, target);
+            }).thenCompose(Function.identity());
+            try {
+                SteamAddress endpoint = awaitNamed(joined, connecting);
+                if (!connecting.getAsBoolean()) throw new IOException("Подключение отменено.");
+                SteamNamePins.remember(normalized, target.identity());
+                return SteamClientBridge.open(endpoint);
+            } catch (IOException failure) {
+                cancelGuestJoin();
+                throw failure;
+            }
+        }
+    }
+
+    private static <T> T awaitNamed(CompletableFuture<T> future, java.util.function.BooleanSupplier connecting) throws IOException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(25);
+        while (connecting.getAsBoolean() && System.nanoTime() < deadline) {
+            try { return future.get(200, TimeUnit.MILLISECONDS); }
+            catch (TimeoutException pending) { /* Check cancellation while the native request is pending. */ }
+            catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Подключение прервано.");
+            } catch (ExecutionException failed) {
+                Throwable cause = failed.getCause();
+                throw cause instanceof IOException ? (IOException) cause : new IOException("Ошибка поиска адреса Steam.");
+            }
+        }
+        throw new IOException(connecting.getAsBoolean() ? "Steam не ответил на запрос адреса." : "Подключение отменено.");
+    }
+
     /** Native operations remain on the existing Steam worker; the scoped API dispatches completions. */
     public link.e4steam.api.lobby.LobbyService addonLobbies(String owner) {
         return new link.e4steam.api.lobby.LobbyService() {
@@ -720,6 +788,13 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 return unavailable;
             }
         };
+    }
+
+    public CompletableFuture<java.util.List<link.e4steam.api.directory.PublicDirectoryService.DedicatedListing>> searchDedicated(int limit) {
+        return submitSteamTaskIfRunning(() -> {
+            if (anonymousServerDirectory == null) anonymousServerDirectory = new SteamAnonymousServerDirectory();
+            return anonymousServerDirectory.search(limit);
+        }).thenCompose(value -> value);
     }
 
     // Keep the lambda descriptor erased to Object. Quilt's lazy class lookup can
@@ -1325,6 +1400,8 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 cleanupPeerSessions();
                 cleanupGracefulBridgeClosures(nowMillis);
                 if (addonLobbyDirectory != null) addonLobbyDirectory.tick(nowMillis);
+                if (namedWorldDirectory != null) namedWorldDirectory.tick(nowMillis);
+                if (anonymousServerDirectory != null) anonymousServerDirectory.tick(nowMillis);
                 SteamLobbyManager currentSocial = lobbyManager;
                 if (currentSocial != null) {
                     currentSocial.cleanup(nowMillis);
@@ -1332,11 +1409,10 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 if (shouldStopForIdle(currentGeneration, nowMillis)) {
                     break;
                 }
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException exception) {
-                    // Wake-ups are used for queued Steam tasks and lifecycle changes.
-                }
+                // Queue wakeups must not interrupt verified native-file I/O.
+                java.util.concurrent.locks.LockSupport.parkNanos(this, 10_000_000L);
+                Thread.interrupted(); // A real shutdown interrupt is handled by stopRequested.
+
             }
         } catch (Throwable throwable) {
             workerFailure = throwable;
@@ -1377,9 +1453,15 @@ public final class SteamRuntime implements SteamBridgeRuntime {
 
             SteamLobbyManager currentSocial = lobbyManager;
             lobbyManager = null;
+            SteamNamedWorldDirectory names = namedWorldDirectory;
+            namedWorldDirectory = null;
+            if (names != null) names.close();
             SteamAddonLobbyDirectory directory = addonLobbyDirectory;
             addonLobbyDirectory = null;
             if (directory != null) directory.close();
+            SteamAnonymousServerDirectory anonymous = anonymousServerDirectory;
+            anonymousServerDirectory = null;
+            if (anonymous != null) anonymous.close();
             if (currentSocial != null) {
                 try {
                     currentSocial.close();
@@ -1467,6 +1549,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                     || !idleSessionDeadlines.isEmpty()
                     || !steamTasks.isEmpty()
                     || (addonLobbyDirectory != null && addonLobbyDirectory.keepsRuntimeAlive())
+                    || (anonymousServerDirectory != null && anonymousServerDirectory.keepsRuntimeAlive())
                     || (currentSocial != null && currentSocial.keepsRuntimeAlive());
             if (keepAlive) {
                 currentGeneration.idleSinceMillis = 0;
@@ -1498,7 +1581,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             }
             steamTasks.add(task);
             current.idleSinceMillis = 0;
-            current.worker.interrupt();
+            java.util.concurrent.locks.LockSupport.unpark(current.worker);
         }
         return task.result;
     }
@@ -1565,7 +1648,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             }
             WorkerGeneration current = generation;
             if (current != null) {
-                current.worker.interrupt();
+                java.util.concurrent.locks.LockSupport.unpark(current.worker);
             }
         }
     }

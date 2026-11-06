@@ -5,6 +5,7 @@ import link.e4steam.internal.api.CoreApiPlatform;
 import link.e4steam.internal.api.RuntimeEnvironment;
 import link.e4steam.internal.dedicated.DedicatedRuntimeConfig;
 import link.e4steam.internal.dedicated.DedicatedServerController;
+import link.e4steam.internal.dedicated.DedicatedStartupFiles;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -36,12 +37,15 @@ public final class E4steamDedicated {
         if (!INITIALIZED.compareAndSet(false, true)) return;
         DedicatedRuntimeConfig config;
         try {
+            Path serverDirectory = Paths.get(System.getProperty("user.dir", "."));
             config = DedicatedRuntimeConfig.load(
-                    Paths.get(System.getProperty("user.dir", "."),
-                            "config", "e4steam-dedicated.toml"),
+                    DedicatedStartupFiles.ensureDefaults(serverDirectory),
                     System.getenv(),
                     System.getProperties()
             );
+            if (DedicatedStartupFiles.prepareMinecraft(serverDirectory, config.enabled())) {
+                LOGGER.info("e4steam prepared Steam-only Minecraft ingress; original properties backed up; game port unchanged");
+            }
         } catch (IOException | RuntimeException failure) {
             throw new IllegalStateException("Invalid e4steam dedicated configuration", failure);
         }
@@ -53,7 +57,7 @@ public final class E4steamDedicated {
         if (config.enabled()) {
             LOGGER.info("e4steam dedicated mode enabled: {}", config);
         } else {
-            LOGGER.info("e4steam dedicated backend is installed but disabled");
+            LOGGER.info("e4steam dedicated backend is disabled; edit config/e4steam-dedicated.toml and restart to enable it");
         }
     }
 
@@ -75,7 +79,12 @@ public final class E4steamDedicated {
 
     public static void minecraftStopped() {
         DedicatedServerController active = controller;
-        if (active != null) active.minecraftStopped();
+        if (active != null) {
+            // Stop the physical-server API before NeoForge closes its module classloader.
+            CoreApiPlatform platform = CoreApiPlatform.current();
+            if (platform != null) platform.close();
+            active.minecraftStopped();
+        }
     }
 
     public static long authenticatedMinecraftPeer(SocketAddress remoteAddress) {

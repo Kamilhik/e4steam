@@ -56,6 +56,13 @@ public abstract class ServerLoginPacketListenerImplMixin {
         ci.cancel();
     }
 
+    /** Steam identities have no Mojang-signed profile key; retain vanilla policy for other ingress. */
+    @Redirect(method="/^(handleAcceptedLogin|acceptPlayer|method_14384|m_10055_)$/", remap=false,
+            at=@At(value="INVOKE", target="Lnet/minecraft/server/MinecraftServer;enforceSecureProfile()Z", remap=true), require=0)
+    private boolean e4steam$requireMojangProfileKey(MinecraftServer server) {
+        return e4steam$authenticatedSteamId() == 0L && server.enforceSecureProfile();
+    }
+
     /** Binds the UUID to Steam while preserving the Minecraft nickname. */
     @ModifyVariable(
             method = "startClientVerification",
@@ -82,6 +89,18 @@ public abstract class ServerLoginPacketListenerImplMixin {
         try {
             GameProfile original=(GameProfile)field.get(this);
             field.set(this,link.e4steam.steam.SteamMinecraftProfile.bind(original,peer));
+            // 1.19/1.19.2 keys sign the Mojang UUID, not the authenticated Steam UUID.
+            java.lang.reflect.Field key=link.e4steam.lan.LanReflection.field(this,
+                    "profilePublicKeyData", "publicKeyData", "field_39743");
+            if (key == null) {
+                for (java.lang.reflect.Field candidate : this.getClass().getDeclaredFields()) {
+                    String type=candidate.getType().getTypeName();
+                    if (type.endsWith("ProfilePublicKey$Data") || type.equals("net.minecraft.class_7428$class_7443")) {
+                        candidate.setAccessible(true); key=candidate; break;
+                    }
+                }
+            }
+            if (key != null) key.set(this,null);
         } catch (IllegalAccessException failure) { throw new IllegalStateException("Cannot bind accepted Steam profile",failure); }
     }
 

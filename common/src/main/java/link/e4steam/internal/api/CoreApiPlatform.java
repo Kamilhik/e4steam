@@ -48,6 +48,7 @@ public final class CoreApiPlatform implements AutoCloseable {
     private final AddonNetworkCoordinator network = new AddonNetworkCoordinator(scheduler, sessions);
     private final CoreRuntimeService runtime;
     private final ExecutorService lifecycleExecutor;
+    private final Thread shutdownHook;
     private final AtomicBoolean closed = new AtomicBoolean();
     private final AutoCloseable addonNetworkHooks;
     private final AutoCloseable customAccessHooks;
@@ -69,7 +70,8 @@ public final class CoreApiPlatform implements AutoCloseable {
         this.lifecycleExecutor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<>(4), daemonFactory("e4steam-addon-lifecycle"),
                 new ThreadPoolExecutor.AbortPolicy());
-        Runtime.getRuntime().addShutdownHook(new Thread(this::close, "e4steam-addon-shutdown"));
+        shutdownHook = new Thread(this::close, "e4steam-addon-shutdown");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
 
     /** Starts once using entry points supplied by the normal loader. */
@@ -214,6 +216,10 @@ public final class CoreApiPlatform implements AutoCloseable {
         scheduler.close();
         lifecycleExecutor.shutdownNow();
         runtime.phase(LifecyclePhase.STOPPED);
+        if (shutdownHook != Thread.currentThread()) {
+            try { Runtime.getRuntime().removeShutdownHook(shutdownHook); }
+            catch (IllegalStateException shuttingDown) { /* JVM already runs its hooks. */ }
+        }
     }
 
     private static ThreadFactory daemonFactory(String prefix) {

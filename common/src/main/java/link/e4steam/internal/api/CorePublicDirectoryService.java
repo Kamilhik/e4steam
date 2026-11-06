@@ -101,6 +101,15 @@ final class CorePublicDirectoryService implements PublicDirectoryService {
         return result;
     }
 
+    @Override public CompletionStage<ApiResult<java.util.List<DedicatedListing>>> searchDedicated(int limit) {
+        if (!capabilities.has(Capabilities.DIRECTORY_JOIN)) return completed(denied("directory.dedicated-search"));
+        if (limit < 1 || limit > 100) return completed(invalid("directory.dedicated-search"));
+        return SteamClientApiBridge.searchDedicated(limit).handle((listings, failure) ->
+                failure == null ? ApiResult.success(listings)
+                        : SafeApiErrors.<java.util.List<DedicatedListing>>failure(ApiErrorCode.UNAVAILABLE,
+                        "directory.dedicated-search", "SteamDirectoryUnavailable"));
+    }
+
     @Override public CompletionStage<ApiResult<AttestationReceipt>> attest(AttestationChallenge challenge) {
         if (!capabilities.has(Capabilities.DIRECTORY_ATTESTATION)) {
             return completed(denied("directory.attest"));

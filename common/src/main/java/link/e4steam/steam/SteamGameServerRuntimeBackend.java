@@ -52,6 +52,9 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
     private final ConcurrentHashMap<Long, PendingAuth> pendingAuth = new ConcurrentHashMap<>();
     private final Set<Long> authenticatedPeers = ConcurrentHashMap.newKeySet();
     private final CompletableFuture<RuntimeReady> readiness = new CompletableFuture<>();
+    private final CompletableFuture<Void> termination = new CompletableFuture<>();
+    private volatile Thread shutdownHook;
+    private volatile boolean apiInitialized;
 
     private volatile String failureCategory = "";
     private volatile Config config;
@@ -61,6 +64,9 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
     private volatile SteamNetworkingSocketsP2PTransport transport;
     private volatile Thread callbackThread;
     private volatile long startupDeadline;
+    private volatile String[] publicListing;
+    private volatile long nextPublicListingUpdate;
+    private volatile int publicPlayers;
     private volatile PeerListener peerListener = PeerListener.REJECT_ALL;
 
     public SteamGameServerRuntimeBackend(StateListener stateListener) {
@@ -90,19 +96,37 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
     }
 
     @Override public CompletionStage<Void> stop(ShutdownReason reason) {
-        CompletableFuture<Void> stopped = new CompletableFuture<>();
         if (stopRequested.compareAndSet(false, true)) {
-            if (!submitControl(() -> {
-                stopInternal(false);
-                stopped.complete(null);
-            })) {
-                stopInternal(false);
-                stopped.complete(null);
-            }
-        } else {
-            stopped.complete(null);
+            Runnable cleanup = () -> {
+                try { stopInternal(false); }
+                catch (Throwable failure) { termination.completeExceptionally(failure); }
+            };
+            if (!submitControl(cleanup)) cleanup.run();
         }
-        return stopped.thenApply(value -> null);
+        // Minecraft may exit the JVM immediately after its stopped event returns.
+        // Do not abandon daemon-thread SDK cleanup or report a concurrent stop as complete.
+        if (reason == ShutdownReason.MINECRAFT_STOPPING
+                && !Thread.currentThread().getName().startsWith("e4steam-")) {
+            awaitTermination();
+        }
+        return termination.thenApply(value -> null);
+    }
+
+    private void awaitTermination() {
+        try { termination.get(10, TimeUnit.SECONDS); }
+        catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+        catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException failure) {
+            LOGGER.warn("Dedicated Steam shutdown did not finish cleanly");
+        }
+    }
+
+    private void installShutdownHook() {
+        Thread hook = new Thread(() -> {
+            stop(ShutdownReason.MINECRAFT_STOPPING);
+            awaitTermination();
+        }, "e4steam-gameserver-shutdown");
+        Runtime.getRuntime().addShutdownHook(hook);
+        shutdownHook = hook;
     }
 
     public void peerListener(PeerListener listener) {
@@ -177,8 +201,12 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
 
     public boolean send(long remoteSteamId, ByteBuffer payload, boolean unreliable, int channel)
             throws IOException {
-        SteamNetworkingSocketsP2PTransport active = requireTransport();
-        return active.send(remoteSteamId, payload, unreliable);
+        return sendResult(remoteSteamId, payload, unreliable, channel) == 1;
+    }
+
+    public int sendResult(long remoteSteamId, ByteBuffer payload, boolean unreliable, int channel)
+            throws IOException {
+        return requireTransport().sendResult(remoteSteamId, payload, unreliable);
     }
 
     public int availablePacketSize(int channel) throws IOException {
@@ -197,6 +225,44 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
         if (active != null) active.closePeer(remoteSteamId);
     }
 
+    public CompletableFuture<Boolean> setPublicListing(boolean enabled, String minecraft,
+            String loader, String addonVersion) {
+        CompletableFuture<Boolean> result = new CompletableFuture<>();
+        if (!submitControl(() -> {
+            try {
+                SteamGameServer server = gameServer;
+                if (server == null || state.get() != State.TRANSPORT_READY || stopRequested.get()) {
+                    result.complete(false); return;
+                }
+                if (!enabled) {
+                    publicListing = null; server.setAdvertiseServerActive(false);
+                } else {
+                    String[] metadata = {minecraft, loader, addonVersion};
+                    writePublicListing(server, metadata);
+                    publicListing = metadata;
+                    server.setAdvertiseServerActive(true);
+                }
+                result.complete(true);
+            } catch (RuntimeException failure) { result.completeExceptionally(failure); }
+        })) result.complete(false);
+        return result;
+    }
+
+    public void publicPlayers(int count) { publicPlayers = Math.max(0, count); }
+
+    private void writePublicListing(SteamGameServer server, String[] metadata) {
+        SteamProcessGuard.Lease lease = processLease;
+        if (lease == null) throw new IllegalStateException("Dedicated process is stopping");
+        long now = System.currentTimeMillis();
+        String tags = SteamDedicatedAdvertisement.encode(
+                SteamNativeHandle.getNativeHandle(server.getSteamID()), lease.generation(),
+                config.serverName(), metadata[0], metadata[1], link.e4steam.E4steamConstants.modVersion(),
+                metadata[2], link.e4steam.api.ApiConstants.WIRE_PROTOCOL_VERSION,
+                Math.min(config.maxPeers(), publicPlayers), config.maxPeers(), now);
+        server.setGameTags(tags);
+        nextPublicListingUpdate = now + 15_000L;
+    }
+
     private void startInternal() {
         try {
             Config requested = config;
@@ -205,6 +271,7 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
             }
             ensureAppIdFile(requested.appId());
             processLease = SteamProcessGuard.acquire(SteamProcessGuard.Context.GAME_SERVER);
+            LinuxDedicatedSdk.prepare();
             nativeLoader = new SteamNativeLibraryLoader();
             if (!SteamGameServerAPI.loadLibraries(nativeLoader)) {
                 throw new IOException("GameServer native binding could not be loaded");
@@ -216,13 +283,15 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
                     (short) requested.gamePort(),
                     (short) requested.queryPort(),
                     SteamGameServerAPI.ServerMode.Authentication,
-                    link.e4steam.E4steamConstants.modVersion()
+                    "1.0.0.0" // Steam App ID 480 query-protocol version; separate from the mod version.
             )) {
                 throw new IOException("Steam GameServer initialization was rejected");
             }
+            apiInitialized = true;
+            installShutdownHook();
             SteamGameServer created = new SteamGameServer(new Callback());
             gameServer = created;
-            created.setProduct("e4steam");
+            created.setProduct("480");
             created.setGameDescription("e4steam Minecraft");
             created.setModDir("e4steam");
             created.setDedicatedServer(true);
@@ -275,6 +344,14 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
                     SteamNetworkingSocketsP2PTransport activeTransport = transport;
                     if (activeTransport != null) activeTransport.runCallbacks();
                     expirePendingAuth();
+                    if (publicListing != null && System.currentTimeMillis() >= nextPublicListingUpdate) {
+                        nextPublicListingUpdate = System.currentTimeMillis() + 15_000L;
+                        submitControl(() -> {
+                            String[] listing = publicListing;
+                            SteamGameServer server = gameServer;
+                            if (listing != null && server != null && !stopRequested.get()) writePublicListing(server, listing);
+                        });
+                    }
                     if (state.get() == State.STEAM_LOGGING_ON
                             && System.currentTimeMillis() >= startupDeadline) {
                         submitControl(() -> fail("STEAM_LOGON_TIMEOUT", null));
@@ -350,7 +427,8 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
         stopInternal(true);
         transition(State.FAILED, failureCategory);
         if (failure != null) {
-            LOGGER.warn("Dedicated Steam backend failed [{}]", failureCategory);
+            LOGGER.warn("Dedicated Steam backend failed [" + failureCategory + "] ("
+                    + failure.getClass().getSimpleName() + ")");
         }
     }
 
@@ -362,7 +440,11 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
         stopRequested.set(true);
         Thread callbacks = callbackThread;
         callbackThread = null;
-        if (callbacks != null && callbacks != Thread.currentThread()) callbacks.interrupt();
+        if (callbacks != null && callbacks != Thread.currentThread()) {
+            callbacks.interrupt();
+            try { callbacks.join(2_000L); }
+            catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+        }
 
         SteamNetworkingSocketsP2PTransport activeTransport = transport;
         transport = null;
@@ -391,14 +473,22 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
             try { server.logOff(); } catch (RuntimeException ignored) { }
             try { server.dispose(); } catch (RuntimeException ignored) { }
         }
-        if (processLease != null) {
+        if (apiInitialized) {
+            apiInitialized = false;
             try { SteamGameServerAPI.shutdown(); } catch (RuntimeException ignored) { }
         }
         SteamProcessGuard.Lease lease = processLease;
         processLease = null;
         if (lease != null) lease.close();
         if (!failed) transition(State.STOPPED, "");
+        Thread hook = shutdownHook;
+        shutdownHook = null;
+        if (hook != null && hook != Thread.currentThread()) {
+            try { Runtime.getRuntime().removeShutdownHook(hook); }
+            catch (IllegalStateException shuttingDown) { /* JVM already runs its hooks. */ }
+        }
         control.shutdownNow();
+        termination.complete(null);
     }
 
     private void transition(State next, String category) {

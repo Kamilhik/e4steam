@@ -1,0 +1,202 @@
+[
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-fabric-quilt-mc1.17-1.18.2-v0.3.6.jar",
+    "sha256": "124a3a56adb4c329d69d701e1aa61525167978cf7f3cd335e83f4c034941feb1",
+    "metadata": {
+      "changelog": "# e4steam 0.3.6\n\n## English\n\n- Join Premium-hosted worlds using personal addresses such as `kamilchik.steam`. Guests use free e4steam and do not need a Premium key. Choosing and publishing a personal name requires Premium.\n- Add an optional animated **Open to LAN → Support** window. It follows Minecraft's language (English/Russian) and offers **Open Boosty** and **Back**.\n- Fix support-panel blur, browser-link opening and UI timing compatibility on Minecraft 26.x.\n- Six free runtime JARs cover Minecraft **1.17–26.3** on Fabric/Quilt, Forge and NeoForge. No Premium activation code or retro JARs are included.\n\nAlso included from the previously unpublished 0.3.5 work: dedicated-server reconnection fixes, protection against late close callbacks ending a replacement session, dedicated Steam configuration and startup improvements, and automatic selection of an available LAN port.\n\nInstall one JAR matching your Minecraft version and loader; Fabric/Quilt also need Fabric API. Replace the old e4steam JAR. Public Worlds remains a separate addon. Windows x64 is the primary platform; Linux/macOS remain experimental. Automated checks and targeted in-game confirmations do not establish a complete two-account test matrix for every Minecraft patch.\n\n## Русский\n\n- Добавлен вход в миры Premium по персональным адресам вроде `kamilchik.steam`. Гостю достаточно бесплатного e4steam, ключ Premium не нужен. Выбор и публикация собственного имени доступны в Premium.\n- В **«Открыть для сети → Поддержать»** добавлено необязательное окно с плавным появлением и закрытием. Язык выбирается по языку Minecraft (русский/английский). Внутри — **«Открыть Boosty»** и **«Назад»**.\n- Исправлены размытие панели поддержки, открытие ссылки в браузере и совместимость таймера интерфейса с Minecraft 26.x.\n- Шесть бесплатных JAR для Minecraft **1.17–26.3**: Fabric/Quilt, Forge и NeoForge. Активации Premium и ретро-JAR в этом выпуске нет.\n\nТакже вошли ранее не опубликованные изменения 0.3.5: исправления повторного подключения к выделенному серверу, защита новой сессии от запоздалых событий закрытого соединения, улучшения конфигурации и запуска выделенных серверов через Steam, автоматический выбор свободного порта LAN.\n\nУстановите один JAR для своей версии Minecraft и загрузчика, заменив старый e4steam. Для Fabric/Quilt нужен Fabric API. Public Worlds устанавливается отдельно. Основная платформа — Windows x64; Linux/macOS остаются экспериментальными. Автоматические проверки и отдельные подтверждения в игре не заменяют полную проверку всех версий двумя аккаунтами.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.6 — fabric-quilt 1.17–1.18.2",
+      "gameVersionNames": [
+        "1.17",
+        "1.17.1",
+        "1.18",
+        "1.18.1",
+        "1.18.2",
+        "Fabric",
+        "Quilt",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "fabric-api",
+            "projectID": 306612,
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-fabric-quilt-mc1.19-1.21.11-v0.3.6.jar",
+    "sha256": "f265828446c295edcf6daa56133038233483a8e1817d1d18e4fa6acfdd049884",
+    "metadata": {
+      "changelog": "# e4steam 0.3.6\n\n## English\n\n- Join Premium-hosted worlds using personal addresses such as `kamilchik.steam`. Guests use free e4steam and do not need a Premium key. Choosing and publishing a personal name requires Premium.\n- Add an optional animated **Open to LAN → Support** window. It follows Minecraft's language (English/Russian) and offers **Open Boosty** and **Back**.\n- Fix support-panel blur, browser-link opening and UI timing compatibility on Minecraft 26.x.\n- Six free runtime JARs cover Minecraft **1.17–26.3** on Fabric/Quilt, Forge and NeoForge. No Premium activation code or retro JARs are included.\n\nAlso included from the previously unpublished 0.3.5 work: dedicated-server reconnection fixes, protection against late close callbacks ending a replacement session, dedicated Steam configuration and startup improvements, and automatic selection of an available LAN port.\n\nInstall one JAR matching your Minecraft version and loader; Fabric/Quilt also need Fabric API. Replace the old e4steam JAR. Public Worlds remains a separate addon. Windows x64 is the primary platform; Linux/macOS remain experimental. Automated checks and targeted in-game confirmations do not establish a complete two-account test matrix for every Minecraft patch.\n\n## Русский\n\n- Добавлен вход в миры Premium по персональным адресам вроде `kamilchik.steam`. Гостю достаточно бесплатного e4steam, ключ Premium не нужен. Выбор и публикация собственного имени доступны в Premium.\n- В **«Открыть для сети → Поддержать»** добавлено необязательное окно с плавным появлением и закрытием. Язык выбирается по языку Minecraft (русский/английский). Внутри — **«Открыть Boosty»** и **«Назад»**.\n- Исправлены размытие панели поддержки, открытие ссылки в браузере и совместимость таймера интерфейса с Minecraft 26.x.\n- Шесть бесплатных JAR для Minecraft **1.17–26.3**: Fabric/Quilt, Forge и NeoForge. Активации Premium и ретро-JAR в этом выпуске нет.\n\nТакже вошли ранее не опубликованные изменения 0.3.5: исправления повторного подключения к выделенному серверу, защита новой сессии от запоздалых событий закрытого соединения, улучшения конфигурации и запуска выделенных серверов через Steam, автоматический выбор свободного порта LAN.\n\nУстановите один JAR для своей версии Minecraft и загрузчика, заменив старый e4steam. Для Fabric/Quilt нужен Fabric API. Public Worlds устанавливается отдельно. Основная платформа — Windows x64; Linux/macOS остаются экспериментальными. Автоматические проверки и отдельные подтверждения в игре не заменяют полную проверку всех версий двумя аккаунтами.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.6 — fabric-quilt 1.19–1.21.11",
+      "gameVersionNames": [
+        "1.19",
+        "1.19.1",
+        "1.19.2",
+        "1.19.3",
+        "1.19.4",
+        "1.20",
+        "1.20.1",
+        "1.20.2",
+        "1.20.3",
+        "1.20.4",
+        "1.20.5",
+        "1.20.6",
+        "1.21",
+        "1.21.1",
+        "1.21.2",
+        "1.21.3",
+        "1.21.4",
+        "1.21.5",
+        "1.21.6",
+        "1.21.7",
+        "1.21.8",
+        "1.21.9",
+        "1.21.10",
+        "1.21.11",
+        "Fabric",
+        "Quilt",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "fabric-api",
+            "projectID": 306612,
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-fabric-quilt-mc26.1-26.3-v0.3.6.jar",
+    "sha256": "96e882d3fcac7c084125af5990b106ea12397cef460344cccdab7655a08c93a5",
+    "metadata": {
+      "changelog": "# e4steam 0.3.6\n\n## English\n\n- Join Premium-hosted worlds using personal addresses such as `kamilchik.steam`. Guests use free e4steam and do not need a Premium key. Choosing and publishing a personal name requires Premium.\n- Add an optional animated **Open to LAN → Support** window. It follows Minecraft's language (English/Russian) and offers **Open Boosty** and **Back**.\n- Fix support-panel blur, browser-link opening and UI timing compatibility on Minecraft 26.x.\n- Six free runtime JARs cover Minecraft **1.17–26.3** on Fabric/Quilt, Forge and NeoForge. No Premium activation code or retro JARs are included.\n\nAlso included from the previously unpublished 0.3.5 work: dedicated-server reconnection fixes, protection against late close callbacks ending a replacement session, dedicated Steam configuration and startup improvements, and automatic selection of an available LAN port.\n\nInstall one JAR matching your Minecraft version and loader; Fabric/Quilt also need Fabric API. Replace the old e4steam JAR. Public Worlds remains a separate addon. Windows x64 is the primary platform; Linux/macOS remain experimental. Automated checks and targeted in-game confirmations do not establish a complete two-account test matrix for every Minecraft patch.\n\n## Русский\n\n- Добавлен вход в миры Premium по персональным адресам вроде `kamilchik.steam`. Гостю достаточно бесплатного e4steam, ключ Premium не нужен. Выбор и публикация собственного имени доступны в Premium.\n- В **«Открыть для сети → Поддержать»** добавлено необязательное окно с плавным появлением и закрытием. Язык выбирается по языку Minecraft (русский/английский). Внутри — **«Открыть Boosty»** и **«Назад»**.\n- Исправлены размытие панели поддержки, открытие ссылки в браузере и совместимость таймера интерфейса с Minecraft 26.x.\n- Шесть бесплатных JAR для Minecraft **1.17–26.3**: Fabric/Quilt, Forge и NeoForge. Активации Premium и ретро-JAR в этом выпуске нет.\n\nТакже вошли ранее не опубликованные изменения 0.3.5: исправления повторного подключения к выделенному серверу, защита новой сессии от запоздалых событий закрытого соединения, улучшения конфигурации и запуска выделенных серверов через Steam, автоматический выбор свободного порта LAN.\n\nУстановите один JAR для своей версии Minecraft и загрузчика, заменив старый e4steam. Для Fabric/Quilt нужен Fabric API. Public Worlds устанавливается отдельно. Основная платформа — Windows x64; Linux/macOS остаются экспериментальными. Автоматические проверки и отдельные подтверждения в игре не заменяют полную проверку всех версий двумя аккаунтами.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.6 — fabric-quilt 26.1–26.3",
+      "gameVersionNames": [
+        "26.1",
+        "26.1.1",
+        "26.1.2",
+        "26.2",
+        "26.3",
+        "Fabric",
+        "Quilt",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "fabric-api",
+            "projectID": 306612,
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-forge-mc1.17.1-1.18.1-v0.3.6.jar",
+    "sha256": "694b52d4459c4c02cd3f0ea321f7128225458929e4a81756c8bc90c948ea2dab",
+    "metadata": {
+      "changelog": "# e4steam 0.3.6\n\n## English\n\n- Join Premium-hosted worlds using personal addresses such as `kamilchik.steam`. Guests use free e4steam and do not need a Premium key. Choosing and publishing a personal name requires Premium.\n- Add an optional animated **Open to LAN → Support** window. It follows Minecraft's language (English/Russian) and offers **Open Boosty** and **Back**.\n- Fix support-panel blur, browser-link opening and UI timing compatibility on Minecraft 26.x.\n- Six free runtime JARs cover Minecraft **1.17–26.3** on Fabric/Quilt, Forge and NeoForge. No Premium activation code or retro JARs are included.\n\nAlso included from the previously unpublished 0.3.5 work: dedicated-server reconnection fixes, protection against late close callbacks ending a replacement session, dedicated Steam configuration and startup improvements, and automatic selection of an available LAN port.\n\nInstall one JAR matching your Minecraft version and loader; Fabric/Quilt also need Fabric API. Replace the old e4steam JAR. Public Worlds remains a separate addon. Windows x64 is the primary platform; Linux/macOS remain experimental. Automated checks and targeted in-game confirmations do not establish a complete two-account test matrix for every Minecraft patch.\n\n## Русский\n\n- Добавлен вход в миры Premium по персональным адресам вроде `kamilchik.steam`. Гостю достаточно бесплатного e4steam, ключ Premium не нужен. Выбор и публикация собственного имени доступны в Premium.\n- В **«Открыть для сети → Поддержать»** добавлено необязательное окно с плавным появлением и закрытием. Язык выбирается по языку Minecraft (русский/английский). Внутри — **«Открыть Boosty»** и **«Назад»**.\n- Исправлены размытие панели поддержки, открытие ссылки в браузере и совместимость таймера интерфейса с Minecraft 26.x.\n- Шесть бесплатных JAR для Minecraft **1.17–26.3**: Fabric/Quilt, Forge и NeoForge. Активации Premium и ретро-JAR в этом выпуске нет.\n\nТакже вошли ранее не опубликованные изменения 0.3.5: исправления повторного подключения к выделенному серверу, защита новой сессии от запоздалых событий закрытого соединения, улучшения конфигурации и запуска выделенных серверов через Steam, автоматический выбор свободного порта LAN.\n\nУстановите один JAR для своей версии Minecraft и загрузчика, заменив старый e4steam. Для Fabric/Quilt нужен Fabric API. Public Worlds устанавливается отдельно. Основная платформа — Windows x64; Linux/macOS остаются экспериментальными. Автоматические проверки и отдельные подтверждения в игре не заменяют полную проверку всех версий двумя аккаунтами.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.6 — forge 1.17.1–1.18.1",
+      "gameVersionNames": [
+        "1.17.1",
+        "1.18",
+        "1.18.1",
+        "Forge",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-forge-mc1.18.2-1.20.2-v0.3.6.jar",
+    "sha256": "afab51e869a097af43964e73d5c47c2e95f035a3c402be3683a13fd9d49cdfc5",
+    "metadata": {
+      "changelog": "# e4steam 0.3.6\n\n## English\n\n- Join Premium-hosted worlds using personal addresses such as `kamilchik.steam`. Guests use free e4steam and do not need a Premium key. Choosing and publishing a personal name requires Premium.\n- Add an optional animated **Open to LAN → Support** window. It follows Minecraft's language (English/Russian) and offers **Open Boosty** and **Back**.\n- Fix support-panel blur, browser-link opening and UI timing compatibility on Minecraft 26.x.\n- Six free runtime JARs cover Minecraft **1.17–26.3** on Fabric/Quilt, Forge and NeoForge. No Premium activation code or retro JARs are included.\n\nAlso included from the previously unpublished 0.3.5 work: dedicated-server reconnection fixes, protection against late close callbacks ending a replacement session, dedicated Steam configuration and startup improvements, and automatic selection of an available LAN port.\n\nInstall one JAR matching your Minecraft version and loader; Fabric/Quilt also need Fabric API. Replace the old e4steam JAR. Public Worlds remains a separate addon. Windows x64 is the primary platform; Linux/macOS remain experimental. Automated checks and targeted in-game confirmations do not establish a complete two-account test matrix for every Minecraft patch.\n\n## Русский\n\n- Добавлен вход в миры Premium по персональным адресам вроде `kamilchik.steam`. Гостю достаточно бесплатного e4steam, ключ Premium не нужен. Выбор и публикация собственного имени доступны в Premium.\n- В **«Открыть для сети → Поддержать»** добавлено необязательное окно с плавным появлением и закрытием. Язык выбирается по языку Minecraft (русский/английский). Внутри — **«Открыть Boosty»** и **«Назад»**.\n- Исправлены размытие панели поддержки, открытие ссылки в браузере и совместимость таймера интерфейса с Minecraft 26.x.\n- Шесть бесплатных JAR для Minecraft **1.17–26.3**: Fabric/Quilt, Forge и NeoForge. Активации Premium и ретро-JAR в этом выпуске нет.\n\nТакже вошли ранее не опубликованные изменения 0.3.5: исправления повторного подключения к выделенному серверу, защита новой сессии от запоздалых событий закрытого соединения, улучшения конфигурации и запуска выделенных серверов через Steam, автоматический выбор свободного порта LAN.\n\nУстановите один JAR для своей версии Minecraft и загрузчика, заменив старый e4steam. Для Fabric/Quilt нужен Fabric API. Public Worlds устанавливается отдельно. Основная платформа — Windows x64; Linux/macOS остаются экспериментальными. Автоматические проверки и отдельные подтверждения в игре не заменяют полную проверку всех версий двумя аккаунтами.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.6 — forge 1.18.2–1.20.2",
+      "gameVersionNames": [
+        "1.18.2",
+        "1.19",
+        "1.19.1",
+        "1.19.2",
+        "1.19.3",
+        "1.19.4",
+        "1.20",
+        "1.20.1",
+        "1.20.2",
+        "Forge",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-neoforge-mc1.20.2-26.3-v0.3.6.jar",
+    "sha256": "5371022b1a1eb8a68b13b72c1b773b4f5140399b4e19cfa8dd82f7b7c738bd2f",
+    "metadata": {
+      "changelog": "# e4steam 0.3.6\n\n## English\n\n- Join Premium-hosted worlds using personal addresses such as `kamilchik.steam`. Guests use free e4steam and do not need a Premium key. Choosing and publishing a personal name requires Premium.\n- Add an optional animated **Open to LAN → Support** window. It follows Minecraft's language (English/Russian) and offers **Open Boosty** and **Back**.\n- Fix support-panel blur, browser-link opening and UI timing compatibility on Minecraft 26.x.\n- Six free runtime JARs cover Minecraft **1.17–26.3** on Fabric/Quilt, Forge and NeoForge. No Premium activation code or retro JARs are included.\n\nAlso included from the previously unpublished 0.3.5 work: dedicated-server reconnection fixes, protection against late close callbacks ending a replacement session, dedicated Steam configuration and startup improvements, and automatic selection of an available LAN port.\n\nInstall one JAR matching your Minecraft version and loader; Fabric/Quilt also need Fabric API. Replace the old e4steam JAR. Public Worlds remains a separate addon. Windows x64 is the primary platform; Linux/macOS remain experimental. Automated checks and targeted in-game confirmations do not establish a complete two-account test matrix for every Minecraft patch.\n\n## Русский\n\n- Добавлен вход в миры Premium по персональным адресам вроде `kamilchik.steam`. Гостю достаточно бесплатного e4steam, ключ Premium не нужен. Выбор и публикация собственного имени доступны в Premium.\n- В **«Открыть для сети → Поддержать»** добавлено необязательное окно с плавным появлением и закрытием. Язык выбирается по языку Minecraft (русский/английский). Внутри — **«Открыть Boosty»** и **«Назад»**.\n- Исправлены размытие панели поддержки, открытие ссылки в браузере и совместимость таймера интерфейса с Minecraft 26.x.\n- Шесть бесплатных JAR для Minecraft **1.17–26.3**: Fabric/Quilt, Forge и NeoForge. Активации Premium и ретро-JAR в этом выпуске нет.\n\nТакже вошли ранее не опубликованные изменения 0.3.5: исправления повторного подключения к выделенному серверу, защита новой сессии от запоздалых событий закрытого соединения, улучшения конфигурации и запуска выделенных серверов через Steam, автоматический выбор свободного порта LAN.\n\nУстановите один JAR для своей версии Minecraft и загрузчика, заменив старый e4steam. Для Fabric/Quilt нужен Fabric API. Public Worlds устанавливается отдельно. Основная платформа — Windows x64; Linux/macOS остаются экспериментальными. Автоматические проверки и отдельные подтверждения в игре не заменяют полную проверку всех версий двумя аккаунтами.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.6 — neoforge 1.20.2–26.3",
+      "gameVersionNames": [
+        "1.20.2",
+        "1.20.3",
+        "1.20.4",
+        "1.20.5",
+        "1.20.6",
+        "1.21",
+        "1.21.1",
+        "1.21.2",
+        "1.21.3",
+        "1.21.4",
+        "1.21.5",
+        "1.21.6",
+        "1.21.7",
+        "1.21.8",
+        "1.21.9",
+        "1.21.10",
+        "1.21.11",
+        "26.1",
+        "26.1.1",
+        "26.1.2",
+        "26.2",
+        "26.3",
+        "NeoForge",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false
+    }
+  }
+]

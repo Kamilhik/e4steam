@@ -9,7 +9,39 @@ import net.minecraft.client.gui.screens.Screen;
 public final class LanScreenGraphics {
     private static final ConcurrentHashMap<String, Method> METHODS = new ConcurrentHashMap<>();
     private final Object context;
+    private Object foregroundPose;
+    private boolean pushed;
     public LanScreenGraphics(Object context) { this.context = context; }
+    public void beginForeground() {
+        invokeOptional(context, "flush,m_280262_,method_51452");
+        foregroundPose = invokeOptional(context, "pose,m_280168_,method_51448");
+        if (foregroundPose == null) foregroundPose = context;
+        pushed = hasOptional(foregroundPose, "pushPose,m_85836_,method_22903,pushMatrix");
+        if (pushed) invokeOptional(foregroundPose, "translate,m_85837_,method_22904", 0D, 0D, 500D);
+    }
+    public void endForeground() {
+        invokeOptional(context, "flush,m_280262_,method_51452");
+        if (pushed) invokeOptional(foregroundPose, "popPose,m_85849_,method_22909,popMatrix");
+        foregroundPose = null; pushed = false;
+    }
+    private static boolean hasOptional(Object object, String names) {
+        if (object == null) return false;
+        for (String name : names.split(",")) try {
+            object.getClass().getMethod(name).invoke(object); return true;
+        } catch (NoSuchMethodException missing) { }
+        catch (ReflectiveOperationException failure) { throw new IllegalStateException("GUI foreground failed", failure); }
+        return false;
+    }
+    private static Object invokeOptional(Object object, String names, Object... args) {
+        if (object == null) return null;
+        for (String name : names.split(",")) for (Method method : object.getClass().getMethods()) {
+            if (!method.getName().equals(name) || method.getParameterCount() != args.length) continue;
+            try { return method.invoke(object, args); }
+            catch (IllegalArgumentException mismatch) { }
+            catch (ReflectiveOperationException failure) { throw new IllegalStateException("GUI foreground failed", failure); }
+        }
+        return null;
+    }
     public void fill(int x1, int y1, int x2, int y2, int color) {
         if (!invokeIfPresent("fill,m_280509_,method_25294,m_93172_", new Object[]{x1,y1,x2,y2,color}))
             throw new IllegalStateException("LAN fill hook missing");

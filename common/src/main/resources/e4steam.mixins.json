@@ -25,6 +25,7 @@
     "ShareToLanScreenMixin",
     "PlayerListMixin",
     "ServerNameResolverMixin",
+    "NamedWorldDisconnectMixin",
     "IntegratedServerLanMixin",
     "WorldOptionsScreenMixin",
     "LanSettingsRenderMixin"

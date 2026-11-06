@@ -27,6 +27,26 @@ public final class DedicatedConfigFile {
     private DedicatedConfigFile() {
     }
 
+    /** Explicit deployment variables override a generated template; JVM properties still win. */
+    public static void mergeEnvironment(Properties values, Map<String, String> environment) {
+        if (environment == null) return;
+        String[][] names = {
+                {"E4STEAM_DEDICATED_ENABLED", "enabled"},
+                {"E4STEAM_DEDICATED_PUBLICATION", "publication"},
+                {"E4STEAM_DEDICATED_ACCESS", "access"},
+                {"E4STEAM_DEDICATED_MAX_PEERS", "maxPeers"},
+                {"E4STEAM_DEDICATED_QUERY_PORT", "queryPort"},
+                {"E4STEAM_DEDICATED_NAME", "name"},
+                {"E4STEAM_DEDICATED_WHITELIST", "whitelist"}
+        };
+        for (String[] name : names) {
+            String value = environment.get(name[0]);
+            if (value != null && !value.trim().isEmpty()) {
+                values.setProperty("e4steam.dedicated." + name[1], value.trim());
+            }
+        }
+    }
+
     public static Properties load(Path requested) throws IOException {
         Properties result = new Properties();
         if (requested == null) return result;
@@ -48,6 +68,7 @@ public final class DedicatedConfigFile {
         Map<String, String> parsed = parse(text);
         validateSentinels(parsed);
         copy(parsed, result, "enabled", "e4steam.dedicated.enabled");
+        copy(parsed, result, "publication", "e4steam.dedicated.publication");
         copy(parsed, result, "access-mode", "e4steam.dedicated.access");
         copy(parsed, result, "max-peers", "e4steam.dedicated.maxPeers");
         copy(parsed, result, "query-port", "e4steam.dedicated.queryPort");
@@ -178,7 +199,7 @@ public final class DedicatedConfigFile {
             throw invalid("schema-version must be " + SCHEMA_VERSION);
         }
         require(values, "auth-mode", "ANONYMOUS");
-        require(values, "publication", "false");
+        requireOneOf(values, "publication", "false", "true");
         require(values, "ingress-guard", "STEAM_ONLY");
         requireOneOf(values, "diagnostics-level", "OFF", "BASIC");
         require(values, "relay-policy", "OFFICIAL_AUTOMATIC");

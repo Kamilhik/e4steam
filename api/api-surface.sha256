@@ -1,3 +1,2 @@
-# e4steam addon API 1.1.0 canonical public reflection surface (SHA-256).
-# Update only with an intentional compatible extension or API version change.
-9c86eae07f432a6887bef128767f508ae97f55c90c5ed2ec1d07713e0b829e1c
+# Intentional API 1.2.0 additive defaults and anonymous directory DTOs.
+0e46a40cabc99169d09ba00c4584bcfa5627651baf9af9a084141016126f7782

@@ -189,8 +189,22 @@ public final class DedicatedServerController implements AutoCloseable {
                     PublicationProposal proposal
             ) {
                 return CompletableFuture.completedFuture(ApiResult.success(
-                        new PublicationPlan(false, "public-worlds-addon-required")
+                        new PublicationPlan(config.publication() && accepting(),
+                                config.publication() ? "" : "publication-disabled-in-config")
                 ));
+            }
+            @Override public CompletionStage<ApiResult<PublicationPlan>> setPublicListing(boolean enabled,
+                    String minecraftVersion, String loader, String addonVersion) {
+                if (!(backend instanceof SteamGameServerRuntimeBackend)
+                        || (enabled && (!config.publication() || !accepting()
+                        || config.accessMode() != DedicatedServerService.DedicatedAccessMode.UNLISTED))) {
+                    return CompletableFuture.completedFuture(ApiResult.success(
+                            new PublicationPlan(false, "publication-disabled-or-not-ready")));
+                }
+                return ((SteamGameServerRuntimeBackend) backend).setPublicListing(enabled,
+                        minecraftVersion, loader, addonVersion).handle((accepted, failure) -> ApiResult.success(
+                                new PublicationPlan(failure == null && Boolean.TRUE.equals(accepted),
+                                        failure == null && Boolean.TRUE.equals(accepted) ? "" : "steam-publication-unavailable")));
             }
         };
     }
@@ -252,7 +266,11 @@ public final class DedicatedServerController implements AutoCloseable {
         return config.enabled() && started.get();
     }
 
-    public void players(int value) { lifecycle.players(value); }
+    public void players(int value) {
+        lifecycle.players(value);
+        if (backend instanceof SteamGameServerRuntimeBackend)
+            ((SteamGameServerRuntimeBackend) backend).publicPlayers(value);
+    }
 
     public void transportFailed(String category) { fail(category); }
 
@@ -303,7 +321,7 @@ public final class DedicatedServerController implements AutoCloseable {
                 + ", access=" + snapshot.accessMode()
                 + ", players=" + snapshot.players() + '/' + snapshot.capacity()
                 + ", guarded=" + snapshot.ingressGuarded()
-                + ", publication=false";
+                + ", publication=" + config.publication();
     }
 
     @Override public void close() {

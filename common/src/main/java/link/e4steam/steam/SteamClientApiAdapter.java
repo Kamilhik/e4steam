@@ -23,6 +23,9 @@ public final class SteamClientApiAdapter {
                 @Override public link.e4steam.api.lobby.LobbyService addonLobbies(String owner) {
                     return SteamRuntime.get().addonLobbies(owner);
                 }
+                @Override public java.util.concurrent.CompletableFuture<java.util.List<link.e4steam.api.directory.PublicDirectoryService.DedicatedListing>> searchDedicated(int limit) {
+                    return SteamRuntime.get().searchDedicated(limit);
+                }
                 @Override public void releaseAddonLobbies(String owner) {
                     SteamRuntime.get().releaseAddonLobbies(owner);
                 }

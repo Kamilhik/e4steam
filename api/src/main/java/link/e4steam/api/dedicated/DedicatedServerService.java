@@ -28,6 +28,13 @@ public interface DedicatedServerService {
     /** Proposes bounded publication; core/user config can still deny it. */
     CompletionStage<ApiResult<PublicationPlan>> proposePublication(PublicationProposal proposal);
 
+    /** Applies an anonymous public advertisement, subject to administrator config and capability. */
+    default CompletionStage<ApiResult<PublicationPlan>> setPublicListing(boolean enabled,
+            String minecraftVersion, String loader, String addonVersion) {
+        return java.util.concurrent.CompletableFuture.completedFuture(ApiResult.success(
+                new PublicationPlan(false, "anonymous-publication-unavailable")));
+    }
+
     /** Dedicated state machine. */
     enum DedicatedServerState {
         OFF, CONFIG_VALIDATED, NATIVES_READY, STEAM_INITIALIZING, STEAM_LOGGING_ON,

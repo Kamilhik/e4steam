@@ -18,6 +18,51 @@ public interface PublicDirectoryService {
     /** Returns the current safe availability category. */
     ApiResult<DirectoryAvailability> availability();
 
+    /** Searches anonymous Steam GameServer advertisements; requires directory-join capability. */
+    default CompletionStage<ApiResult<java.util.List<DedicatedListing>>> searchDedicated(int limit) {
+        return java.util.concurrent.CompletableFuture.completedFuture(ApiResult.failure(
+                new link.e4steam.api.ApiError(link.e4steam.api.ApiErrorCode.UNSUPPORTED,
+                        "error.e4steam.unsupported", link.e4steam.api.Retryability.PERMANENT,
+                        "directory.dedicated-search", "", "DedicatedSearchUnavailable")));
+    }
+
+    /** Untrusted public metadata. The opaque target still requires normal Steam authentication. */
+    final class DedicatedListing {
+        private final OpaqueTargetRef target;
+        private final String name, minecraftVersion, loader, coreVersion, addonVersion;
+        private final int wireVersion, players, capacity;
+        private final long updatedAtEpochMillis;
+        public DedicatedListing(OpaqueTargetRef target, String name, String minecraftVersion,
+                String loader, String coreVersion, String addonVersion,
+                int wireVersion, int players, int capacity, long updatedAtEpochMillis) {
+            this.target = Objects.requireNonNull(target, "target");
+            this.name = ApiValidation.text(name, "name", 64);
+            this.minecraftVersion = version(minecraftVersion);
+            this.loader = version(loader);
+            this.coreVersion = version(coreVersion);
+            this.addonVersion = version(addonVersion);
+            if (wireVersion < 1 || capacity < 1 || capacity > 64 || players < 0 || players > capacity
+                    || updatedAtEpochMillis < 1L) throw new IllegalArgumentException("invalid dedicated metadata");
+            this.wireVersion = wireVersion; this.players = players; this.capacity = capacity;
+            this.updatedAtEpochMillis = updatedAtEpochMillis;
+        }
+        private static String version(String value) {
+            if (value == null || !value.matches("[a-zA-Z0-9][a-zA-Z0-9._+-]{0,31}"))
+                throw new IllegalArgumentException("invalid version/loader");
+            return value;
+        }
+        public OpaqueTargetRef target() { return target; }
+        public String name() { return name; }
+        public String minecraftVersion() { return minecraftVersion; }
+        public String loader() { return loader; }
+        public String coreVersion() { return coreVersion; }
+        public String addonVersion() { return addonVersion; }
+        public int wireVersion() { return wireVersion; }
+        public int players() { return players; }
+        public int capacity() { return capacity; }
+        public long updatedAtEpochMillis() { return updatedAtEpochMillis; }
+    }
+
     /** Returns a non-secret opaque target for the active host generation. */
     CompletionStage<ApiResult<PublicationTarget>> publicationTarget(PublicationTargetRequest request);
 

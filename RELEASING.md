@@ -1,6 +1,6 @@
 # Release checklist
 
-## 0.3.4 release scope
+## 0.3.6 release scope
 
 Publish exactly six runtime JARs for Minecraft 1.17–26.3. Retro artifacts are
 excluded from this release. Run `apiChecks test headlessEntrypointAudit releaseJars`;

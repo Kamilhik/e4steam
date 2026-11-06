@@ -123,6 +123,13 @@ final class CoreStateServices {
                         false, "public-provider-not-active")))
                         : delegate.proposePublication(proposal);
             }
+            @Override public CompletionStage<ApiResult<PublicationPlan>> setPublicListing(boolean enabled,
+                    String minecraftVersion, String loader, String addonVersion) {
+                if (!capabilities.has(Capabilities.DEDICATED_PUBLICATION_PROPOSE))
+                    return completed(denied("dedicated.publication"));
+                return delegate == null ? completed(unsupported("dedicated.publication"))
+                        : delegate.setPublicListing(enabled, minecraftVersion, loader, addonVersion);
+            }
         };
     }
 

@@ -23,6 +23,8 @@ public final class LanSettingsScreen extends Screen {
     private EditBox publicName;
     private Button onlineButton;
     private Button done;
+    private final boolean vanillaAppearance = LanSettingsScreen.class.getResource("/assets/e4steam_premium/issuer-public.der") != null
+            || "1.21.1".equals(link.e4steam.MinecraftVersion.current());
     private boolean saving;
     private boolean published;
     private boolean playersValid = true;
@@ -53,6 +55,9 @@ public final class LanSettingsScreen extends Screen {
         LanSettings.Snapshot active = LanSettings.active(server);
         if (active != null && players == null) draft = active;
         int initialPort = published ? LanServerSettingsApplier.port(server) : draft.port();
+        // A saved LAN port belongs to an earlier publication. Pick a fresh free
+        // port for each new dialog, but retain edits across resize/tab rebuilds.
+        if (!published && port == null) initialPort = LanPortSelection.availablePort();
         if (initialPort < 1 || initialPort > 65535) initialPort = LanSettings.DEFAULT_PORT;
         String playersText = numericValue(players == null
                 ? Integer.toString(draft.maxPlayers()) : players.getValue(), draft.maxPlayers());
@@ -125,7 +130,19 @@ public final class LanSettingsScreen extends Screen {
         publicName.setValue(nameText);
         updatePublicNameVisibility();
         int footer = networkTop + sectionHeight + 24 + (compact ? 8 : 12);
-        int footerWidth = (panelWidth - 32) / 2;
+        int footerWidth = (panelWidth - 40) / 3;
+        {
+            boolean premium = LanSettingsScreen.class.getResource("/assets/e4steam_premium/issuer-public.der") != null;
+            String address = premium ? steamAddressLabel() : Mirror.translatable("text.e4steam_minecraft.support.button").getString();
+            int labelWidth = Math.max(0, footerWidth - 12);
+            String label = font.width(address) <= labelWidth ? address
+                    : font.plainSubstrByWidth(address, Math.max(0, labelWidth - font.width("…"))) + "…";
+            Button addressButton = addRenderableWidget(MinecraftUiCompat.button(Mirror.literal(label), button ->
+                    { if (premium) openSteamAddressSettings();
+                        else MinecraftUiCompat.setScreen(minecraft, new SupportScreen(this)); },
+                    (width - footerWidth) / 2, footer, footerWidth, 20));
+            MinecraftUiCompat.tooltip(addressButton, Mirror.literal(address));
+        }
         addRenderableWidget(MinecraftUiCompat.button(Mirror.translatable("gui.cancel"), button -> onClose(),
                 panelLeft + 12, footer, footerWidth, 20));
         doneX = panelLeft + panelWidth - 12 - footerWidth;
@@ -137,6 +154,22 @@ public final class LanSettingsScreen extends Screen {
         MinecraftUiCompat.numericResponder(players, value -> validate());
         MinecraftUiCompat.numericResponder(port, value -> validate());
         validate();
+    }
+
+    private String steamAddressLabel() {
+        try {
+            return (String) Class.forName("dev.k2studio.e4steam.premium.address.PremiumWorldAddress")
+                    .getMethod("addressLabel").invoke(null);
+        } catch (ReflectiveOperationException unavailable) { return "Адрес Steam"; }
+    }
+
+    private void openSteamAddressSettings() {
+        try {
+            Class.forName("dev.k2studio.e4steam.premium.address.PremiumWorldAddress")
+                    .getMethod("openAddressSettings", Object.class).invoke(null, this);
+        } catch (ReflectiveOperationException unavailable) {
+            MinecraftUiCompat.setScreen(minecraft, new SupportScreen(this));
+        }
     }
 
     private void addWorldSettingsTabs() {
@@ -155,6 +188,11 @@ public final class LanSettingsScreen extends Screen {
 
     public void renderLanPanel(Object context) {
         LanScreenGraphics graphics = new LanScreenGraphics(context);
+        if (vanillaAppearance) {
+            // Older Screen.render does not supply vanilla dimming automatically.
+            graphics.fill(0, 0, width, height, 0x78000000);
+            return;
+        }
         graphics.fill(0, 0, width, height, 0xB80A1019);
         graphics.fill(panelLeft + 3, panelTop + 4, panelLeft + panelWidth + 3,
                 panelTop + panelHeight + 4, 0x50000000);
@@ -190,6 +228,7 @@ public final class LanSettingsScreen extends Screen {
     public void renderLanIndicators(Object context) {
         LanScreenGraphics graphics = new LanScreenGraphics(context);
         renderLanLabels(graphics);
+        if (vanillaAppearance) return;
         if (worldOptions != null) graphics.fill(tabsLeft, 27, tabsLeft + tabWidth, 29, 0xFF54CFBC);
         int right = panelLeft + 22 + columnWidth + 8;
         // Retain native Minecraft button focus and hover behavior.
@@ -212,7 +251,7 @@ public final class LanSettingsScreen extends Screen {
     private void sectionLabel(LanScreenGraphics graphics, int top, String key) {
         int left = panelLeft + 12;
         graphics.drawString(font, Mirror.translatable("text.e4steam_minecraft.lan." + key),
-                left + 10, top + 7, 0x92D9CE, false);
+                left + 10, top + 7, vanillaAppearance ? 0xFFFFFF : 0x92D9CE, false);
     }
 
     private void indicator(LanScreenGraphics graphics, int x, int y, boolean enabled) {

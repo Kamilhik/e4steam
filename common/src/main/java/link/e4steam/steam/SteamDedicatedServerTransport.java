@@ -1,5 +1,6 @@
 package link.e4steam.steam;
 
+import com.codedisaster.steamworks.SteamResult;
 import link.e4steam.api.ApiConstants;
 import link.e4steam.api.identity.IdentityService.PeerId;
 import link.e4steam.api.session.SessionService.SessionId;
@@ -50,6 +51,8 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
 
     private volatile Thread packetThread;
     private volatile SteamOutboundQueue.Packet<SteamConnectionBridge> deferredPacket;
+    private long sendRetryDeadlineMillis;
+    private long sendRetryNotBeforeMillis;
     private final SteamAddonNetworkRuntime.FrameSender addonSender =
             new SteamAddonNetworkRuntime.FrameSender() {
                 @Override public boolean sendHello(
@@ -361,12 +364,16 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
     private void drainOutbound() throws IOException {
         for (int count = 0; count < MAX_PACKETS_PER_TICK; count++) {
             SteamOutboundQueue.Packet<SteamConnectionBridge> packet = deferredPacket;
+            if (packet != null && System.currentTimeMillis() < sendRetryNotBeforeMillis) return;
             if (packet != null) deferredPacket = null;
             else packet = outbound.poll();
             if (packet == null) return;
             SteamConnectionBridge bridge = packet.bridge();
             if (bridge != null && packet.kind() != SteamOutboundQueue.Kind.RESET
-                    && bridge.isClosed()) continue;
+                    && bridge.isClosed()) {
+                clearSendRetry();
+                continue;
+            }
             long now = System.currentTimeMillis();
             if (bridge != null && packet.kind() != SteamOutboundQueue.Kind.RESET
                     && !bridge.isOutboundReady(now)) {
@@ -381,19 +388,40 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
             ByteBuffer direct = ByteBuffer.allocateDirect(packet.payload().length);
             direct.put(packet.payload()).flip();
             boolean unreliable = packet.kind() == SteamOutboundQueue.Kind.ADDON_DATAGRAM;
-            boolean sent = backend.send(packet.remoteSteamId(), direct, unreliable, CHANNEL);
-            if (!sent) {
+            int resultCode = backend.sendResult(packet.remoteSteamId(), direct, unreliable, CHANNEL);
+            if (resultCode != 1) {
                 if (unreliable) continue;
+                SteamResult result = resultCode < 0 ? null : SteamResult.byValue(resultCode);
+                if (result == SteamResult.LimitExceeded || result == SteamResult.Busy
+                        || result == SteamResult.NoConnection || result == SteamResult.ServiceUnavailable) {
+                    if (sendRetryDeadlineMillis == 0L) {
+                        sendRetryDeadlineMillis = now + 30_000L;
+                        LOGGER.warn("Dedicated Steam send temporarily blocked ({}); retaining the packet", result);
+                    }
+                    if (now < sendRetryDeadlineMillis) {
+                        deferredPacket = packet;
+                        sendRetryNotBeforeMillis = now + 10L;
+                        return;
+                    }
+                }
+                clearSendRetry();
+                LOGGER.warn("Dedicated Steam send failed (result {}); closing the peer", resultCode);
                 if (bridge != null) bridge.close(false);
                 else backend.closePeer(packet.remoteSteamId());
                 continue;
             }
+            clearSendRetry();
             if (bridge != null && packet.kind() == SteamOutboundQueue.Kind.FIN) {
                 bridge.markFinSubmitted();
             } else if (bridge != null && packet.kind() == SteamOutboundQueue.Kind.RESET) {
                 bridge.markResetSubmitted();
             }
         }
+    }
+
+    private void clearSendRetry() {
+        sendRetryDeadlineMillis = 0L;
+        sendRetryNotBeforeMillis = 0L;
     }
 
     @Override public boolean sendData(SteamConnectionBridge bridge, byte[] payload) {
@@ -423,6 +451,7 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
         outbound.purge(bridge);
         if (deferredPacket != null && deferredPacket.bridge() == bridge) {
             deferredPacket = null;
+            clearSendRetry();
         }
         if (!bridges.remove(key, bridge)) return;
         close(ingress.remove(bridge));

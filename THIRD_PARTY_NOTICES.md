@@ -20,6 +20,10 @@ repository-root `LICENSE`.
 
 ## Java Native Access (JNA) 5.10.0
 
+Forge 1.13–1.16 runtime JARs instead bundle JNA 4.4.0, matching Minecraft's
+client-provided JNA while also supplying it on dedicated servers. The same
+Apache 2.0 licensing option applies. These branches require an x86_64 Java runtime.
+
 The Java 8 retro runtime JARs include JNA 5.10.0 so Steam Networking Messages
 can run on Minecraft versions that do not provide JNA. JNA is available under
 the Apache License, Version 2.0, or LGPL-2.1-or-later. e4steam distributes it

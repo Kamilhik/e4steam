@@ -3,7 +3,7 @@ package link.e4steam.api;
 /** Public version constants; mod and wire versions intentionally remain independent. */
 public final class ApiConstants {
     /** Stable Java addon API with the generic public-directory bridge. */
-    public static final ApiVersion API_VERSION = ApiVersion.parse("1.1.0");
+    public static final ApiVersion API_VERSION = ApiVersion.parse("1.2.0");
     /** Current core wire protocol, independent from the Java API version. */
     public static final int WIRE_PROTOCOL_VERSION = 4;
 

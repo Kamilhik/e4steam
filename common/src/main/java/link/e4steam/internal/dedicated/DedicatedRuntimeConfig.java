@@ -17,6 +17,7 @@ import java.util.Set;
 public final class DedicatedRuntimeConfig {
     private static final int APP_ID = 480;
     private final boolean enabled;
+    private final boolean publication;
     private final DedicatedAccessMode accessMode;
     private final int maxPeers;
     private final int queryPort;
@@ -31,6 +32,13 @@ public final class DedicatedRuntimeConfig {
     public DedicatedRuntimeConfig(boolean enabled, DedicatedAccessMode accessMode,
                                   int maxPeers, int queryPort, String serverName,
                                   Set<Long> whitelist) {
+        this(enabled, accessMode, maxPeers, queryPort, serverName, whitelist, false);
+    }
+
+    public DedicatedRuntimeConfig(boolean enabled, DedicatedAccessMode accessMode,
+                                  int maxPeers, int queryPort, String serverName,
+                                  Set<Long> whitelist, boolean publication) {
+        this.publication = publication;
         this.enabled = enabled;
         this.accessMode = java.util.Objects.requireNonNull(accessMode, "accessMode");
         if (accessMode == DedicatedAccessMode.CUSTOM) {
@@ -82,7 +90,8 @@ public final class DedicatedRuntimeConfig {
                 props.getProperty("e4steam.dedicated.whitelist"),
                 env.get("E4STEAM_DEDICATED_WHITELIST")));
         return new DedicatedRuntimeConfig(enabled, mode, maxPeers, queryPort,
-                name == null ? "e4steam Minecraft server" : name, whitelist);
+                name == null ? "e4steam Minecraft server" : name, whitelist,
+                bool(first(props.getProperty("e4steam.dedicated.publication"), env.get("E4STEAM_DEDICATED_PUBLICATION")), false));
     }
 
     public static DedicatedRuntimeConfig load(
@@ -91,6 +100,7 @@ public final class DedicatedRuntimeConfig {
             java.util.Properties systemProperties
     ) throws IOException {
         java.util.Properties merged = DedicatedConfigFile.load(configFile);
+        DedicatedConfigFile.mergeEnvironment(merged, environment);
         if (systemProperties != null) {
             for (String name : systemProperties.stringPropertyNames()) {
                 if (name.startsWith("e4steam.dedicated.")) {
@@ -102,6 +112,7 @@ public final class DedicatedRuntimeConfig {
     }
 
     public boolean enabled() { return enabled; }
+    public boolean publication() { return publication; }
     public DedicatedAccessMode accessMode() { return accessMode; }
     public int maxPeers() { return maxPeers; }
     public int queryPort() { return queryPort; }
@@ -110,12 +121,12 @@ public final class DedicatedRuntimeConfig {
 
     public SteamRuntimeBackend.Config backend(int minecraftPort) {
         return new SteamRuntimeBackend.Config(
-                APP_ID, minecraftPort, queryPort, maxPeers, serverName, null
+                APP_ID, minecraftPort, publication && queryPort == 0 ? minecraftPort : queryPort, maxPeers, serverName, null
         );
     }
 
     public DedicatedConfigSnapshot safeSnapshot() {
-        return new DedicatedConfigSnapshot(1, accessMode, maxPeers, false, "ANONYMOUS");
+        return new DedicatedConfigSnapshot(1, accessMode, maxPeers, publication, "ANONYMOUS");
     }
 
     public void validateMinecraftBind(InetAddress bindAddress) {
@@ -130,7 +141,7 @@ public final class DedicatedRuntimeConfig {
         return "DedicatedRuntimeConfig{enabled=" + enabled + ", access=" + accessMode
                 + ", maxPeers=" + maxPeers + ", queryPort=" + queryPort
                 + ", whitelistEntries=" + whitelist.size()
-                + ", login=ANONYMOUS, publication=false}";
+                + ", login=ANONYMOUS, publication=" + publication + "}";
     }
 
     private static String first(String first, String second) {

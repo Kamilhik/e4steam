@@ -72,5 +72,14 @@
   "text.e4steam_minecraft.lan.live": "World is open · changes apply immediately",
   "text.e4steam_minecraft.lan.apply": "Apply changes",
   "text.e4steam_minecraft.lan.onlineHelp": "Verify Minecraft accounts for ordinary LAN connections. Steam connections use Steam authentication.",
-  "text.e4steam_minecraft.lan.cheatsHelp": "Allow commands for all players. You can change this while the world is open."
+  "text.e4steam_minecraft.lan.cheatsHelp": "Allow commands for all players. You can change this while the world is open.",
+  "text.e4steam_minecraft.support.button": "Support",
+  "text.e4steam_minecraft.support.title": "Support e4steam",
+  "text.e4steam_minecraft.support.intro": "If you enjoy e4steam, you can support its development.",
+  "text.e4steam_minecraft.support.premium": "Personal Steam addresses for your worlds.",
+  "text.e4steam_minecraft.support.donate": "Get Premium or make a one-time donation on Boosty.",
+  "text.e4steam_minecraft.support.thanks": "Thanks for playing. Support is always optional.",
+  "text.e4steam_minecraft.support.premiumButton": "Open Boosty",
+  "text.e4steam_minecraft.support.close": "Back to game settings",
+  "text.e4steam_minecraft.support.openFailed": "Could not open the browser: boosty.to/freeweb1"
 }

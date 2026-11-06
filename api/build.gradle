@@ -36,7 +36,7 @@ dependencies {
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
-    apiCompatibilityBaseline("io.github.kamilhik:e4steam-api:1.0.0") {
+    apiCompatibilityBaseline("io.github.kamilhik:e4steam-api:1.1.0") {
         transitive = false
     }
 }
@@ -337,7 +337,7 @@ tasks.register("printApiSurfaceHash") {
 
 tasks.register("apiBinaryCompatibilityCheck") {
     group = "verification"
-    description = "Reject accidental changes to the exact API 1.1.0 public surface."
+    description = "Reject accidental changes to the exact API 1.2.0 public surface."
     dependsOn jar
     doLast {
         File baseline = file("api-surface.sha256")
@@ -359,7 +359,7 @@ tasks.register("apiBinaryCompatibilityCheck") {
 
 tasks.register("apiBackwardCompatibilityCheck") {
     group = "verification"
-    description = "Verify that every public/protected API 1.0.0 binary symbol remains linkable."
+    description = "Verify that every public/protected API 1.1.0 binary symbol remains linkable."
     dependsOn jar
     inputs.file(jar.archiveFile)
     inputs.files(configurations.apiCompatibilityBaseline)
@@ -491,7 +491,7 @@ tasks.register("apiBackwardCompatibilityCheck") {
             oldLoader.close()
             newLoader.close()
         }
-        println("API 1.1.0 preserves every public/protected API 1.0.0 binary symbol.")
+        println("API 1.1.0 preserves every public/protected API 1.1.0 binary symbol.")
     }
 }
 

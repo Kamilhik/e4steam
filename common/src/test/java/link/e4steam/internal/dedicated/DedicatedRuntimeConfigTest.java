@@ -98,9 +98,22 @@ class DedicatedRuntimeConfigTest {
         Path unsafe = temporary.resolve("unsafe.toml");
         Files.write(unsafe, java.util.Arrays.asList(
                 "schema-version = 1",
-                "publication = true"
+                "ingress-guard = \"NONE\""
         ), StandardCharsets.UTF_8);
         assertThrows(IllegalArgumentException.class, () -> DedicatedRuntimeConfig.load(
                 unsafe, new HashMap<>(), new Properties()));
+    }
+
+    @Test void publicationOptInUsesAnAnonymousBackendAndARealQueryPort() throws Exception {
+        Path path = temporary.resolve("public.toml");
+        Files.write(path, java.util.Arrays.asList("schema-version = 1", "enabled = true",
+                "access-mode = \"UNLISTED\"", "publication = true", "query-port = 0"), StandardCharsets.UTF_8);
+        DedicatedRuntimeConfig config = DedicatedRuntimeConfig.load(path, new HashMap<>(), new Properties());
+        assertTrue(config.publication());
+        assertTrue(config.safeSnapshot().publicationEnabled());
+        assertTrue(config.backend(25565).anonymousLogin());
+        assertEquals(25565, config.backend(25565).queryPort());
+        assertThrows(IllegalStateException.class, () -> config.validateMinecraftBind(
+                java.net.InetAddress.getByName("0.0.0.0")));
     }
 }

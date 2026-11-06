@@ -388,7 +388,7 @@ public class E4steamClient {
                     minecraft,
                     ServerAddress.parseString(endpoint),
                     hostName,
-                    endpoint
+                    link.e4steam.steam.SteamNamedAddress.displayFor(endpoint)
             );
         } catch (Throwable throwable) {
             LOGGER.error("Could not begin connecting to a Steam invitation", throwable);

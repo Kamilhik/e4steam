@@ -840,3 +840,14 @@ tasks.register("releaseJars") {
         println("Artifact audit passed and collected ${variants.size() + retroVariants.size()} runtime JAR variants plus the optional Unix overlay agent in ${publicDirectory}.")
     }
 }
+
+// Match Forge's access-transformer logging dependencies to the supported runtime.
+allprojects {
+    dependencies.components.withModule('net.minecraftforge:accesstransformers') {
+        allVariants {
+            withDependencies { dependencies ->
+                dependencies.findAll { it.group == 'org.apache.logging.log4j' }.each { it.version { require('2.17.1') } }
+            }
+        }
+    }
+}

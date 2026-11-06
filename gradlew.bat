@@ -70,20 +70,7 @@ goto fail
 :execute
 @rem Setup the command line
 
-@rem Gradle worker classpaths can be corrupted by Unicode checkout paths on
-@rem Windows. Use a temporary drive mapping for the duration of this build.
-set E4STEAM_SUBST_DRIVE=
-for %%D in (Z Y X W V U T R Q P O N M L K J I H G F E D B A) do if not defined E4STEAM_SUBST_DRIVE if not exist %%D:\ (
-    subst %%D: "%APP_HOME%" >NUL 2>&1
-    if not errorlevel 1 set E4STEAM_SUBST_DRIVE=%%D:
-)
-
-if defined E4STEAM_SUBST_DRIVE (
-    pushd "%E4STEAM_SUBST_DRIVE%\" >NUL
-) else (
-    echo WARNING: No free drive letter was available; falling back to the original project path.
-    pushd "%APP_HOME%" >NUL
-)
+pushd "%APP_HOME%" >NUL
 
 set CLASSPATH=
 
@@ -92,7 +79,6 @@ set CLASSPATH=
 "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" -jar "gradle\wrapper\gradle-wrapper.jar" %*
 set EXIT_CODE=%ERRORLEVEL%
 popd
-if defined E4STEAM_SUBST_DRIVE subst %E4STEAM_SUBST_DRIVE% /d >NUL 2>&1
 
 :end
 @rem End local scope for the variables with windows NT shell

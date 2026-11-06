@@ -55,6 +55,9 @@ final class SteamLobbyManager implements AutoCloseable {
     private SteamAccessMode hostLobbyAccessMode;
     private long hostLobbyId;
     private int appliedHostCapacity;
+    private CompletableFuture<SteamAddress> namedJoin;
+    private SteamNamedAddress.Identity namedIdentity;
+    private String namedAddress;
     private long guestLobbyId;
     private long guestHostSteamId;
     private long guestInviterSteamId;
@@ -258,6 +261,30 @@ final class SteamLobbyManager implements AutoCloseable {
             return 0L;
         }
         return hostLobbyId;
+    }
+
+    long hostLobbyId(SteamSession owner) {
+        return hostLobbyOwner == owner ? hostLobbyId : 0;
+    }
+
+    CompletableFuture<SteamAddress> joinNamedLobby(String name, SteamNamedAddress.Target target) {
+        if (!requestJoin(SteamID.createFromNativeHandle(target.lobby()), null, true)) {
+            CompletableFuture<SteamAddress> rejected = new CompletableFuture<>();
+            rejected.completeExceptionally(new IOException("Не удалось войти в Steam-лобби этого мира."));
+            return rejected;
+        }
+        namedJoin = new CompletableFuture<>();
+        namedIdentity = target.identity();
+        namedAddress = name;
+        return namedJoin;
+    }
+
+    private void failNamedJoin() {
+        CompletableFuture<SteamAddress> pending = namedJoin;
+        namedJoin = null;
+        namedIdentity = null;
+        namedAddress = null;
+        if (pending != null) pending.completeExceptionally(new IOException("Не удалось подтвердить мир. Проверьте доступ и повторите подключение."));
     }
 
     boolean joinPublicLobby(long lobbyId) {
@@ -742,6 +769,7 @@ final class SteamLobbyManager implements AutoCloseable {
         boolean directoryJoin = requestedDirectoryJoin;
         requestedDirectoryJoin = false;
         if (response != SteamMatchmaking.ChatRoomEnterResponse.Success) {
+            failNamedJoin();
             requestedFriendId = 0;
             if (directoryJoin) {
                 SteamPublicJoinTracker.Phase phase = publicJoinFailurePhase(response);
@@ -759,10 +787,12 @@ final class SteamLobbyManager implements AutoCloseable {
         SteamID owner = matchmaking.getLobbyOwner(lobby);
         long ownerId = owner == null ? 0 : SteamNativeHandle.getNativeHandle(owner);
         if (ownerId == 0
+                || (namedIdentity != null && namedIdentity.owner() != ownerId)
                 || ownerId == runtime.steamIdValue()
                 || (!directoryJoin
                 && friends.getFriendRelationship(owner) != SteamFriends.FriendRelationship.Friend)) {
             matchmaking.leaveLobby(lobby);
+            failNamedJoin();
             requestedFriendId = 0;
             if (directoryJoin) {
                 runtime.publicJoinFailed(lobbyId,
@@ -816,6 +846,34 @@ final class SteamLobbyManager implements AutoCloseable {
             return;
         }
 
+        if (namedJoin != null) {
+            String world = matchmaking.getLobbyData(lobby, SteamNamedWorldDirectory.WORLD);
+            String alias = matchmaking.getLobbyData(lobby, SteamNamedWorldDirectory.NAME);
+            if (!namedIdentity.world().toString().equals(world) || !namedAddress.equals(alias)) {
+                leaveGuestLobby();
+                return;
+            }
+            CompletableFuture<SteamAddress> resolved = namedJoin;
+            namedJoin = null;
+            namedIdentity = null;
+            namedAddress = null;
+            guestEndpoint = endpoint;
+            guestJoinState.waitForConfirmation();
+            guestJoinState.beginConnect(System.currentTimeMillis() + 120_000L);
+            resolved.complete(parsed.get());
+            return;
+        }
+
+        try {
+            String alias = SteamNamedAddress.normalize(matchmaking.getLobbyData(lobby, SteamNamedWorldDirectory.NAME));
+            String worldId = matchmaking.getLobbyData(lobby, SteamNamedWorldDirectory.WORLD);
+            if (worldId == null || worldId.trim().isEmpty()) throw new IllegalArgumentException("Missing world identity");
+            java.util.UUID world = java.util.UUID.fromString(worldId);
+            SteamNamePins.remember(alias, new SteamNamedAddress.Identity(guestHostSteamId, world));
+            SteamNamedAddress.rememberDisplay(endpoint, alias);
+        } catch (IOException | IllegalArgumentException ignored) {
+            // Optional metadata must not change existing invitation behaviour.
+        }
         guestEndpoint = endpoint;
         if (guestDirectoryJoin) {
             runtime.publicJoinConnecting(guestLobbyId);
@@ -898,6 +956,7 @@ final class SteamLobbyManager implements AutoCloseable {
     }
 
     private void leaveGuestLobby() {
+        failNamedJoin();
         long currentLobbyId = guestLobbyId;
         SteamGuestJoinState currentJoinState = guestJoinState;
         long requested = requestedLobbyId;

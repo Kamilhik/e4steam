@@ -30,6 +30,9 @@ public final class SteamClientApiBridge {
         void cancelGuestJoin();
         boolean acceptDirectSteamInvite(String descriptor, String displayName);
         default link.e4steam.api.lobby.LobbyService addonLobbies(String owner) { return null; }
+        default CompletableFuture<List<link.e4steam.api.directory.PublicDirectoryService.DedicatedListing>> searchDedicated(int limit) {
+            return CompletableFuture.completedFuture(Collections.emptyList());
+        }
         default void releaseAddonLobbies(String owner) { }
     }
 
@@ -77,6 +80,10 @@ public final class SteamClientApiBridge {
     public static String statusCode() { return CURRENT.get().statusCode(); }
     public static link.e4steam.api.lobby.LobbyService addonLobbies(String owner) {
         return CURRENT.get().addonLobbies(owner);
+    }
+
+    public static CompletableFuture<List<link.e4steam.api.directory.PublicDirectoryService.DedicatedListing>> searchDedicated(int limit) {
+        return CURRENT.get().searchDedicated(limit);
     }
     public static void releaseAddonLobbies(String owner) { CURRENT.get().releaseAddonLobbies(owner); }
     public static String failureCategory() { return CURRENT.get().failureCategory(); }

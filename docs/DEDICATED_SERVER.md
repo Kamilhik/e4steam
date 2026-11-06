@@ -2,6 +2,18 @@
 
 [Русская версия](DEDICATED_SERVER_RU.md)
 
+## 0.3.6 automatic setup
+
+On first start, e4steam creates `config/e4steam-dedicated.toml` with
+`enabled = true`. Steam-only mode prepares the localhost binding automatically;
+the original Minecraft settings are backed up under `config/e4steam-dedicated/`.
+While this mode is enabled, ordinary public-IP joins, query and RCON are disabled.
+Set `enabled = false` before using the ordinary Minecraft network entry point.
+Restoring a former public-IP configuration may also require restoring your
+backed-up `server.properties`. Players still need a signed-in Steam client.
+
+The older manual configuration steps below explain the same transport.
+
 This page explains how dedicated mode works. Use the
 [deployment guide](DEDICATED_DEPLOYMENT.md) when you are ready to install it.
 

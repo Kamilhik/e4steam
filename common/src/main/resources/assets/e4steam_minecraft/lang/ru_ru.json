@@ -72,5 +72,14 @@
   "text.e4steam_minecraft.lan.live": "Мир открыт · изменения применяются сразу",
   "text.e4steam_minecraft.lan.apply": "Применить",
   "text.e4steam_minecraft.lan.onlineHelp": "Проверка Minecraft-аккаунтов при обычном LAN-подключении. Через Steam используется авторизация Steam.",
-  "text.e4steam_minecraft.lan.cheatsHelp": "Разрешает команды всем игрокам. Можно изменить и после открытия мира."
+  "text.e4steam_minecraft.lan.cheatsHelp": "Разрешает команды всем игрокам. Можно изменить и после открытия мира.",
+  "text.e4steam_minecraft.support.button": "Поддержать",
+  "text.e4steam_minecraft.support.title": "Поддержать e4steam",
+  "text.e4steam_minecraft.support.intro": "Если вам нравится e4steam, можно поддержать его развитие.",
+  "text.e4steam_minecraft.support.premium": "Персональные Steam-адреса для ваших миров.",
+  "text.e4steam_minecraft.support.donate": "На Boosty доступны Premium и разовые донаты.",
+  "text.e4steam_minecraft.support.thanks": "Спасибо, что играете. Поддержка — по желанию.",
+  "text.e4steam_minecraft.support.premiumButton": "Открыть Boosty",
+  "text.e4steam_minecraft.support.close": "Назад к настройкам",
+  "text.e4steam_minecraft.support.openFailed": "Не удалось открыть браузер: boosty.to/freeweb1"
 }

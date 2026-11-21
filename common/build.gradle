@@ -15,7 +15,7 @@ dependencies {
         transitive = false
     }
     // Minecraft provides JNA at runtime (5.10.0 or newer in every supported line).
-    compileOnly "net.java.dev.jna:jna:5.10.0"
+    compileOnly "net.java.dev.jna:jna:5.19.1"
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testImplementation project(":api-testkit")

@@ -102,8 +102,13 @@ public final class SteamClientBridge {
             if (!runtime.sendOpen(bridge, address.token())) {
                 throw new IOException("Steam outbound queue is unavailable");
             }
-            SteamAddonHooks.bridgeReady(bridge);
-            bridge.start();
+            if(runtime.defersMinecraftUntilOpenAck()) {
+                // Do not enqueue Minecraft bytes ahead of the auth-mode control frame.
+                bridge.awaitOpenAcknowledgement(System.currentTimeMillis()+30_000);
+            } else {
+                SteamAddonHooks.bridgeReady(bridge);
+                bridge.start();
+            }
             handedOff = true;
             E4steamClient.LOGGER.info(
                     "Opened a local Minecraft bridge to Steam user {}",

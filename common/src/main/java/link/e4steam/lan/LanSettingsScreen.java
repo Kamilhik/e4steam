@@ -130,7 +130,8 @@ public final class LanSettingsScreen extends Screen {
         publicName.setValue(nameText);
         updatePublicNameVisibility();
         int footer = networkTop + sectionHeight + 24 + (compact ? 8 : 12);
-        int footerWidth = (panelWidth - 40) / 3;
+        boolean transfer=false; // Transfers are offered only by the Premium host exit flow.
+        int footerWidth = (panelWidth - (transfer ? 48 : 40)) / (transfer ? 4 : 3);
         {
             boolean premium = LanSettingsScreen.class.getResource("/assets/e4steam_premium/issuer-public.der") != null;
             String address = premium ? steamAddressLabel() : Mirror.translatable("text.e4steam_minecraft.support.button").getString();
@@ -140,11 +141,15 @@ public final class LanSettingsScreen extends Screen {
             Button addressButton = addRenderableWidget(MinecraftUiCompat.button(Mirror.literal(label), button ->
                     { if (premium) openSteamAddressSettings();
                         else MinecraftUiCompat.setScreen(minecraft, new SupportScreen(this)); },
-                    (width - footerWidth) / 2, footer, footerWidth, 20));
+                    transfer ? panelLeft+20+footerWidth : (width - footerWidth) / 2, footer, footerWidth, 20));
             MinecraftUiCompat.tooltip(addressButton, Mirror.literal(address));
         }
         addRenderableWidget(MinecraftUiCompat.button(Mirror.translatable("gui.cancel"), button -> onClose(),
                 panelLeft + 12, footer, footerWidth, 20));
+        if (transfer) addRenderableWidget(MinecraftUiCompat.button(
+                link.e4steam.worldtransfer.WorldTransferScreen.text(link.e4steam.worldtransfer.WorldTransferClient.premium()?"send":"return"),
+                button -> link.e4steam.worldtransfer.WorldTransferClient.open(this,server),
+                panelLeft+12+(footerWidth+8)*2,footer,footerWidth,20));
         doneX = panelLeft + panelWidth - 12 - footerWidth;
         doneY = footer;
         doneWidth = footerWidth;

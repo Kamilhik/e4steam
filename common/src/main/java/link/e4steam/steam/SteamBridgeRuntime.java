@@ -8,6 +8,8 @@ interface SteamBridgeRuntime {
 
     boolean sendReset(SteamConnectionBridge bridge);
 
+    default void sendDatagram(SteamUdpBridge bridge, byte[] payload) { }
+
     void closeUdpBridge(SteamConnectionBridge bridge);
 
     void unregister(SteamConnectionBridge bridge);

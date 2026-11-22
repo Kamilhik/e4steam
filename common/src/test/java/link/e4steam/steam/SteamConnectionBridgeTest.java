@@ -12,6 +12,25 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SteamConnectionBridgeTest {
+    @Test void pendingOpenExpiresAndCannotReleaseMinecraftBeforeAcknowledgement() {
+        SteamConnectionBridge bridge=new SteamConnectionBridge(new FakeRuntime(),77L,43,new Socket(),false,null);
+        bridge.awaitOpenAcknowledgement(200L);
+        bridge.closeIfGracefulCloseTimedOut(199L);
+        assertFalse(bridge.isClosed());
+        bridge.closeIfGracefulCloseTimedOut(200L);
+        assertTrue(bridge.isClosed());
+    }
+    @Test void authModeCannotChangeAfterTheFirstMinecraftByte() throws Exception {
+        try(ServerSocket listener=new ServerSocket(0);Socket client=new Socket("127.0.0.1",listener.getLocalPort());Socket accepted=listener.accept()) {
+            SteamConnectionBridge bridge=new SteamConnectionBridge(new FakeRuntime(),77L,44,accepted,true,null);
+            try {
+                assertTrue(bridge.minecraftAuthMode(true));
+                bridge.acceptSteamData(new byte[]{1});
+                assertTrue(bridge.minecraftAuthMode(true));
+                assertFalse(bridge.minecraftAuthMode(false));
+            } finally {SteamMinecraftAuthModeRegistry.forget(bridge.localPort(),77L);bridge.close(false);}
+        }
+    }
     @Test
     void gracefulCloseDeadlineExpiresOnlyAtTheDeadline() {
         assertFalse(SteamConnectionBridge.isGracefulCloseExpired(Long.MAX_VALUE, 100));

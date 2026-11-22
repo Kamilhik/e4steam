@@ -1,0 +1,202 @@
+[
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-fabric-quilt-mc1.17-1.18.2-v0.3.7.jar",
+    "sha256": "590b6a30d413c4bdc4ad52f868e156abc062deeebdfa81bc2001392ff4f3f252",
+    "metadata": {
+      "changelog": "## English\n\n- Receive a world from a Premium host and continue as its new host with free e4steam. The world is saved, transferred and opened for Steam friends automatically after confirmation. Returning it to its original owner is also free.\n- Preserve the recipient's current inventory and position during handoff and restore the original owner's personal address on return. Previous active copies move to local backups, retained for three days.\n- Improve transfer scheduling and remove the fixed upper Steam send-rate limit during world transfer. Recover from temporary congestion without repeatedly throttling a healthy connection. Actual speed depends on both players and the Steam route.\n- Fix Simple Voice Chat forwarding for shared worlds and dedicated Steam servers, including per-player UDP endpoints and delayed voice-server startup.\n- Preserve Minecraft account UUIDs and migrate older Steam-based player records with backups, so adding or removing e4steam does not itself require starting over. Changing Minecraft accounts or online-mode still changes Minecraft's identity rules.\n- Improve joining and reconnecting by personal addresses, including anonymous dedicated Premium servers. Free clients can join; selecting a personal name remains a Premium feature.\n- No usage-statistics sender is included.\n\nSix JARs cover Minecraft 1.17–26.3 on Fabric/Quilt, Forge and NeoForge. Install only the file matching your Minecraft and loader; Fabric/Quilt also require Fabric API. Both participants need this update for the handoff changes. This release contains no retro JARs. Back up important saves before trying host handoff.\n\n## Русский\n\n- Бесплатный e4steam принимает мир от хоста Premium и позволяет продолжить игру новым хостом. После подтверждения мир сохраняется, передаётся и автоматически открывается для друзей Steam. Возврат первоначальному владельцу тоже бесплатный.\n- При передаче сохраняются актуальные вещи и позиция нового хоста, а при возврате восстанавливается персональный адрес владельца. Прежние активные копии убираются в локальные резервные копии на три дня.\n- Ускорена отправка данных и снят фиксированный верхний лимит скорости Steam на время передачи. После временной перегрузки скорость восстанавливается. Фактическая скорость зависит от обоих игроков и маршрута Steam.\n- Исправлена передача Simple Voice Chat в общих мирах и на выделенных Steam-серверах, в том числе отдельные UDP-подключения игроков и поздний запуск голосового сервера.\n- Сохраняются UUID аккаунтов Minecraft; старые данные со Steam UUID переносятся с резервными копиями. Установка или удаление e4steam сама по себе не должна сбрасывать прогресс. Смена Minecraft-аккаунта или online-mode по-прежнему влияет на идентификатор игрока.\n- Улучшены подключение и повторный вход по персональным адресам, включая анонимные выделенные серверы Premium. Подключаться можно бесплатно; выбор собственного имени остаётся функцией Premium.\n- Сбора статистики использования нет.\n\nШесть JAR для Minecraft 1.17–26.3: Fabric/Quilt, Forge и NeoForge. Установите только подходящий файл; Fabric/Quilt также требуют Fabric API. Для изменений передачи мира обновиться нужно обоим игрокам. Ретро-JAR в этот выпуск не входят. Перед передачей важных миров сделайте резервную копию.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.7 — fabric-quilt 1.17–1.18.2",
+      "gameVersionNames": [
+        "1.17",
+        "1.17.1",
+        "1.18",
+        "1.18.1",
+        "1.18.2",
+        "Fabric",
+        "Quilt",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "fabric-api",
+            "projectID": 306612,
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-fabric-quilt-mc1.19-1.21.11-v0.3.7.jar",
+    "sha256": "26c3e44d63f7a9055d83ad10ffa0a36877a276234bb2a63767b110815033fb00",
+    "metadata": {
+      "changelog": "## English\n\n- Receive a world from a Premium host and continue as its new host with free e4steam. The world is saved, transferred and opened for Steam friends automatically after confirmation. Returning it to its original owner is also free.\n- Preserve the recipient's current inventory and position during handoff and restore the original owner's personal address on return. Previous active copies move to local backups, retained for three days.\n- Improve transfer scheduling and remove the fixed upper Steam send-rate limit during world transfer. Recover from temporary congestion without repeatedly throttling a healthy connection. Actual speed depends on both players and the Steam route.\n- Fix Simple Voice Chat forwarding for shared worlds and dedicated Steam servers, including per-player UDP endpoints and delayed voice-server startup.\n- Preserve Minecraft account UUIDs and migrate older Steam-based player records with backups, so adding or removing e4steam does not itself require starting over. Changing Minecraft accounts or online-mode still changes Minecraft's identity rules.\n- Improve joining and reconnecting by personal addresses, including anonymous dedicated Premium servers. Free clients can join; selecting a personal name remains a Premium feature.\n- No usage-statistics sender is included.\n\nSix JARs cover Minecraft 1.17–26.3 on Fabric/Quilt, Forge and NeoForge. Install only the file matching your Minecraft and loader; Fabric/Quilt also require Fabric API. Both participants need this update for the handoff changes. This release contains no retro JARs. Back up important saves before trying host handoff.\n\n## Русский\n\n- Бесплатный e4steam принимает мир от хоста Premium и позволяет продолжить игру новым хостом. После подтверждения мир сохраняется, передаётся и автоматически открывается для друзей Steam. Возврат первоначальному владельцу тоже бесплатный.\n- При передаче сохраняются актуальные вещи и позиция нового хоста, а при возврате восстанавливается персональный адрес владельца. Прежние активные копии убираются в локальные резервные копии на три дня.\n- Ускорена отправка данных и снят фиксированный верхний лимит скорости Steam на время передачи. После временной перегрузки скорость восстанавливается. Фактическая скорость зависит от обоих игроков и маршрута Steam.\n- Исправлена передача Simple Voice Chat в общих мирах и на выделенных Steam-серверах, в том числе отдельные UDP-подключения игроков и поздний запуск голосового сервера.\n- Сохраняются UUID аккаунтов Minecraft; старые данные со Steam UUID переносятся с резервными копиями. Установка или удаление e4steam сама по себе не должна сбрасывать прогресс. Смена Minecraft-аккаунта или online-mode по-прежнему влияет на идентификатор игрока.\n- Улучшены подключение и повторный вход по персональным адресам, включая анонимные выделенные серверы Premium. Подключаться можно бесплатно; выбор собственного имени остаётся функцией Premium.\n- Сбора статистики использования нет.\n\nШесть JAR для Minecraft 1.17–26.3: Fabric/Quilt, Forge и NeoForge. Установите только подходящий файл; Fabric/Quilt также требуют Fabric API. Для изменений передачи мира обновиться нужно обоим игрокам. Ретро-JAR в этот выпуск не входят. Перед передачей важных миров сделайте резервную копию.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.7 — fabric-quilt 1.19–1.21.11",
+      "gameVersionNames": [
+        "1.19",
+        "1.19.1",
+        "1.19.2",
+        "1.19.3",
+        "1.19.4",
+        "1.20",
+        "1.20.1",
+        "1.20.2",
+        "1.20.3",
+        "1.20.4",
+        "1.20.5",
+        "1.20.6",
+        "1.21",
+        "1.21.1",
+        "1.21.2",
+        "1.21.3",
+        "1.21.4",
+        "1.21.5",
+        "1.21.6",
+        "1.21.7",
+        "1.21.8",
+        "1.21.9",
+        "1.21.10",
+        "1.21.11",
+        "Fabric",
+        "Quilt",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "fabric-api",
+            "projectID": 306612,
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-fabric-quilt-mc26.1-26.3-v0.3.7.jar",
+    "sha256": "583144e7c7773ea118ec3a050717e6369721dca3e05d4350bc29d9fd2d676022",
+    "metadata": {
+      "changelog": "## English\n\n- Receive a world from a Premium host and continue as its new host with free e4steam. The world is saved, transferred and opened for Steam friends automatically after confirmation. Returning it to its original owner is also free.\n- Preserve the recipient's current inventory and position during handoff and restore the original owner's personal address on return. Previous active copies move to local backups, retained for three days.\n- Improve transfer scheduling and remove the fixed upper Steam send-rate limit during world transfer. Recover from temporary congestion without repeatedly throttling a healthy connection. Actual speed depends on both players and the Steam route.\n- Fix Simple Voice Chat forwarding for shared worlds and dedicated Steam servers, including per-player UDP endpoints and delayed voice-server startup.\n- Preserve Minecraft account UUIDs and migrate older Steam-based player records with backups, so adding or removing e4steam does not itself require starting over. Changing Minecraft accounts or online-mode still changes Minecraft's identity rules.\n- Improve joining and reconnecting by personal addresses, including anonymous dedicated Premium servers. Free clients can join; selecting a personal name remains a Premium feature.\n- No usage-statistics sender is included.\n\nSix JARs cover Minecraft 1.17–26.3 on Fabric/Quilt, Forge and NeoForge. Install only the file matching your Minecraft and loader; Fabric/Quilt also require Fabric API. Both participants need this update for the handoff changes. This release contains no retro JARs. Back up important saves before trying host handoff.\n\n## Русский\n\n- Бесплатный e4steam принимает мир от хоста Premium и позволяет продолжить игру новым хостом. После подтверждения мир сохраняется, передаётся и автоматически открывается для друзей Steam. Возврат первоначальному владельцу тоже бесплатный.\n- При передаче сохраняются актуальные вещи и позиция нового хоста, а при возврате восстанавливается персональный адрес владельца. Прежние активные копии убираются в локальные резервные копии на три дня.\n- Ускорена отправка данных и снят фиксированный верхний лимит скорости Steam на время передачи. После временной перегрузки скорость восстанавливается. Фактическая скорость зависит от обоих игроков и маршрута Steam.\n- Исправлена передача Simple Voice Chat в общих мирах и на выделенных Steam-серверах, в том числе отдельные UDP-подключения игроков и поздний запуск голосового сервера.\n- Сохраняются UUID аккаунтов Minecraft; старые данные со Steam UUID переносятся с резервными копиями. Установка или удаление e4steam сама по себе не должна сбрасывать прогресс. Смена Minecraft-аккаунта или online-mode по-прежнему влияет на идентификатор игрока.\n- Улучшены подключение и повторный вход по персональным адресам, включая анонимные выделенные серверы Premium. Подключаться можно бесплатно; выбор собственного имени остаётся функцией Premium.\n- Сбора статистики использования нет.\n\nШесть JAR для Minecraft 1.17–26.3: Fabric/Quilt, Forge и NeoForge. Установите только подходящий файл; Fabric/Quilt также требуют Fabric API. Для изменений передачи мира обновиться нужно обоим игрокам. Ретро-JAR в этот выпуск не входят. Перед передачей важных миров сделайте резервную копию.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.7 — fabric-quilt 26.1–26.3",
+      "gameVersionNames": [
+        "26.1",
+        "26.1.1",
+        "26.1.2",
+        "26.2",
+        "26.3",
+        "Fabric",
+        "Quilt",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "fabric-api",
+            "projectID": 306612,
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-forge-mc1.17.1-1.18.1-v0.3.7.jar",
+    "sha256": "6eea0e3204bb7af4f7ef79b34a893fe5639d383138deaaf7494ae1e2553fcae0",
+    "metadata": {
+      "changelog": "## English\n\n- Receive a world from a Premium host and continue as its new host with free e4steam. The world is saved, transferred and opened for Steam friends automatically after confirmation. Returning it to its original owner is also free.\n- Preserve the recipient's current inventory and position during handoff and restore the original owner's personal address on return. Previous active copies move to local backups, retained for three days.\n- Improve transfer scheduling and remove the fixed upper Steam send-rate limit during world transfer. Recover from temporary congestion without repeatedly throttling a healthy connection. Actual speed depends on both players and the Steam route.\n- Fix Simple Voice Chat forwarding for shared worlds and dedicated Steam servers, including per-player UDP endpoints and delayed voice-server startup.\n- Preserve Minecraft account UUIDs and migrate older Steam-based player records with backups, so adding or removing e4steam does not itself require starting over. Changing Minecraft accounts or online-mode still changes Minecraft's identity rules.\n- Improve joining and reconnecting by personal addresses, including anonymous dedicated Premium servers. Free clients can join; selecting a personal name remains a Premium feature.\n- No usage-statistics sender is included.\n\nSix JARs cover Minecraft 1.17–26.3 on Fabric/Quilt, Forge and NeoForge. Install only the file matching your Minecraft and loader; Fabric/Quilt also require Fabric API. Both participants need this update for the handoff changes. This release contains no retro JARs. Back up important saves before trying host handoff.\n\n## Русский\n\n- Бесплатный e4steam принимает мир от хоста Premium и позволяет продолжить игру новым хостом. После подтверждения мир сохраняется, передаётся и автоматически открывается для друзей Steam. Возврат первоначальному владельцу тоже бесплатный.\n- При передаче сохраняются актуальные вещи и позиция нового хоста, а при возврате восстанавливается персональный адрес владельца. Прежние активные копии убираются в локальные резервные копии на три дня.\n- Ускорена отправка данных и снят фиксированный верхний лимит скорости Steam на время передачи. После временной перегрузки скорость восстанавливается. Фактическая скорость зависит от обоих игроков и маршрута Steam.\n- Исправлена передача Simple Voice Chat в общих мирах и на выделенных Steam-серверах, в том числе отдельные UDP-подключения игроков и поздний запуск голосового сервера.\n- Сохраняются UUID аккаунтов Minecraft; старые данные со Steam UUID переносятся с резервными копиями. Установка или удаление e4steam сама по себе не должна сбрасывать прогресс. Смена Minecraft-аккаунта или online-mode по-прежнему влияет на идентификатор игрока.\n- Улучшены подключение и повторный вход по персональным адресам, включая анонимные выделенные серверы Premium. Подключаться можно бесплатно; выбор собственного имени остаётся функцией Premium.\n- Сбора статистики использования нет.\n\nШесть JAR для Minecraft 1.17–26.3: Fabric/Quilt, Forge и NeoForge. Установите только подходящий файл; Fabric/Quilt также требуют Fabric API. Для изменений передачи мира обновиться нужно обоим игрокам. Ретро-JAR в этот выпуск не входят. Перед передачей важных миров сделайте резервную копию.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.7 — forge 1.17.1–1.18.1",
+      "gameVersionNames": [
+        "1.17.1",
+        "1.18",
+        "1.18.1",
+        "Forge",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-forge-mc1.18.2-1.20.2-v0.3.7.jar",
+    "sha256": "93b1a7dc6150114f6d46e7f454f22475c03a21c6ec5ee2d0b1f5f35133e8de09",
+    "metadata": {
+      "changelog": "## English\n\n- Receive a world from a Premium host and continue as its new host with free e4steam. The world is saved, transferred and opened for Steam friends automatically after confirmation. Returning it to its original owner is also free.\n- Preserve the recipient's current inventory and position during handoff and restore the original owner's personal address on return. Previous active copies move to local backups, retained for three days.\n- Improve transfer scheduling and remove the fixed upper Steam send-rate limit during world transfer. Recover from temporary congestion without repeatedly throttling a healthy connection. Actual speed depends on both players and the Steam route.\n- Fix Simple Voice Chat forwarding for shared worlds and dedicated Steam servers, including per-player UDP endpoints and delayed voice-server startup.\n- Preserve Minecraft account UUIDs and migrate older Steam-based player records with backups, so adding or removing e4steam does not itself require starting over. Changing Minecraft accounts or online-mode still changes Minecraft's identity rules.\n- Improve joining and reconnecting by personal addresses, including anonymous dedicated Premium servers. Free clients can join; selecting a personal name remains a Premium feature.\n- No usage-statistics sender is included.\n\nSix JARs cover Minecraft 1.17–26.3 on Fabric/Quilt, Forge and NeoForge. Install only the file matching your Minecraft and loader; Fabric/Quilt also require Fabric API. Both participants need this update for the handoff changes. This release contains no retro JARs. Back up important saves before trying host handoff.\n\n## Русский\n\n- Бесплатный e4steam принимает мир от хоста Premium и позволяет продолжить игру новым хостом. После подтверждения мир сохраняется, передаётся и автоматически открывается для друзей Steam. Возврат первоначальному владельцу тоже бесплатный.\n- При передаче сохраняются актуальные вещи и позиция нового хоста, а при возврате восстанавливается персональный адрес владельца. Прежние активные копии убираются в локальные резервные копии на три дня.\n- Ускорена отправка данных и снят фиксированный верхний лимит скорости Steam на время передачи. После временной перегрузки скорость восстанавливается. Фактическая скорость зависит от обоих игроков и маршрута Steam.\n- Исправлена передача Simple Voice Chat в общих мирах и на выделенных Steam-серверах, в том числе отдельные UDP-подключения игроков и поздний запуск голосового сервера.\n- Сохраняются UUID аккаунтов Minecraft; старые данные со Steam UUID переносятся с резервными копиями. Установка или удаление e4steam сама по себе не должна сбрасывать прогресс. Смена Minecraft-аккаунта или online-mode по-прежнему влияет на идентификатор игрока.\n- Улучшены подключение и повторный вход по персональным адресам, включая анонимные выделенные серверы Premium. Подключаться можно бесплатно; выбор собственного имени остаётся функцией Premium.\n- Сбора статистики использования нет.\n\nШесть JAR для Minecraft 1.17–26.3: Fabric/Quilt, Forge и NeoForge. Установите только подходящий файл; Fabric/Quilt также требуют Fabric API. Для изменений передачи мира обновиться нужно обоим игрокам. Ретро-JAR в этот выпуск не входят. Перед передачей важных миров сделайте резервную копию.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.7 — forge 1.18.2–1.20.2",
+      "gameVersionNames": [
+        "1.18.2",
+        "1.19",
+        "1.19.1",
+        "1.19.2",
+        "1.19.3",
+        "1.19.4",
+        "1.20",
+        "1.20.1",
+        "1.20.2",
+        "Forge",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-neoforge-mc1.20.2-26.3-v0.3.7.jar",
+    "sha256": "6ff3267f1a0c17abe84a00ea335b9a530b02068d688004d63796391c57ee8e0f",
+    "metadata": {
+      "changelog": "## English\n\n- Receive a world from a Premium host and continue as its new host with free e4steam. The world is saved, transferred and opened for Steam friends automatically after confirmation. Returning it to its original owner is also free.\n- Preserve the recipient's current inventory and position during handoff and restore the original owner's personal address on return. Previous active copies move to local backups, retained for three days.\n- Improve transfer scheduling and remove the fixed upper Steam send-rate limit during world transfer. Recover from temporary congestion without repeatedly throttling a healthy connection. Actual speed depends on both players and the Steam route.\n- Fix Simple Voice Chat forwarding for shared worlds and dedicated Steam servers, including per-player UDP endpoints and delayed voice-server startup.\n- Preserve Minecraft account UUIDs and migrate older Steam-based player records with backups, so adding or removing e4steam does not itself require starting over. Changing Minecraft accounts or online-mode still changes Minecraft's identity rules.\n- Improve joining and reconnecting by personal addresses, including anonymous dedicated Premium servers. Free clients can join; selecting a personal name remains a Premium feature.\n- No usage-statistics sender is included.\n\nSix JARs cover Minecraft 1.17–26.3 on Fabric/Quilt, Forge and NeoForge. Install only the file matching your Minecraft and loader; Fabric/Quilt also require Fabric API. Both participants need this update for the handoff changes. This release contains no retro JARs. Back up important saves before trying host handoff.\n\n## Русский\n\n- Бесплатный e4steam принимает мир от хоста Premium и позволяет продолжить игру новым хостом. После подтверждения мир сохраняется, передаётся и автоматически открывается для друзей Steam. Возврат первоначальному владельцу тоже бесплатный.\n- При передаче сохраняются актуальные вещи и позиция нового хоста, а при возврате восстанавливается персональный адрес владельца. Прежние активные копии убираются в локальные резервные копии на три дня.\n- Ускорена отправка данных и снят фиксированный верхний лимит скорости Steam на время передачи. После временной перегрузки скорость восстанавливается. Фактическая скорость зависит от обоих игроков и маршрута Steam.\n- Исправлена передача Simple Voice Chat в общих мирах и на выделенных Steam-серверах, в том числе отдельные UDP-подключения игроков и поздний запуск голосового сервера.\n- Сохраняются UUID аккаунтов Minecraft; старые данные со Steam UUID переносятся с резервными копиями. Установка или удаление e4steam сама по себе не должна сбрасывать прогресс. Смена Minecraft-аккаунта или online-mode по-прежнему влияет на идентификатор игрока.\n- Улучшены подключение и повторный вход по персональным адресам, включая анонимные выделенные серверы Premium. Подключаться можно бесплатно; выбор собственного имени остаётся функцией Premium.\n- Сбора статистики использования нет.\n\nШесть JAR для Minecraft 1.17–26.3: Fabric/Quilt, Forge и NeoForge. Установите только подходящий файл; Fabric/Quilt также требуют Fabric API. Для изменений передачи мира обновиться нужно обоим игрокам. Ретро-JAR в этот выпуск не входят. Перед передачей важных миров сделайте резервную копию.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.7 — neoforge 1.20.2–26.3",
+      "gameVersionNames": [
+        "1.20.2",
+        "1.20.3",
+        "1.20.4",
+        "1.20.5",
+        "1.20.6",
+        "1.21",
+        "1.21.1",
+        "1.21.2",
+        "1.21.3",
+        "1.21.4",
+        "1.21.5",
+        "1.21.6",
+        "1.21.7",
+        "1.21.8",
+        "1.21.9",
+        "1.21.10",
+        "1.21.11",
+        "26.1",
+        "26.1.1",
+        "26.1.2",
+        "26.2",
+        "26.3",
+        "NeoForge",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false
+    }
+  }
+]

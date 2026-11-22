@@ -48,6 +48,19 @@ final class VoiceChatUdpEndpoint {
         return new VoiceChatUdpEndpoint(0, CLIENT_PORT_SAME_AS_SERVER, "disabled");
     }
 
+    static VoiceChatUdpEndpoint resolveForGuest(int minecraftPort, int fallbackPort) {
+        if (simpleVoicechatPresent()) {
+            long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(2);
+            do {
+                int bound = simpleVoiceChatPort();
+                if (bound > 0) return samePort(bound, "Simple Voice Chat");
+                try { Thread.sleep(20); }
+                catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); break; }
+            } while (System.nanoTime() < deadline);
+        }
+        return resolve(minecraftPort, fallbackPort);
+    }
+
     static VoiceChatUdpEndpoint fromHandshake(int hostPort, byte clientPortMode) {
         if (hostPort < 0 || hostPort > 65535) {
             throw new IllegalArgumentException("Invalid UDP host port: " + hostPort);
@@ -79,23 +92,9 @@ final class VoiceChatUdpEndpoint {
         return source;
     }
 
-    private static int simpleVoiceChatPort() {
-        // The Steam worker may inherit a loader that cannot see loader-managed mods.
-        ClassLoader[] loaders = {contextClassLoader(), VoiceChatUdpEndpoint.class.getClassLoader()};
-        for (ClassLoader loader : loaders) {
-            try {
-                Class<?> voicechat = Class.forName("de.maxhenkel.voicechat.Voicechat", false, loader);
-                Object events = voicechat.getField("SERVER").get(null);
-                int port = simpleVoiceChatPort(events);
-                if (port > 0) return port;
-            } catch (ClassNotFoundException ignored) {
-                // Try the mod's own class loader before declaring voice chat absent.
-            } catch (ReflectiveOperationException | LinkageError | RuntimeException exception) {
-                E4steamClient.LOGGER.debug("Could not read the active Simple Voice Chat UDP port", exception);
-            }
-        }
-        return 0;
-    }
+    static boolean simpleVoicechatPresent() { return classExists("de.maxhenkel.voicechat.Voicechat"); }
+
+    private static int simpleVoiceChatPort() { return SimpleVoicechatPort.bound(); }
 
     static int simpleVoiceChatPort(Object serverEvents) throws ReflectiveOperationException {
         if (serverEvents == null) return 0;
@@ -155,12 +154,11 @@ final class VoiceChatUdpEndpoint {
     }
 
     private static boolean classExists(String className) {
-        try {
-            Class.forName(className, false, contextClassLoader());
-            return true;
-        } catch (ClassNotFoundException | LinkageError ignored) {
-            return false;
+        for(ClassLoader loader:new ClassLoader[]{contextClassLoader(),VoiceChatUdpEndpoint.class.getClassLoader()}) {
+            try {Class.forName(className,false,loader);return true;}
+            catch(ClassNotFoundException | LinkageError ignored) { }
         }
+        return false;
     }
 
     private static ClassLoader contextClassLoader() {

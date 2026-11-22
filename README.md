@@ -40,7 +40,7 @@
 | Browse every guide | [Documentation index](docs/README.md) |
 
 > [!IMPORTANT]
-> **e4steam 0.3.4 supports Minecraft 1.17–26.3.** Windows x64 is the primary supported
+> **e4steam 0.3.7 supports Minecraft 1.17–26.3.** Windows x64 is the primary supported
 > platform, including integrated worlds and dedicated servers. Linux x64 and
 > macOS are available as experimental builds. e4steam permanently uses Valve's
 > shared test App ID 480 (Spacewar), so it filters unrelated App ID 480 traffic.
@@ -54,34 +54,28 @@
 > cross-platform matrix still need more manual coverage.
 
 > [!TIP]
-> **e4steam 0.3.4** embeds Addon API **1.1.0**. API 1.1 adds the safe Public
-> Directory bridge while preserving the complete public API 1.0 binary surface.
+> **e4steam 0.3.7** embeds Addon API **1.2.0**, preserving the public API
+> 1.0/1.1 binary surface. The published Maven API coordinate below remains 1.1.0.
 
 e4steam opens a Minecraft singleplayer world to Steam friends without port
 forwarding or a public IP. Both players need the mod and a signed-in Steam
 client. Minecraft TCP traffic and supported voice-chat UDP traffic travel over
 Steam P2P or Valve relays.
 
-Offline Minecraft launcher profiles are supported for Steam connections. Since
-0.3.0, the host derives each Steam guest's stable Minecraft
-UUID and safe profile name from the authenticated SteamID rather than trusting
-the name supplied by the client. Steam itself must still be running and signed
-in on every computer.
+Offline Minecraft launcher profiles are supported for Steam connections. e4steam
+0.3.7 preserves verified Minecraft account UUIDs and standard offline identities,
+with server-owned bindings and backups when migrating older Steam-derived player
+data. Adding or removing e4steam should not by itself reset player progress.
+Changing the Minecraft account or online-mode still changes Minecraft identity
+rules. Keep a world backup before upgrading older saves.
 
-When upgrading a world first played through e4steam 0.2.4, a guest can appear
-with fresh progress once because 0.3.0 replaces the old Mojang/offline UUID
-with the stable Steam-derived UUID. Back up the world before migrating the
-matching `world/playerdata/<old UUID>.dat`; later 0.3.0+ joins reuse the same
-Steam-derived UUID.
+## What's new in 0.3.7
 
-## What's new in 0.3.4
-
-This release bundles Addon API 1.1.0 and the Steam lobby runtime used by
-[Public Servers 0.1.0](https://github.com/K2-Studio-Development/e4steam-Public-Servers).
-It includes LAN settings, public-world naming, command-permission, login and
-cross-version interface fixes. Six runtime JARs cover Minecraft 1.17–26.3;
-retro JARs are excluded. See the [changelog](CHANGELOG.md) and
-[compatibility matrix](COMPATIBILITY.md) for verification details.
+Receive a world from a Premium host, continue playing as its new host and return
+it to its owner with free e4steam. This release also improves Voice Chat over
+Steam, player-data preservation, personal-address joins and world-transfer
+scheduling. Six runtime JARs cover Minecraft 1.17–26.3; retro files are excluded.
+See the [changelog](CHANGELOG.md) and [handoff guide](docs/WORLD_TRANSFER.md).
 
 The repository also contains a separate loader-independent Java 8 API artifact, an
 addon testkit and a compile-checked example. API 1.1 includes scoped
@@ -246,7 +240,7 @@ For `SteamAPI_Init failed`, first follow the
 <summary><h2>🇷🇺 Русская версия — нажмите, чтобы открыть</h2></summary>
 
 > [!IMPORTANT]
-> **e4steam 0.3.4 для Minecraft 1.17–26.3.** Основная поддерживаемая платформа —
+> **e4steam 0.3.7 для Minecraft 1.17–26.3.** Основная поддерживаемая платформа —
 > Windows x64, включая открытые миры и выделенные серверы. Сборки для Linux x64
 > и macOS пока экспериментальные. Мод постоянно использует общий тестовый
 > Steam App ID 480 (Spacewar) и фильтрует посторонний трафик этого App ID.
@@ -260,34 +254,28 @@ For `SteamAPI_Init failed`, first follow the
 > межплатформенных подключений ещё собирается полная матрица результатов.
 
 > [!TIP]
-> **e4steam 0.3.2** содержит Addon API **1.1.0**. В API 1.1 появился безопасный
-> мост Public Directory, при этом вся публичная бинарная поверхность API 1.0
-> сохранена.
+> **e4steam 0.3.7** содержит Addon API **1.2.0** с бинарной совместимостью
+> API 1.0/1.1. Опубликованная Maven-координата ниже остаётся версией 1.1.0.
 
 e4steam позволяет открыть одиночный мир Minecraft друзьям из Steam без проброса
 портов и белого IP. Мод и запущенный Steam нужны у всех игроков. TCP-трафик
 Minecraft и UDP-трафик поддерживаемых голосовых модов передаются через Steam P2P
 или ретрансляторы Valve.
 
-Офлайн-профили Minecraft-лаунчеров поддерживаются для подключений через Steam.
-Начиная с 0.3.0 хост создаёт стабильный Minecraft UUID и безопасное
-имя гостя из подтверждённого SteamID, а не доверяет имени, присланному клиентом.
-Сам Steam всё равно должен быть запущен, и на каждом компьютере должен быть
-выполнен вход в аккаунт Steam.
+Офлайн-профили Minecraft поддерживаются для подключений через Steam. В 0.3.7
+сохраняются UUID подтверждённых Minecraft-аккаунтов и обычные офлайн-идентификаторы.
+Старые данные со Steam UUID переносятся с резервными копиями и привязками на
+стороне сервера. Установка или удаление e4steam сама по себе не должна сбрасывать
+прогресс. Смена Minecraft-аккаунта или online-mode по-прежнему влияет на UUID.
+Перед обновлением старых сохранений сделайте резервную копию мира.
 
-После обновления мира, который раньше использовался с e4steam 0.2.4, гость
-может один раз появиться без старого прогресса: 0.3.0 заменяет прежний
-Mojang/offline UUID стабильным UUID из SteamID. Перед переносом подходящего
-`world/playerdata/<старый UUID>.dat` сделайте резервную копию мира. Все
-следующие входы в 0.3.0 и новее используют тот же UUID, вычисленный из SteamID.
+## Что нового в 0.3.7
 
-## Что нового в 0.3.4
-
-По сравнению с 0.3.1 в мод встроены Addon API 1.1 и его runtime-реализация,
-сохранена совместимость с аддонами API 1.0, добавлен безопасный сервис Public
-Directory, улучшены обнаружение аддонов и сообщения о несовместимости, а также
-укреплена обработка состояния Steam, доступа и публичных подключений.
-Подробности перечислены в [changelog](CHANGELOG.md).
+Бесплатный e4steam позволяет принять мир от хоста Premium, продолжить игру новым
+хостом и вернуть сохранение владельцу. Улучшены Voice Chat через Steam,
+сохранение данных игроков, вход по персональным адресам и скорость передачи.
+Шесть JAR рассчитаны на Minecraft 1.17–26.3; ретро-файлов в этом выпуске нет.
+Подробности: [changelog](CHANGELOG.md) и [передача мира](docs/WORLD_TRANSFER.md).
 
 В репозитории также есть отдельный Java 8 API JAR, не зависящий от загрузчика,
 набор средств для тестов и пример аддона, который проверяется при сборке. API

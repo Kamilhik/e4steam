@@ -58,6 +58,29 @@ class SteamUdpBridgeTest {
         }
     }
 
+    @Test void voiceProxyCanUseAnUnusedPortWhenAdvertisedPortIsOccupied() throws Exception {
+        SteamConnectionBridge owner=ownerBridge(73);
+        try (DatagramSocket occupied=new DatagramSocket(new InetSocketAddress(loopback(),0))) {
+            SteamUdpBridge proxy=SteamUdpBridge.client(SteamRuntime.get(),owner,occupied.getLocalPort(),true);
+            int port=proxy.localPort();
+            try {assertTrue(port>0 && port!=occupied.getLocalPort());} finally {proxy.close();}
+            try (DatagramSocket reopened=new DatagramSocket(new InetSocketAddress(loopback(),port))) {assertTrue(reopened.isBound());}
+        } finally {owner.close(false);}
+    }
+    @Test void lateVoiceServerDoesNotPermanentlyKillUdpReader() throws Exception {
+        SteamConnectionBridge owner=ownerBridge(74);int port;
+        try(DatagramSocket reservation=new DatagramSocket(new InetSocketAddress(loopback(),0))){port=reservation.getLocalPort();}
+        SteamUdpBridge proxy=SteamUdpBridge.host(SteamRuntime.get(),owner,port);
+        try {
+            proxy.start();proxy.acceptSteamDatagram(new byte[]{1});Thread.sleep(100);
+            assertTrue(proxy.readerAlive());
+            try(DatagramSocket server=new DatagramSocket(new InetSocketAddress(loopback(),port))) {
+                server.setSoTimeout(2000);proxy.acceptSteamDatagram(new byte[]{2});assertArrayEquals(new byte[]{2},receive(server));
+                assertTrue(proxy.readerAlive());
+            }
+        } finally {proxy.close();owner.close(false);}
+    }
+
     private static SteamConnectionBridge ownerBridge(int connectionId) {
         return new SteamConnectionBridge(
                 SteamRuntime.get(),

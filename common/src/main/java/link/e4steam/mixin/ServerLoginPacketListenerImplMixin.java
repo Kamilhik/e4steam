@@ -24,7 +24,9 @@ public abstract class ServerLoginPacketListenerImplMixin {
     private static final int E4STEAM_LOGIN_TIMEOUT_TICKS = 2_400;
 
     @Shadow @Final private Connection connection;
+    @Shadow @Final private MinecraftServer server;
     private long e4steam$authenticatedSteamId;
+    private boolean e4steam$identityRejected;
 
     private long e4steam$authenticatedSteamId() {
         long current = e4steam$authenticatedSteamId;
@@ -43,7 +45,7 @@ public abstract class ServerLoginPacketListenerImplMixin {
     )
     private boolean e4steam$useSteamAuthentication(MinecraftServer server) {
         long authenticatedSteamId = e4steam$authenticatedSteamId();
-        return authenticatedSteamId == 0 && server.usesAuthentication();
+        return authenticatedSteamId == 0 ? server.usesAuthentication() : SteamMinecraftAuthentication.usesMinecraftSession(connection.getRemoteAddress());
     }
 
     @Inject(method = "handleHello", at = @At("HEAD"), cancellable = true)
@@ -60,7 +62,7 @@ public abstract class ServerLoginPacketListenerImplMixin {
     @Redirect(method="/^(handleAcceptedLogin|acceptPlayer|method_14384|m_10055_)$/", remap=false,
             at=@At(value="INVOKE", target="Lnet/minecraft/server/MinecraftServer;enforceSecureProfile()Z", remap=true), require=0)
     private boolean e4steam$requireMojangProfileKey(MinecraftServer server) {
-        return e4steam$authenticatedSteamId() == 0L && server.enforceSecureProfile();
+        return (e4steam$authenticatedSteamId() == 0L || e4steam$verifiedSession() && server.usesAuthentication()) && server.enforceSecureProfile();
     }
 
     /** Binds the UUID to Steam while preserving the Minecraft nickname. */
@@ -76,11 +78,12 @@ public abstract class ServerLoginPacketListenerImplMixin {
         if (authenticatedSteamId == 0) {
             return original;
         }
-        return link.e4steam.steam.SteamMinecraftProfile.bind(original, authenticatedSteamId);
+        try {return link.e4steam.steam.SteamLoginIdentity.resolve(server,original,authenticatedSteamId,e4steam$verifiedSession());}
+        catch(java.io.IOException unavailable){e4steam$identityRejected=true;connection.disconnect(Component.literal(unavailable.getMessage()));return original;}
     }
 
     /** The pre-1.20.2 login state machine stores its accepted profile in a field. */
-    @Inject(method="/^(handleAcceptedLogin|acceptPlayer|method_14384|m_10055_)$/", at=@At("HEAD"), require=0, remap=false)
+    @Inject(method="/^(handleAcceptedLogin|acceptPlayer|method_14384|m_10055_)$/", at=@At("HEAD"), cancellable=true, require=0, remap=false)
     private void e4steam$bindOlderProfile(CallbackInfo ci) {
         long peer=e4steam$authenticatedSteamId();
         if (peer==0L) return;
@@ -88,7 +91,9 @@ public abstract class ServerLoginPacketListenerImplMixin {
         if (field==null) return;
         try {
             GameProfile original=(GameProfile)field.get(this);
-            field.set(this,link.e4steam.steam.SteamMinecraftProfile.bind(original,peer));
+            try {field.set(this,link.e4steam.steam.SteamLoginIdentity.resolve(server,original,peer,e4steam$verifiedSession()));}
+            catch(java.io.IOException unavailable){connection.disconnect(Component.literal(unavailable.getMessage()));ci.cancel();return;}
+            if(e4steam$verifiedSession() && server.usesAuthentication())return;
             // 1.19/1.19.2 keys sign the Mojang UUID, not the authenticated Steam UUID.
             java.lang.reflect.Field key=link.e4steam.lan.LanReflection.field(this,
                     "profilePublicKeyData", "publicKeyData", "field_39743");
@@ -110,4 +115,14 @@ public abstract class ServerLoginPacketListenerImplMixin {
         long authenticatedSteamId = e4steam$authenticatedSteamId();
         return authenticatedSteamId == 0 ? vanillaTimeout : E4STEAM_LOGIN_TIMEOUT_TICKS;
     }
+    @Inject(method="startClientVerification",at=@At("HEAD"),cancellable=true,require=0)
+    private void e4steam$stopRejectedIdentity(GameProfile profile,CallbackInfo ci) {if(e4steam$identityRejected || !connection.isConnected())ci.cancel();}
+    @Inject(method="verifyLoginAndFinishConnectionSetup",at=@At("HEAD"),cancellable=true,require=0)
+    private void e4steam$rejectFailedVerification(GameProfile profile,CallbackInfo ci) {if(e4steam$identityRejected)ci.cancel();}
+    @Inject(method="tick",at=@At("HEAD"),cancellable=true)
+    private void e4steam$stopFailedLogin(CallbackInfo ci) {if(e4steam$identityRejected)ci.cancel();}
+    private boolean e4steam$verifiedSession() {
+        return SteamMinecraftAuthentication.usesMinecraftSession(connection.getRemoteAddress()) && connection.isEncrypted();
+    }
+
 }

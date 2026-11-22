@@ -36,15 +36,6 @@ public final class MinecraftUiCompat {
             "net.minecraft.class_424"
     };
 
-    private static final String[] DISCONNECT_METHOD_NAMES = {
-            "disconnect",
-            "clearLevel",
-            "method_18099",
-            "method_18096",
-            "m_91387_",
-            "m_91398_"
-    };
-
     private MinecraftUiCompat() {
     }
 
@@ -334,21 +325,16 @@ public final class MinecraftUiCompat {
     /** Disconnects the current world across the old clearLevel/new disconnect rename. */
     public static void disconnect(Minecraft minecraft, Screen nextScreen)
             throws ReflectiveOperationException {
-        for (String name : DISCONNECT_METHOD_NAMES) {
-            for (Method method : Minecraft.class.getMethods()) {
-                if (!method.getName().equals(name)
-                        || Modifier.isStatic(method.getModifiers())
-                        || method.getReturnType() != void.class
-                        || method.getParameterCount() != 1
-                        || !method.getParameterTypes()[0].isAssignableFrom(nextScreen.getClass())) {
-                    continue;
-                }
-                method.invoke(minecraft, nextScreen);
-                return;
+        UiDisconnect.invoke(minecraft,nextScreen,()-> {
+            // The normal pause-menu exit sends this signal BEFORE waiting for the integrated server.
+            // Omitting it leaves disconnect(Screen) waiting forever for a server that is still running.
+            if (minecraft.level!=null) {
+                try {UiDisconnect.leaveWorld(minecraft.level,Mirror.translatable("disconnect.quitting"));}
+                catch(ReflectiveOperationException failure){throw new IllegalStateException("MINECRAFT_WORLD_QUIT_UNAVAILABLE",failure);}
             }
-        }
-        throw new NoSuchMethodException("No compatible Minecraft disconnect method was found");
+        });
     }
+    public static void pressButton(Button button) throws ReflectiveOperationException {UiButtonAction.invoke(button);}
 
     private static Button tryBuilder(
             Component message,

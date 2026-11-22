@@ -12,6 +12,7 @@
     "defaultRequire": 1
   },
   "client": [
+    "WorldTransferTickMixin",
     "BanListCommandsMixin",
     "IntegratedServerConnectionListenerMixin",
     "BanPlayerCommandsMixin",
@@ -25,6 +26,8 @@
     "PlayerListMixin",
     "ServerNameResolverMixin",
     "IntegratedServerLanMixin",
-    "LanSettingsRenderMixin"
+    "LanSettingsRenderMixin",
+    "WorldTransferExitMixin",
+    "SimpleVoicechatAddressMixin"
   ]
 }

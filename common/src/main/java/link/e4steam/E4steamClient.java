@@ -64,10 +64,21 @@ public class E4steamClient {
         SteamRuntime.relaunchForOverlayIfNeeded();
         Config.INSTANCE.id(); // Touch to initialize for McQoy
         ModernLanSettings.initialize();
+        SteamRuntime.get().enableModernVoiceProxy();
+        SteamRuntime.get().minecraftSession(E4steamClient::hasMinecraftSession);
         SteamRuntime.preloadCompatibilityClasses();
         SteamClientApiAdapter.install();
         CoreApiPlatform.start(environment, addons);
         SteamRuntime.get().startAtGameLaunchAsync();
+    }
+
+    private static boolean hasMinecraftSession() {
+        Object user=Minecraft.getInstance().getUser();
+        for(String name:new String[]{"getAccessToken","method_1674","m_92547_","accessToken"})try {
+            Object value=user.getClass().getMethod(name).invoke(user);
+            if(value instanceof String)return ((String)value).length()>20 && !((String)value).matches("0+");
+        } catch(ReflectiveOperationException absent){}
+        return false;
     }
 
     public static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {

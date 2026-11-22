@@ -30,6 +30,12 @@ final class SteamDedicatedAdvertisement {
     }
 
     static PublicDirectoryService.DedicatedListing decode(String tags, long nowMillis) {
+        if(tags!=null&&tags.startsWith(SteamDedicatedNameProtocol.MARKER+",")) {
+            SteamDedicatedNameProtocol.Target named=SteamDedicatedNameProtocol.decode(tags,nowMillis);
+            String target="ds_"+Base64.getUrlEncoder().withoutPadding().encodeToString(named.endpoint.descriptor().getBytes(StandardCharsets.US_ASCII));
+            return new PublicDirectoryService.DedicatedListing(new PublicDirectoryService.OpaqueTargetRef(target),named.name,named.minecraft,
+                    named.loader,named.core,named.addon,named.wire,named.players,named.capacity,named.updated);
+        }
         if (tags == null || tags.length() > 127 || !tags.startsWith(MARKER + ","))
             throw new IllegalArgumentException("invalid advertisement");
         Map<Character,String> fields = new HashMap<>();

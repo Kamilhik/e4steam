@@ -14,6 +14,11 @@ import java.util.UUID;
 public final class SteamMinecraftIdentity {
     private static final String UUID_NAMESPACE = "e4steam:steam-identity:v1:";
     private static final String NAME_PREFIX = "s_";
+    private static final java.util.concurrent.ConcurrentMap<Long,UUID> VERIFIED=new java.util.concurrent.ConcurrentHashMap<>();
+    public static void verified(long steamId,UUID original) {requireSteamId(steamId);if(original==null)throw new IllegalArgumentException("Missing verified Minecraft UUID");VERIFIED.put(steamId,original);}
+    public static UUID legacyUuid(long steamId) {
+        requireSteamId(steamId);return UUID.nameUUIDFromBytes((UUID_NAMESPACE+Long.toUnsignedString(steamId)).getBytes(StandardCharsets.UTF_8));
+    }
 
     private SteamMinecraftIdentity() {
     }
@@ -21,8 +26,7 @@ public final class SteamMinecraftIdentity {
     /** Returns a stable, versioned Minecraft UUID for one authenticated SteamID. */
     public static UUID uuid(long steamId) {
         requireSteamId(steamId);
-        String material = UUID_NAMESPACE + Long.toUnsignedString(steamId);
-        return UUID.nameUUIDFromBytes(material.getBytes(StandardCharsets.UTF_8));
+        UUID original=VERIFIED.get(steamId);return original==null?legacyUuid(steamId):original;
     }
 
     /**

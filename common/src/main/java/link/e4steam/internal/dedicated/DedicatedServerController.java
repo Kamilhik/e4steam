@@ -142,6 +142,11 @@ public final class DedicatedServerController implements AutoCloseable {
                 });
     }
 
+    public java.util.concurrent.CompletableFuture<byte[]> namedProof(byte[] nonce) {
+        if(backend instanceof SteamGameServerRuntimeBackend)return ((SteamGameServerRuntimeBackend)backend).namedProof(nonce);
+        java.util.concurrent.CompletableFuture<byte[]> result=new java.util.concurrent.CompletableFuture<>();
+        result.completeExceptionally(new IllegalStateException("Dedicated name transport unavailable"));return result;
+    }
     public long authenticatedMinecraftPeer(SocketAddress remoteAddress) {
         long generation = backendGeneration;
         return generation <= 0L ? 0L : ingress.resolve(remoteAddress, generation);
@@ -276,14 +281,16 @@ public final class DedicatedServerController implements AutoCloseable {
 
     public boolean isBanned(long steamId) {
         return accessStore.banned(steamId)
-                || accessStore.banned(SteamMinecraftIdentity.uuid(steamId));
+                || accessStore.banned(SteamMinecraftIdentity.uuid(steamId))
+                || accessStore.banned(SteamMinecraftIdentity.legacyUuid(steamId));
     }
 
     public boolean whitelistRequired() { return false; }
 
     public boolean isWhitelisted(long steamId) {
         return config.isWhitelisted(steamId) || accessStore.whitelisted(steamId)
-                || accessStore.whitelisted(SteamMinecraftIdentity.uuid(steamId));
+                || accessStore.whitelisted(SteamMinecraftIdentity.uuid(steamId))
+                || accessStore.whitelisted(SteamMinecraftIdentity.legacyUuid(steamId));
     }
 
     public boolean updateWhitelist(String identity, boolean present) {

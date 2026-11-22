@@ -29,7 +29,15 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
     private static final int STEAM_IDENTITY_VALUE_SIZE = Long.BYTES;
 
     private static final int RESULT_OK = 1;
+    private static final int CONFIG_SEND_RATE_MIN = 10;
     private static final int CONFIG_SEND_RATE_MAX = 11;
+    // Steam's SendRateMax=0 means no upper rate clamp. Keep congestion feedback active.
+    private static final int BULK_RATE_INITIAL = 2*1024*1024, BULK_RATE_MAX = 0;
+    private long bulkPeer,nextBulkTune,nextBulkDecrease;
+    private Integer savedRateMin,savedRateMax;
+    private boolean bulkUnavailable;
+    private int bulkFloor,bulkGoodSamples,bulkBadSamples,bulkBaselinePing;
+    private boolean bulkHadCongestion;
     private static final int SEND_RATE_CEILING = 4 * 1024 * 1024;
     private static final int SEND_NO_NAGLE = 1;
     private static final int SEND_NO_DELAY = 4;
@@ -92,6 +100,7 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
 
     interface NativeAccess {
         default boolean setGlobalConfigInt32(int option, int value) { return false; }
+        default Integer getGlobalConfigInt32(int option) { return null; }
         int send(Pointer identity, Pointer data, int size, int flags, int channel);
 
         int receive(int channel, Pointer[] messages, int maxMessages);
@@ -270,6 +279,7 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
     }
 
     void closePeer(long remoteSteamId) {
+        endBulkTransfer(remoteSteamId);
         if (closed) {
             return;
         }
@@ -315,11 +325,77 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
                 || (queueMicros >= 0L && queueMicros >= maxQueueMicros);
     }
 
+    /** Temporary bulk profile; called only on the Steam worker while a saved world is sent. */
+    void beginBulkTransfer(long peer,long now) {
+        if(closed||bulkUnavailable)return;
+        if(bulkPeer==peer){tuneBulkTransfer(peer,now);return;}
+        if(bulkPeer!=0)endBulkTransfer(bulkPeer);
+        Integer minimum=nativeAccess.getGlobalConfigInt32(CONFIG_SEND_RATE_MIN);
+        Integer maximum=nativeAccess.getGlobalConfigInt32(CONFIG_SEND_RATE_MAX);
+        if(minimum==null || maximum==null){bulkUnavailable=true;LOGGER.warn("World transfer bulk profile unavailable; using normal Steam settings");return;}
+        // Never change settings we cannot restore.
+        savedRateMin=minimum;savedRateMax=maximum;bulkPeer=peer;
+        realTimeStatus.clear();nativeAccess.getSessionConnectionInfo(identity(peer),realTimeStatus);
+        bulkBaselinePing=Math.max(1,realTimeStatus.getInt(4));
+        LOGGER.info("World transfer Steam rate before bulk: {}",diagnosticState(peer));
+        if(!nativeAccess.setGlobalConfigInt32(CONFIG_SEND_RATE_MAX,BULK_RATE_MAX)
+                || !nativeAccess.setGlobalConfigInt32(CONFIG_SEND_RATE_MIN,BULK_RATE_INITIAL)) {
+            endBulkTransfer(peer);bulkUnavailable=true;return;
+        }
+        bulkFloor=BULK_RATE_INITIAL;bulkGoodSamples=bulkBadSamples=0;bulkHadCongestion=false;
+        nextBulkTune=now+2000;nextBulkDecrease=now;
+        LOGGER.info("World transfer bulk profile v2 enabled: initial={} bytes/s, maximum=unlimited",bulkFloor);
+    }
+    private void tuneBulkTransfer(long peer,long now) {
+        if(now<nextBulkTune)return;nextBulkTune=now+2000;
+        realTimeStatus.clear();int state=nativeAccess.getSessionConnectionInfo(identity(peer),realTimeStatus);
+        if(state!=3)return;
+        int ping=realTimeStatus.getInt(4),pending=realTimeStatus.getInt(STATUS_PENDING_RELIABLE_OFFSET);
+        float local=realTimeStatus.getFloat(8),remote=realTimeStatus.getFloat(12),wire=realTimeStatus.getFloat(20);
+        boolean loss=(local>=0&&local<0.90f)||(remote>=0&&remote<0.90f);
+        boolean delayed=ping>Math.max(200,bulkBaselinePing*3)&&pending>64*1024;
+        boolean struggling=loss&&ping>Math.max(200,bulkBaselinePing*2)
+                &&wire<bulkFloor*0.5f&&pending>64*1024;
+        // Quality is a rolling historical estimate. Never repeatedly penalize old loss
+        // after RTT recovers, or one brief spike can pin an otherwise good route at 128 KiB/s.
+        if(delayed||struggling) {
+            bulkGoodSamples=0;
+            if(++bulkBadSamples>=2&&now>=nextBulkDecrease) {
+                int slower=Math.max(128*1024,bulkFloor-bulkFloor/4);
+                if(nativeAccess.setGlobalConfigInt32(CONFIG_SEND_RATE_MIN,slower))bulkFloor=slower;
+                bulkBadSamples=0;bulkHadCongestion=true;nextBulkDecrease=now+6000;
+            }
+        } else if(ping<=Math.max(200,bulkBaselinePing*2)
+                &&wire>=bulkFloor*0.5f&&pending>24*1024) {
+            bulkBadSamples=0;
+            if(++bulkGoodSamples>=2) {
+                // Saturate only the int32 minimum-rate hint; never impose a maximum.
+                long increase=bulkHadCongestion?Math.max(64*1024,bulkFloor/4):bulkFloor;
+                int faster=(int)Math.min(Integer.MAX_VALUE,bulkFloor+increase);
+                if(now>=nextBulkDecrease&&nativeAccess.setGlobalConfigInt32(CONFIG_SEND_RATE_MIN,faster)) {
+                    bulkFloor=faster;bulkGoodSamples=0;
+                }
+            }
+        } else bulkGoodSamples=bulkBadSamples=0;
+        LOGGER.info("World transfer Steam bulk: floor={} {}",bulkFloor,diagnosticState(peer));
+    }
+    void endBulkTransfer(long peer) {
+        if(bulkPeer==0 || peer!=bulkPeer)return;
+        if(savedRateMin!=null)nativeAccess.setGlobalConfigInt32(CONFIG_SEND_RATE_MIN,savedRateMin);
+        if(savedRateMax!=null)nativeAccess.setGlobalConfigInt32(CONFIG_SEND_RATE_MAX,savedRateMax);
+        bulkPeer=0;savedRateMin=savedRateMax=null;bulkFloor=bulkGoodSamples=bulkBadSamples=0;
+        nextBulkDecrease=0;bulkHadCongestion=false;
+        LOGGER.info("World transfer bulk profile restored normal Steam settings");
+    }
+
     String diagnosticState(long remoteSteamId) {
         if (closed) return "closed";
         realTimeStatus.clear();
         int state = nativeAccess.getSessionConnectionInfo(identity(remoteSteamId), realTimeStatus);
         return "state=" + state + ",pingMs=" + realTimeStatus.getInt(4)
+                + ",qualityLocal=" + realTimeStatus.getFloat(8)
+                + ",qualityRemote=" + realTimeStatus.getFloat(12)
+                + ",outBytesPerSec=" + realTimeStatus.getFloat(20)
                 + ",sendBytesPerSec=" + realTimeStatus.getInt(32)
                 + ",pendingReliable=" + realTimeStatus.getInt(STATUS_PENDING_RELIABLE_OFFSET)
                 + ",unackedReliable=" + realTimeStatus.getInt(STATUS_SENT_UNACKED_RELIABLE_OFFSET)
@@ -331,6 +407,7 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
         if (closed) {
             return;
         }
+        endBulkTransfer(bulkPeer);
         closed = true;
         nativeAccess.setCallbacks(null, null);
         nativeAccess.setDebugOutput(0, null);
@@ -436,6 +513,7 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
 
     private interface FlatApi extends Library {
         byte SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(Pointer self, int option, int value);
+        int SteamAPI_ISteamNetworkingUtils_GetConfigValue(Pointer self,int option,int scope,Pointer scopeObject,Pointer type,Pointer result,Pointer size);
         Pointer SteamAPI_SteamNetworkingMessages_SteamAPI_v002();
 
         Pointer SteamAPI_SteamGameServerNetworkingMessages_SteamAPI_v002();
@@ -524,6 +602,15 @@ final class SteamNetworkingMessagesTransport implements AutoCloseable {
             } catch (UnsatisfiedLinkError unavailable) {
                 return false;
             }
+        }
+
+        @Override public Integer getGlobalConfigInt32(int option) {
+            try {
+                Memory type=new Memory(4),value=new Memory(4),size=new Memory(Native.POINTER_SIZE);
+                if(Native.POINTER_SIZE==8)size.setLong(0,4);else size.setInt(0,4);
+                int result=api.SteamAPI_ISteamNetworkingUtils_GetConfigValue(utils,option,1,null,type,value,size);
+                return result>0 && type.getInt(0)==1?value.getInt(0):null;
+            } catch(UnsatisfiedLinkError unavailable){return null;}
         }
 
         @Override

@@ -52,6 +52,9 @@ final class SteamNamedAddressTest {
                 new SteamNamedAddress.Identity(owner.owner(), UUID.randomUUID()), "1.21.1");
         assertThrows(IOException.class, () -> SteamNamedAddress.choose(List.of(original, impostor), null, "1.21.1"));
         assertEquals(restarted, SteamNamedAddress.choose(List.of(restarted, impostor, differentWorld), owner, "1.21.1"));
-        assertThrows(IOException.class, () -> SteamNamedAddress.choose(List.of(impostor, differentWorld), owner, "1.21.1"));
+        assertEquals(differentWorld, SteamNamedAddress.choose(List.of(impostor, differentWorld), owner, "1.21.1"));
+        assertThrows(IOException.class, () -> SteamNamedAddress.choose(List.of(impostor), owner, "1.21.1"));
+        var ambiguous=new SteamNamedAddress.Target(500,new SteamNamedAddress.Identity(owner.owner(),UUID.randomUUID()),"1.21.1");
+        assertThrows(IOException.class, () -> SteamNamedAddress.choose(List.of(differentWorld,ambiguous), owner,"1.21.1"));
     }
 }

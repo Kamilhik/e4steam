@@ -299,6 +299,23 @@ final class SteamLobbyManager implements AutoCloseable {
         return hostLobbyOwner != null && isAllowedHostPeer(remoteSteamId);
     }
 
+    boolean isTransferFriend(long id) {
+        return id!=0 && friends.getFriendRelationship(SteamID.createFromNativeHandle(id))==SteamFriends.FriendRelationship.Friend;
+    }
+
+    java.util.Map<Long,String> transferFriends() {
+        java.util.Map<Long,String> result=new java.util.LinkedHashMap<>();
+        int count=Math.min(512,friends.getFriendCount(SteamFriends.FriendFlags.Immediate));
+        for (int i=0;i<count;i++) {
+            SteamID id=friends.getFriendByIndex(i,SteamFriends.FriendFlags.Immediate);
+            if (id!=null) {
+                long value=SteamNativeHandle.getNativeHandle(id);
+                if (value!=0 && isTransferFriend(value)) result.put(value,friends.getFriendPersonaName(id));
+            }
+        }
+        return result;
+    }
+
     void forEachKnownSessionPeer(LongConsumer consumer) {
         // Some Steam client builds omit the session-request callback. Platforms
         // that opt in accept only known social peers while a lobby/world is

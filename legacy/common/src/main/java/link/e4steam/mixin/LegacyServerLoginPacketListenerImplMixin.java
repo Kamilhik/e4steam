@@ -22,6 +22,7 @@ public abstract class LegacyServerLoginPacketListenerImplMixin {
     private static final int E4STEAM_LOGIN_TIMEOUT_TICKS = 2_400;
 
     @Shadow @Final private Connection connection;
+    @Shadow @Final private MinecraftServer server;
     @Shadow public GameProfile gameProfile;
     @org.spongepowered.asm.mixin.Unique
     private final link.e4steam.skin.SkinRestoration.LoginState e4steam$skins = new link.e4steam.skin.SkinRestoration.LoginState();
@@ -45,7 +46,7 @@ public abstract class LegacyServerLoginPacketListenerImplMixin {
     )
     private boolean e4steam$useSteamAuthentication(MinecraftServer server) {
         long authenticatedSteamId = e4steam$authenticatedSteamId();
-        return authenticatedSteamId == 0 && server.usesAuthentication();
+        return authenticatedSteamId == 0 ? server.usesAuthentication() : SteamMinecraftAuthentication.usesMinecraftSession(connection.getRemoteAddress());
     }
 
     @Inject(method = "handleHello", at = @At("HEAD"), cancellable = true)
@@ -63,7 +64,11 @@ public abstract class LegacyServerLoginPacketListenerImplMixin {
     private void e4steam$bindLegacyProfileToSteamIdentity(CallbackInfo ci) {
         long authenticatedSteamId = e4steam$authenticatedSteamId();
         if (gameProfile == null) return;
-        if (authenticatedSteamId != 0L) gameProfile = link.e4steam.steam.SteamMinecraftProfile.bind(gameProfile, authenticatedSteamId);
+        if (authenticatedSteamId != 0L) try {
+            gameProfile=link.e4steam.steam.SteamLoginIdentity.resolve(server,gameProfile,authenticatedSteamId,e4steam$verifiedSession());
+        } catch(java.io.IOException unavailable) {
+            connection.disconnect(new net.minecraft.network.chat.TextComponent(unavailable.getMessage()));ci.cancel();return;
+        }
         if (!e4steam$skins.prepare(gameProfile)) { ci.cancel(); return; }
         gameProfile = (GameProfile)e4steam$skins.profile();
     }
@@ -74,4 +79,8 @@ public abstract class LegacyServerLoginPacketListenerImplMixin {
         long authenticatedSteamId = e4steam$authenticatedSteamId();
         return authenticatedSteamId == 0 ? vanillaTimeout : E4STEAM_LOGIN_TIMEOUT_TICKS;
     }
+    private boolean e4steam$verifiedSession() {
+        return SteamMinecraftAuthentication.usesMinecraftSession(connection.getRemoteAddress()) && connection.isEncrypted();
+    }
+
 }

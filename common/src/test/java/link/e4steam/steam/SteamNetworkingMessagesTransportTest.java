@@ -26,6 +26,67 @@ class SteamNetworkingMessagesTransportTest {
         transport.close();
     }
 
+    @Test void temporaryBulkProfileRestoresPreviousSettingsAfterCompletionOrClose() {
+        FakeNativeAccess access=new FakeNativeAccess();SteamNetworkingMessagesTransport t=transport(access);
+        t.beginBulkTransfer(REMOTE_ID,0);
+        assertEquals(2*1024*1024,access.settings.get(10));assertEquals(0,access.settings.get(11));
+        t.endBulkTransfer(REMOTE_ID+1);assertEquals(2*1024*1024,access.settings.get(10));
+        t.endBulkTransfer(REMOTE_ID);assertEquals(256*1024,access.settings.get(10));assertEquals(4*1024*1024,access.settings.get(11));
+        t.beginBulkTransfer(REMOTE_ID,0);t.close();
+        assertEquals(256*1024,access.settings.get(10));assertEquals(4*1024*1024,access.settings.get(11));
+    }
+    @Test void historicalPacketLossDoesNotThrottleARecoveredRoute() {
+        FakeNativeAccess access=new FakeNativeAccess();access.connectionState=3;access.pendingReliable=100_000;
+        SteamNetworkingMessagesTransport t=transport(access);t.beginBulkTransfer(REMOTE_ID,0);
+        access.quality=0.5f;access.outgoing=2*1024*1024;
+        t.beginBulkTransfer(REMOTE_ID,2000);t.beginBulkTransfer(REMOTE_ID,4000);
+        assertEquals(4*1024*1024,access.settings.get(10));assertEquals(0,access.settings.get(11));
+        t.close();assertEquals(256*1024,access.settings.get(10));
+    }
+    @Test void oneLatencySpikeDoesNotReduceTheRate() {
+        FakeNativeAccess access=new FakeNativeAccess();access.connectionState=3;access.ping=120;access.pendingReliable=100_000;
+        SteamNetworkingMessagesTransport t=transport(access);t.beginBulkTransfer(REMOTE_ID,0);
+        access.ping=645;access.quality=0.5f;t.beginBulkTransfer(REMOTE_ID,2000);
+        access.ping=120;t.beginBulkTransfer(REMOTE_ID,4000);
+        assertEquals(2*1024*1024,access.settings.get(10));t.close();
+    }
+    @Test void sustainedCongestionBacksOffGraduallyWithACooldownAndCanRecover() {
+        FakeNativeAccess access=new FakeNativeAccess();access.connectionState=3;access.ping=120;access.pendingReliable=100_000;
+        SteamNetworkingMessagesTransport t=transport(access);t.beginBulkTransfer(REMOTE_ID,0);
+        access.ping=645;access.quality=0.5f;
+        t.beginBulkTransfer(REMOTE_ID,2000);t.beginBulkTransfer(REMOTE_ID,4000);
+        assertEquals(1536*1024,access.settings.get(10));
+        t.beginBulkTransfer(REMOTE_ID,6000);t.beginBulkTransfer(REMOTE_ID,8000);
+        assertEquals(1536*1024,access.settings.get(10));
+        access.ping=120;access.outgoing=1536*1024;
+        t.beginBulkTransfer(REMOTE_ID,10000);t.beginBulkTransfer(REMOTE_ID,12000);
+        assertEquals(1920*1024,access.settings.get(10));
+        assertEquals(0,access.settings.get(11));t.close();
+    }
+    @Test void healthyBulkRouteCanGrowPastThePreviousEightMiBCeiling() {
+        FakeNativeAccess access=new FakeNativeAccess();access.connectionState=3;access.pendingReliable=100_000;
+        access.outgoing=128*1024*1024;
+        SteamNetworkingMessagesTransport t=transport(access);t.beginBulkTransfer(REMOTE_ID,0);
+        for(int sample=1;sample<=6;sample++)t.beginBulkTransfer(REMOTE_ID,sample*2000L);
+        assertEquals(16*1024*1024,access.settings.get(10));
+        assertEquals(0,access.settings.get(11));t.close();
+    }
+    @Test void failedBulkSetupRollsBackTheChangedCeiling() {
+        FakeNativeAccess access=new FakeNativeAccess();SteamNetworkingMessagesTransport t=transport(access);
+        access.failBulkMinimum=true;t.beginBulkTransfer(REMOTE_ID,0);
+        assertEquals(256*1024,access.settings.get(10));assertEquals(4*1024*1024,access.settings.get(11));t.close();
+    }
+    @Test void closingTheBulkPeerRestoresNormalRatesImmediately() {
+        FakeNativeAccess access=new FakeNativeAccess();SteamNetworkingMessagesTransport t=transport(access);
+        t.beginBulkTransfer(REMOTE_ID,0);t.closePeer(REMOTE_ID);
+        assertEquals(256*1024,access.settings.get(10));assertEquals(4*1024*1024,access.settings.get(11));t.close();
+    }
+    @Test void unreadableConfigurationIsNeverChangedForBulk() {
+        FakeNativeAccess access=new FakeNativeAccess();access.readSettings=false;
+        SteamNetworkingMessagesTransport t=transport(access);t.beginBulkTransfer(REMOTE_ID,0);
+        assertEquals(256*1024,access.settings.get(10));assertEquals(4*1024*1024,access.settings.get(11));t.close();
+    }
+
     @Test
     void sendsWithSteamNetworkingSocketsEquivalentFlags() throws Exception {
         FakeNativeAccess nativeAccess = new FakeNativeAccess();
@@ -191,11 +252,15 @@ class SteamNetworkingMessagesTransportTest {
     }
 
     private static final class FakeNativeAccess implements SteamNetworkingMessagesTransport.NativeAccess {
+        final java.util.Map<Integer,Integer> settings=new java.util.HashMap<>();
+        boolean readSettings=true,failBulkMinimum;float quality=1,outgoing;
+        FakeNativeAccess(){settings.put(10,256*1024);settings.put(11,256*1024);}
+        @Override public Integer getGlobalConfigInt32(int option){return readSettings?settings.get(option):null;}
         private int configOption;
         private int configValue;
         @Override public boolean setGlobalConfigInt32(int option, int value) {
             configOption = option;
-            configValue = value;
+            configValue = value;if(failBulkMinimum&&option==10&&value==2*1024*1024)return false;settings.put(option,value);
             return true;
         }
         private SteamNetworkingMessagesTransport.SessionRequestCallback requestCallback;
@@ -207,6 +272,7 @@ class SteamNetworkingMessagesTransportTest {
         private int sentFlags;
         private int releaseCount;
         private int connectionState;
+        private int ping;
         private int pendingReliable;
         private long queueMicros;
         private int receiveCalls;
@@ -240,6 +306,8 @@ class SteamNetworkingMessagesTransportTest {
 
         @Override
         public int getSessionConnectionInfo(Pointer identity, Pointer realTimeStatus) {
+            realTimeStatus.setInt(4,ping);
+            realTimeStatus.setFloat(8,quality);realTimeStatus.setFloat(12,quality);realTimeStatus.setFloat(20,outgoing);
             realTimeStatus.setInt(40, pendingReliable);
             realTimeStatus.setLong(48, queueMicros);
             return connectionState;

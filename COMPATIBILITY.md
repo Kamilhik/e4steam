@@ -1,5 +1,15 @@
 # e4steam compatibility
 
+## Release 0.3.7
+
+Six Minecraft 1.17–26.3 runtime files; no retro artifacts. Common tests: 332,
+zero failures/errors, 10 skipped. API, dependency-licence and headless checks
+passed. Real Fabric 1.21.1 handoff/return was confirmed in game; the latest
+congestion-recovery adjustment still needs a fresh remote speed measurement.
+See [release verification](docs/RELEASE-VERIFICATION-0.3.7.md) for limits,
+including the isolated native benchmark's Windows Steam shutdown failure.
+Earlier release-specific results below remain historical.
+
 ## Release 0.3.4
 
 This release ships only Minecraft 1.17–26.3 runtime JARs and bundles Addon API

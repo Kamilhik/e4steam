@@ -1,6 +1,7 @@
 package link.e4steam.steam;
 
-import link.e4steam.E4steamClient;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -17,7 +18,8 @@ import java.util.concurrent.atomic.AtomicReference;
 final class SteamUdpBridge {
     private static final int MAX_UDP_PACKET_SIZE = 65_507;
 
-    private final SteamRuntime runtime;
+    private static final Logger LOGGER=LogManager.getLogger("e4steam");
+    private final SteamBridgeRuntime runtime;
     private final SteamConnectionBridge owner;
     private final DatagramSocket socket;
     private final boolean hostSide;
@@ -27,7 +29,7 @@ final class SteamUdpBridge {
     private volatile Thread readerThread;
 
     private SteamUdpBridge(
-            SteamRuntime runtime,
+            SteamBridgeRuntime runtime,
             SteamConnectionBridge owner,
             DatagramSocket socket,
             boolean hostSide
@@ -38,12 +40,21 @@ final class SteamUdpBridge {
         this.hostSide = hostSide;
     }
 
-    static SteamUdpBridge client(SteamRuntime runtime, SteamConnectionBridge owner, int port) throws IOException {
+    static SteamUdpBridge client(SteamBridgeRuntime runtime, SteamConnectionBridge owner, int port) throws IOException {
+        return client(runtime,owner,port,false);
+    }
+
+    static SteamUdpBridge client(SteamBridgeRuntime runtime, SteamConnectionBridge owner, int port, boolean allowRandomPort) throws IOException {
         DatagramSocket socket = new DatagramSocket(null);
         boolean ready = false;
         try {
             socket.setReuseAddress(false);
-            socket.bind(new InetSocketAddress(loopback(), port));
+            try { socket.bind(new InetSocketAddress(loopback(), port)); }
+            catch (java.net.BindException busy) {
+                socket.close();
+                if (!allowRandomPort || port == 0) throw busy;
+                socket = new DatagramSocket(new InetSocketAddress(loopback(), 0));
+            }
             SteamUdpBridge bridge = new SteamUdpBridge(runtime, owner, socket, false);
             ready = true;
             return bridge;
@@ -54,7 +65,7 @@ final class SteamUdpBridge {
         }
     }
 
-    static SteamUdpBridge host(SteamRuntime runtime, SteamConnectionBridge owner, int port) throws IOException {
+    static SteamUdpBridge host(SteamBridgeRuntime runtime, SteamConnectionBridge owner, int port) throws IOException {
         DatagramSocket socket = new DatagramSocket(null);
         boolean ready = false;
         try {
@@ -81,6 +92,8 @@ final class SteamUdpBridge {
     int localPort() {
         return socket.getLocalPort();
     }
+
+    boolean readerAlive() { Thread thread=readerThread; return thread!=null && thread.isAlive(); }
 
     boolean hasLocalClient() {
         return localClient.get() != null;
@@ -118,7 +131,7 @@ final class SteamUdpBridge {
             socket.send(packet);
         } catch (IOException exception) {
             if (!closed.get()) {
-                E4steamClient.LOGGER.debug("Could not deliver a tunneled UDP datagram", exception);
+                LOGGER.debug("Could not deliver a tunneled UDP datagram", exception);
             }
         }
     }
@@ -148,7 +161,7 @@ final class SteamUdpBridge {
                     localClient.set(packet.getSocketAddress());
                 }
                 if (packet.getLength() > SteamProtocol.MAX_DATAGRAM_SIZE) {
-                    E4steamClient.LOGGER.debug(
+                    LOGGER.debug(
                             "Dropping oversized UDP datagram ({} bytes; maximum {})",
                             packet.getLength(),
                             SteamProtocol.MAX_DATAGRAM_SIZE
@@ -161,14 +174,17 @@ final class SteamUdpBridge {
                         packet.getOffset() + packet.getLength()
                 );
                 runtime.sendDatagram(this, payload);
+            } catch (java.net.PortUnreachableException notReadyYet) {
+                // Voice servers start/rebind asynchronously. An ICMP response is not a closed tunnel.
+                if (closed.get()) return;
             } catch (SocketException exception) {
                 if (!closed.get()) {
-                    E4steamClient.LOGGER.debug("UDP tunnel socket stopped", exception);
+                    LOGGER.debug("UDP tunnel socket stopped", exception);
                 }
                 return;
             } catch (IOException exception) {
                 if (!closed.get()) {
-                    E4steamClient.LOGGER.debug("UDP tunnel reader stopped", exception);
+                    LOGGER.debug("UDP tunnel reader stopped", exception);
                 }
                 return;
             }

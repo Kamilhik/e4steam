@@ -6,6 +6,9 @@ import java.net.SocketAddress;
 
 /** Resolves only exact loopback sockets admitted by an active Steam runtime. */
 public final class SteamMinecraftAuthentication {
+    public static boolean usesMinecraftSession(SocketAddress remote) {
+        return SteamMinecraftAuthModeRegistry.online(SteamLoopbackAuthentication.loopbackPort(remote),authenticatedPeer(remote));
+    }
     private SteamMinecraftAuthentication() {
     }
 

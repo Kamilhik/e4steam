@@ -188,6 +188,29 @@ public final class SteamRuntime implements SteamBridgeRuntime {
     private volatile SteamAddonLobbyDirectory addonLobbyDirectory;
     private volatile SteamNamedWorldDirectory namedWorldDirectory;
     private volatile SteamAnonymousServerDirectory anonymousServerDirectory;
+    private volatile SteamDedicatedNameDirectory dedicatedNameDirectory;
+    private static final class NamedJoin {
+        final SteamDedicatedNameProtocol.Target target;final byte[] nonce=new byte[32];final long deadline=System.currentTimeMillis()+25_000;
+        NamedJoin(SteamDedicatedNameProtocol.Target target){this.target=target;new java.security.SecureRandom().nextBytes(nonce);}
+    }
+    private final java.util.concurrent.ConcurrentMap<SteamBridgeRegistry.Key,NamedJoin> namedJoins=new java.util.concurrent.ConcurrentHashMap<>();
+    void prepareNamedDedicated(SteamConnectionBridge bridge,SteamDedicatedNameProtocol.Target target) {
+        namedJoins.put(new SteamBridgeRegistry.Key(bridge.remoteSteamId(),bridge.connectionId()),new NamedJoin(target));
+    }
+    private void handleNamedProof(SteamBridgeRegistry.Key key,byte[] proof) {
+        NamedJoin join=namedJoins.remove(key);SteamConnectionBridge bridge=bridgeRegistry.get(key);
+        if(join==null||bridge==null||bridge.isHostSide()||bridge.isClosed())return;
+        try {
+            if(System.currentTimeMillis()>join.deadline)throw new IOException("Dedicated name proof timed out");
+            SteamDedicatedNameProtocol.verify(join.target,join.nonce,proof);
+            SteamDedicatedNameIdentity.remember(join.target);
+            SteamAddonHooks.bridgeReady(bridge);bridge.markPeerReady();bridge.start();
+        } catch(Exception invalid){bridge.close(true);E4steamClient.LOGGER.warn("Dedicated personal address verification failed ({})",invalid.getClass().getSimpleName());}
+        finally {java.util.Arrays.fill(join.nonce,(byte)0);}
+    }
+
+    private volatile SteamWorldTransferListener worldTransferListener;
+    private long nextWorldTransferAccept;
     private volatile HostRegistration hostRegistration;
     private volatile long nextLoopbackConnectAttemptAtMillis;
     private long nextKnownPeerAcceptAtMillis;
@@ -207,6 +230,61 @@ public final class SteamRuntime implements SteamBridgeRuntime {
 
     public static SteamRuntime get() {
         return INSTANCE;
+    }
+
+    public void worldTransferListener(SteamWorldTransferListener listener) { worldTransferListener=listener; }
+
+    /** Authenticated Minecraft bridges, not the full Steam friends list. */
+    public long[] worldTransferConnectedPeers(boolean hosting) {
+        return bridgeRegistry.snapshot().stream().filter(b -> !b.isClosed() && b.isHostSide()==hosting)
+                .mapToLong(SteamConnectionBridge::remoteSteamId).distinct().toArray();
+    }
+
+    public CompletableFuture<java.util.Map<Long,String>> worldTransferFriends() {
+        return submitSteamTaskIfRunning(() -> lobbyManager==null ? Collections.emptyMap() : lobbyManager.transferFriends());
+    }
+
+    /** Reliable bounded frames share Steam, but have no Minecraft bridge or localhost socket. */
+    public CompletableFuture<Boolean> sendWorldTransfer(long peer,byte[] payload) {
+        if (payload==null || payload.length==0 || payload.length>SteamProtocol.DATA_CHUNK_SIZE)
+            return CompletableFuture.completedFuture(false);
+        byte[] safe=payload.clone();
+        return submitSteamTaskIfRunning(() -> {
+            SteamWorldTransferListener listener=worldTransferListener;
+            SteamNetworkingMessagesTransport current=transport;
+            if (listener==null || !listener.retains(peer) || lobbyManager==null || !lobbyManager.isTransferFriend(peer)
+                    || current==null) return false;
+            if(safe.length>1024)current.beginBulkTransfer(peer,System.currentTimeMillis());
+            if(current.isReliableQueueBackpressured(peer,1024*1024,500_000))return false;
+            byte[] packet=SteamProtocol.encodeWorldTransfer(safe);
+            ByteBuffer buffer=ByteBuffer.allocateDirect(packet.length).put(packet);
+            buffer.flip();
+            return current.send(peer,buffer,false,CHANNEL);
+        });
+    }
+
+    public void releaseWorldTransferPeer(long peer) {
+        submitSteamTaskIfRunning(() -> {
+            if(transport!=null)transport.endBulkTransfer(peer);
+            if (!hasBridgeForRemote(peer)) idleSessionDeadlines.put(peer,newIdleSessionDeadline());
+            return null;
+        });
+    }
+
+    private boolean worldTransferRetains(long peer) {
+        SteamWorldTransferListener listener=worldTransferListener;
+        return listener!=null && listener.retains(peer);
+    }
+
+    private void acceptWorldTransferPeers(long now) {
+        SteamWorldTransferListener listener=worldTransferListener;
+        if (listener==null || lobbyManager==null || transport==null || now<nextWorldTransferAccept) return;
+        nextWorldTransferAccept=now+1000;
+        long[] peers=listener.expectedPeers();
+        for (int i=0;i<Math.min(2,peers.length);i++) {
+            long peer=peers[i];
+            if (listener.accepts(peer) && lobbyManager.isTransferFriend(peer)) transport.accept(peer);
+        }
     }
 
     /** Starts Spacewar with Minecraft and keeps it active for this game process. */
@@ -714,6 +792,29 @@ public final class SteamRuntime implements SteamBridgeRuntime {
         }).thenCompose(Function.identity());
     }
 
+    private volatile boolean minecraftSessionNegotiation;
+    boolean defersMinecraftUntilOpenAck(){return minecraftSessionNegotiation;}
+    private volatile java.util.function.BooleanSupplier minecraftSession = () -> false;
+    public void minecraftSession(java.util.function.BooleanSupplier provider){minecraftSession=java.util.Objects.requireNonNull(provider);minecraftSessionNegotiation=true;}
+    private boolean sendMinecraftAuthMode(SteamConnectionBridge bridge) {
+        boolean online;try{online=minecraftSession.getAsBoolean();}catch(RuntimeException unavailable){online=false;}
+        return enqueueControl(bridge.remoteSteamId(),bridge.connectionId(),SteamProtocol.encodeMinecraftAuthMode(bridge.connectionId(),online),SteamOutboundQueue.Kind.OPEN_ACK,bridge);
+    }
+    private volatile boolean modernVoiceProxy;
+    public void enableModernVoiceProxy() { modernVoiceProxy = true; }
+    /** Loopback only, scoped to one live guest connection. Normal IP and local-host voice remain untouched. */
+    public java.net.InetSocketAddress simpleVoicechatProxy() {
+        SteamUdpBridge selected = null;
+        for (SteamConnectionBridge owner : bridgeRegistry.snapshot()) {
+            if (owner.isClosed() || owner.isHostSide()) continue;
+            SteamUdpBridge candidate = bridgeRegistry.getUdp(new SteamBridgeRegistry.Key(owner.remoteSteamId(),owner.connectionId()));
+            if (candidate == null || candidate.isClosed()) continue;
+            if (selected != null) return null;
+            selected = candidate;
+        }
+        return selected == null ? null : new java.net.InetSocketAddress("127.0.0.1", selected.localPort());
+    }
+
     public CompletableFuture<Void> stopNamedWorld(SteamSession owner) {
         return submitSteamTaskIfRunning(() -> {
             if (namedWorldDirectory != null) namedWorldDirectory.stop(owner);
@@ -727,11 +828,30 @@ public final class SteamRuntime implements SteamBridgeRuntime {
         try (Activity activity = acquireActivity()) {
             awaitReady();
             SteamNamedAddress.Identity pinned = SteamNamePins.get(normalized);
+            String dedicatedPin=SteamDedicatedNameIdentity.pinned(normalized);
+            if(pinned!=null && dedicatedPin!=null)throw new IOException("Address has conflicting saved world and dedicated identities; remove the obsolete address binding first.");
+            CompletableFuture<List<SteamDedicatedNameProtocol.Target>> dedicatedSearch=null;
+            if(pinned==null) dedicatedSearch=submitSteamTask(() -> {
+                if(dedicatedNameDirectory==null)dedicatedNameDirectory=new SteamDedicatedNameDirectory();
+                return dedicatedNameDirectory.search(normalized);
+            }).thenCompose(Function.identity());
+            if(dedicatedPin!=null) {
+                SteamDedicatedNameProtocol.Target target=SteamDedicatedNameDirectory.choose(awaitNamed(dedicatedSearch,connecting),dedicatedPin,link.e4steam.MinecraftVersion.current());
+                if(target==null)throw new IOException("Сохранённый выделенный сервер сейчас недоступен.");
+                return SteamDedicatedClientBridge.openNamed(target);
+            }
             CompletableFuture<List<SteamNamedAddress.Target>> search = submitSteamTask(() -> {
                 if (namedWorldDirectory == null) namedWorldDirectory = new SteamNamedWorldDirectory(this);
                 return namedWorldDirectory.search(normalized);
             }).thenCompose(Function.identity());
             List<SteamNamedAddress.Target> found = awaitNamed(search, connecting);
+            if(dedicatedSearch!=null) {
+                SteamDedicatedNameProtocol.Target dedicated=SteamDedicatedNameDirectory.choose(awaitNamed(dedicatedSearch,connecting),null,link.e4steam.MinecraftVersion.current());
+                if(dedicated!=null) {
+                    if(!found.isEmpty())throw new IOException("Имя используется и миром, и выделенным сервером. Выберите другое имя.");
+                    return SteamDedicatedClientBridge.openNamed(dedicated);
+                }
+            }
             SteamNamedAddress.Target target = SteamNamedAddress.choose(found, pinned, link.e4steam.MinecraftVersion.current());
             CompletableFuture<SteamAddress> joined = submitSteamTask(() -> {
                 if (lobbyManager == null) throw new IOException("Steam недоступен.");
@@ -1124,7 +1244,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
         );
     }
 
-    void sendDatagram(SteamUdpBridge bridge, byte[] payload) {
+    @Override public void sendDatagram(SteamUdpBridge bridge, byte[] payload) {
         SteamConnectionBridge owner = bridge.owner();
         byte[] packet = SteamProtocol.encodeDatagram(owner.connectionId(), payload);
         if (status != Status.RUNNING
@@ -1164,7 +1284,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
         try {
             bridge = hostSide
                     ? SteamUdpBridge.host(this, owner, port)
-                    : SteamUdpBridge.client(this, owner, port);
+                    : SteamUdpBridge.client(this, owner, port, modernVoiceProxy && VoiceChatUdpEndpoint.simpleVoicechatPresent());
             SteamUdpBridge previous = bridgeRegistry.putUdpIfAbsent(key, bridge);
             if (previous != null || owner.isClosed()) {
                 bridge.close();
@@ -1174,7 +1294,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             E4steamClient.LOGGER.info(
                     "Opened {} UDP tunnel on port {} for Steam user {}",
                     hostSide ? "host" : "client",
-                    port,
+                    bridge.localPort(),
                     Long.toUnsignedString(owner.remoteSteamId())
             );
         } catch (IOException exception) {
@@ -1191,6 +1311,9 @@ public final class SteamRuntime implements SteamBridgeRuntime {
 
     @Override
     public void closeUdpBridge(SteamConnectionBridge owner) {
+        if(owner.isHostSide())SteamMinecraftAuthModeRegistry.forget(owner.localPort(),owner.remoteSteamId());
+        NamedJoin named=namedJoins.remove(new SteamBridgeRegistry.Key(owner.remoteSteamId(),owner.connectionId()));
+        if(named!=null)java.util.Arrays.fill(named.nonce,(byte)0);
         SteamUdpBridge udp = bridgeRegistry.removeUdp(
                 new SteamBridgeRegistry.Key(owner.remoteSteamId(), owner.connectionId())
         );
@@ -1385,6 +1508,13 @@ public final class SteamRuntime implements SteamBridgeRuntime {
 
             while (!currentGeneration.stopRequested.get()) {
                 long nowMillis = System.currentTimeMillis();
+                for(java.util.Map.Entry<SteamBridgeRegistry.Key,NamedJoin> entry:namedJoins.entrySet()) {
+                    SteamConnectionBridge bridge=bridgeRegistry.get(entry.getKey());
+                    if(bridge==null||bridge.isClosed()||nowMillis>entry.getValue().deadline) {
+                        if(namedJoins.remove(entry.getKey(),entry.getValue()))java.util.Arrays.fill(entry.getValue().nonce,(byte)0);
+                        if(bridge!=null&&!bridge.isClosed())bridge.close(true);
+                    }
+                }
                 if (!steamLifecycle.isHealthy(nowMillis)) {
                     throw new IOException("Steam disconnected while e4steam was active");
                 }
@@ -1392,6 +1522,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 SteamNetworkingSocketsP2PTransport activeDedicatedTransport = dedicatedTransport;
                 if (activeDedicatedTransport != null) activeDedicatedTransport.runCallbacks();
                 drainSteamTasks();
+                acceptWorldTransferPeers(nowMillis);
                 acceptKnownPeerSessions(nowMillis);
                 drainOutbound(sendBuffer, currentGeneration.id);
                 receivePackets(receiveBuffer);
@@ -1402,6 +1533,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                 if (addonLobbyDirectory != null) addonLobbyDirectory.tick(nowMillis);
                 if (namedWorldDirectory != null) namedWorldDirectory.tick(nowMillis);
                 if (anonymousServerDirectory != null) anonymousServerDirectory.tick(nowMillis);
+                if (dedicatedNameDirectory != null) dedicatedNameDirectory.tick(nowMillis);
                 SteamLobbyManager currentSocial = lobbyManager;
                 if (currentSocial != null) {
                     currentSocial.cleanup(nowMillis);
@@ -1423,6 +1555,8 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             currentGeneration.ready.completeExceptionally(throwable);
             E4steamClient.LOGGER.error("Steam runtime failed", throwable);
         } finally {
+            SteamWorldTransferListener transfers=worldTransferListener;
+            if (transfers!=null) try { transfers.stopped(); } catch (RuntimeException ignored) { }
             HostRegistration failedHost;
             synchronized (lifecycleLock) {
                 failedHost = hostRegistration;
@@ -1462,6 +1596,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             SteamAnonymousServerDirectory anonymous = anonymousServerDirectory;
             anonymousServerDirectory = null;
             if (anonymous != null) anonymous.close();
+            SteamDedicatedNameDirectory dedicatedNames=dedicatedNameDirectory;dedicatedNameDirectory=null;if(dedicatedNames!=null)dedicatedNames.close();
             if (currentSocial != null) {
                 try {
                     currentSocial.close();
@@ -1550,6 +1685,8 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                     || !steamTasks.isEmpty()
                     || (addonLobbyDirectory != null && addonLobbyDirectory.keepsRuntimeAlive())
                     || (anonymousServerDirectory != null && anonymousServerDirectory.keepsRuntimeAlive())
+                    || (dedicatedNameDirectory != null && dedicatedNameDirectory.keepsRuntimeAlive())
+                    || !namedJoins.isEmpty()
                     || (currentSocial != null && currentSocial.keepsRuntimeAlive());
             if (keepAlive) {
                 currentGeneration.idleSinceMillis = 0;
@@ -1709,11 +1846,14 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                             boolean hosting = hostRegistration != null;
                             boolean knownSocialPeer = currentSocial != null
                                     && currentSocial.mayAcceptPeer(remoteId);
+                            SteamWorldTransferListener transfer=worldTransferListener;
+                            boolean transferPeer=transfer!=null && transfer.accepts(remoteId)
+                                    && currentSocial!=null && currentSocial.isTransferFriend(remoteId);
                             // Accepting the Steam transport does not grant world access.
                             // handleOpen still validates the current secret token, social
                             // policy, live world and guest limit before opening localhost.
                             if (!shouldAcceptSessionRequest(
-                                    bridgeExists, hosting, knownSocialPeer
+                                    bridgeExists, hosting, knownSocialPeer || transferPeer
                             )) {
                                 current.closePeer(remoteId);
                                 return;
@@ -1741,6 +1881,8 @@ public final class SteamRuntime implements SteamBridgeRuntime {
 
                     @Override
                     public void onSessionFailed(long remoteId, int endReason, String detail) {
+                        SteamWorldTransferListener transfer=worldTransferListener;
+                        if (transfer!=null) transfer.disconnected(remoteId);
                         if (detail.trim().isEmpty()) {
                             E4steamClient.LOGGER.warn(
                                     "Steam Networking Messages session with {} failed (reason {})",
@@ -2363,12 +2505,39 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             );
         }
         switch (frame.type()) {
+            case SteamProtocol.WORLD_TRANSFER: {
+                SteamWorldTransferListener listener=worldTransferListener;
+                try {
+                    if (listener!=null && listener.accepts(remoteSteamId) && lobbyManager!=null && lobbyManager.isTransferFriend(remoteSteamId))
+                        listener.packet(remoteSteamId,frame.payload());
+                } catch (RuntimeException failedTransfer) {
+                    E4steamClient.LOGGER.warn("World transfer handler failed without closing Minecraft transport");
+                }
+                break;
+            }
             case SteamProtocol.OPEN:
                 handleOpen(remoteSteamId, key, frame.payload());
                 break;
             case SteamProtocol.OPEN_ACK:
                 handleOpenAck(key, frame.payload());
                 break;
+            case SteamProtocol.UDP_ENDPOINT: {
+                SteamConnectionBridge bridge=bridgeRegistry.get(key);
+                if(bridge!=null && !bridge.isClosed() && !bridge.isHostSide()
+                        && bridge.dedicatedSessionGeneration()>0 && modernVoiceProxy && SimpleVoicechatPort.present()) {
+                    ByteBuffer endpoint=ByteBuffer.wrap(frame.payload());
+                    byte mode=endpoint.get();int port=Short.toUnsignedInt(endpoint.getShort());
+                    startClientUdpBridge(bridge,VoiceChatUdpEndpoint.fromHandshake(port,mode));
+                }
+                break;
+            }
+            case SteamProtocol.MINECRAFT_AUTH_MODE: {
+                SteamConnectionBridge bridge=bridgeRegistry.get(key);byte[] mode=frame.payload();
+                if(bridge!=null&&bridge.isHostSide()&&(mode.length!=1||mode[0]<0||mode[0]>1||!bridge.minecraftAuthMode(mode[0]==1)))bridge.close(true);
+                break;
+            }
+            case SteamProtocol.NAMED_PROOF:
+                handleNamedProof(key,frame.payload());break;
             case SteamProtocol.DEDICATED_OPEN_ACK:
                 handleDedicatedOpenAck(key, frame.payload());
                 break;
@@ -2448,6 +2617,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             bridge.close(true);
             return;
         }
+        if(!sendMinecraftAuthMode(bridge)){bridge.close(true);return;}
         if (!sendBridgeReady(bridge)) {
             E4steamClient.LOGGER.debug(
                     "Could not queue Steam bridge-ready confirmation for {}:{}; host fallback will be used",
@@ -2455,7 +2625,11 @@ public final class SteamRuntime implements SteamBridgeRuntime {
                     Integer.toUnsignedString(key.connectionId())
             );
         }
-        bridge.markPeerReady();
+        if(minecraftSessionNegotiation) {
+            SteamAddonHooks.bridgeReady(bridge);
+            bridge.markPeerReady();
+            bridge.start();
+        } else bridge.markPeerReady();
     }
 
     private void handleDedicatedOpenAck(SteamBridgeRegistry.Key key, byte[] payload) {
@@ -2465,6 +2639,12 @@ public final class SteamRuntime implements SteamBridgeRuntime {
         long generation = ByteBuffer.wrap(payload).getLong();
         if (generation <= 0L || bridge.dedicatedSessionGeneration() != generation) {
             bridge.close(true);
+            return;
+        }
+        if(!sendMinecraftAuthMode(bridge)){bridge.close(true);return;}
+        NamedJoin named=namedJoins.get(key);
+        if(named!=null) {
+            if(!enqueueControl(bridge.remoteSteamId(),bridge.connectionId(),SteamProtocol.encodeNamedChallenge(bridge.connectionId(),named.nonce),SteamOutboundQueue.Kind.OPEN_ACK,bridge))bridge.close(true);
             return;
         }
         SteamAddonHooks.bridgeReady(bridge);
@@ -2629,7 +2809,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
             }
             // Voice chat opens asynchronously and integrated worlds can change UDP ports.
             // Resolve for each joining guest, and use one snapshot on both ends.
-            VoiceChatUdpEndpoint udpEndpoint = VoiceChatUdpEndpoint.resolve(
+            VoiceChatUdpEndpoint udpEndpoint = VoiceChatUdpEndpoint.resolveForGuest(
                     registration.localPort(), registration.udpEndpoint().hostPort());
             startHostUdpBridge(bridge, udpEndpoint);
             // Do this on every loader. OPEN_ACK makes the client release its
@@ -2790,6 +2970,7 @@ public final class SteamRuntime implements SteamBridgeRuntime {
     }
 
     private void closeSteamSession(long remoteSteamId) {
+        if (worldTransferRetains(remoteSteamId)) return;
         knownPeerSessionGate.defer(remoteSteamId, System.currentTimeMillis());
         SteamNetworkingMessagesTransport current = transport;
         if (current != null) {

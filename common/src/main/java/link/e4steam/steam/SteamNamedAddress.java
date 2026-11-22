@@ -58,8 +58,14 @@ public final class SteamNamedAddress {
     static Target choose(List<Target> targets, Identity pinned, String minecraftVersion) throws IOException {
         List<Target> matching = targets.stream()
                 .filter(target -> pinned == null || pinned.equals(target.identity())).distinct().collect(java.util.stream.Collectors.toList());
+        if (matching.isEmpty() && pinned!=null) {
+            // A returned/imported save may have a new UUID. The trusted Steam owner may
+            // republish their own name; actual lobby ownership is verified before remembering it.
+            matching=targets.stream().filter(target -> target.identity()!=null && target.identity().owner()==pinned.owner())
+                    .distinct().collect(java.util.stream.Collectors.toList());
+        }
         if (matching.isEmpty()) throw new IOException(pinned == null
-                ? "Мир с этим адресом сейчас не открыт." : "Сохранённый мир сейчас недоступен. Другой мир с этим именем не будет выбран.");
+                ? "Мир с этим адресом сейчас не открыт." : "Сохранённый владелец этого адреса сейчас недоступен. Другой Steam-аккаунт с этим именем не будет выбран.");
         if (matching.size() != 1) throw new IOException("Найдено несколько миров с этим именем. Хозяину нужно выбрать другое имя.");
         Target selected = matching.get(0);
         if (!minecraftVersion.equals(selected.minecraftVersion()))

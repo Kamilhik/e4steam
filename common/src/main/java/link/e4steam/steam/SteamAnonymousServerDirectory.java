@@ -34,8 +34,7 @@ final class SteamAnonymousServerDirectory implements AutoCloseable {
         };
         try {
             request = browser.requestInternetServerList(480, new SteamMatchmakingKeyValuePair[]{
-                    new SteamMatchmakingKeyValuePair("gamedir", "e4steam"),
-                    new SteamMatchmakingKeyValuePair("gametagsand", SteamDedicatedAdvertisement.MARKER)
+                    new SteamMatchmakingKeyValuePair("gamedir", "e4steam")
             }, response);
             if (request == null) throw new IllegalStateException("Steam rejected GameServer search");
         } catch (RuntimeException failure) {

@@ -65,6 +65,8 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
     private volatile Thread callbackThread;
     private volatile long startupDeadline;
     private volatile String[] publicListing;
+    private SteamDedicatedNameIdentity namedIdentity;
+    private volatile SteamDedicatedNameProtocol.Target namedTarget;
     private volatile long nextPublicListingUpdate;
     private volatile int publicPlayers;
     private volatile PeerListener peerListener = PeerListener.REJECT_ALL;
@@ -235,7 +237,7 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
                     result.complete(false); return;
                 }
                 if (!enabled) {
-                    publicListing = null; server.setAdvertiseServerActive(false);
+                    publicListing = null; server.setAdvertiseServerActive(namedIdentity != null);
                 } else {
                     String[] metadata = {minecraft, loader, addonVersion};
                     writePublicListing(server, metadata);
@@ -250,10 +252,35 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
 
     public void publicPlayers(int count) { publicPlayers = Math.max(0, count); }
 
+    public CompletableFuture<byte[]> namedProof(byte[] nonce) {
+        CompletableFuture<byte[]> result=new CompletableFuture<>();
+        if(nonce==null || nonce.length!=32){result.completeExceptionally(new IllegalArgumentException("Invalid challenge"));return result;}
+        byte[] challenge=nonce.clone();
+        if(!submitControl(() -> {
+            try {if(namedIdentity==null || namedTarget==null)throw new IOException("Dedicated personal address disabled");
+                result.complete(namedIdentity.proof(namedTarget,challenge));}
+            catch(Exception failure){result.completeExceptionally(failure);}
+            finally {java.util.Arrays.fill(challenge,(byte)0);}
+        })) result.completeExceptionally(new IOException("Dedicated server stopping"));
+        return result;
+    }
+    private static String namedLoader() {
+        for(String[] p:new String[][]{{"neoforge","net.neoforged.fml.ModList"},{"forge","net.minecraftforge.fml.ModList"},{"fabric","net.fabricmc.loader.api.FabricLoader"}})
+            try {Class.forName(p[1],false,SteamGameServerRuntimeBackend.class.getClassLoader());return p[0];}catch(ClassNotFoundException absent){}
+        return "forge";
+    }
     private void writePublicListing(SteamGameServer server, String[] metadata) {
         SteamProcessGuard.Lease lease = processLease;
         if (lease == null) throw new IllegalStateException("Dedicated process is stopping");
         long now = System.currentTimeMillis();
+        if(namedIdentity!=null) {
+            SteamDedicatedNameProtocol.Target value=new SteamDedicatedNameProtocol.Target(
+                new SteamDedicatedAddress(SteamNativeHandle.getNativeHandle(server.getSteamID()),lease.generation()),
+                metadata[0],metadata[1],link.e4steam.E4steamConstants.modVersion(),metadata[2],link.e4steam.api.ApiConstants.WIRE_PROTOCOL_VERSION,
+                Math.min(config.maxPeers(),publicPlayers),config.maxPeers(),now,namedIdentity.fingerprint,namedIdentity.name);
+            server.setGameTags(SteamDedicatedNameProtocol.encode(value));namedTarget=value;
+            server.setAdvertiseServerActive(true);nextPublicListingUpdate=now+15_000;return;
+        }
         String tags = SteamDedicatedAdvertisement.encode(
                 SteamNativeHandle.getNativeHandle(server.getSteamID()), lease.generation(),
                 config.serverName(), metadata[0], metadata[1], link.e4steam.E4steamConstants.modVersion(),
@@ -265,6 +292,8 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
 
     private void startInternal() {
         try {
+            try {namedIdentity=SteamDedicatedNameIdentity.load(java.nio.file.Paths.get(System.getProperty("user.dir",".")));}
+            catch(Exception invalidName){LOGGER.warn("Dedicated personal address unavailable; check the Premium licence and dedicated-address.properties ({})",invalidName.getClass().getSimpleName());}
             Config requested = config;
             if (!requested.anonymousLogin()) {
                 throw new IOException("GSLT is not enabled for the App ID 480 backend");
@@ -344,10 +373,11 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
                     SteamNetworkingSocketsP2PTransport activeTransport = transport;
                     if (activeTransport != null) activeTransport.runCallbacks();
                     expirePendingAuth();
-                    if (publicListing != null && System.currentTimeMillis() >= nextPublicListingUpdate) {
+                    if ((publicListing != null || namedIdentity != null) && state.get() == State.TRANSPORT_READY && System.currentTimeMillis() >= nextPublicListingUpdate) {
                         nextPublicListingUpdate = System.currentTimeMillis() + 15_000L;
                         submitControl(() -> {
                             String[] listing = publicListing;
+                            if(listing==null && namedIdentity!=null)listing=new String[]{link.e4steam.MinecraftVersion.current(),namedLoader(),"0"};
                             SteamGameServer server = gameServer;
                             if (listing != null && server != null && !stopRequested.get()) writePublicListing(server, listing);
                         });

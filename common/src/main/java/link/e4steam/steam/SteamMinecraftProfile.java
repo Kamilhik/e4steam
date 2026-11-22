@@ -10,8 +10,12 @@ public final class SteamMinecraftProfile {
 
     @SuppressWarnings("unchecked")
     public static <T> T bind(T original, long authenticatedSteamId) {
-        if (authenticatedSteamId == 0L || original == null) return original;
-        UUID uuid = SteamMinecraftIdentity.uuid(authenticatedSteamId);
+        if(authenticatedSteamId==0L||original==null)return original;
+        return bind(original,authenticatedSteamId,SteamMinecraftIdentity.uuid(authenticatedSteamId));
+    }
+    @SuppressWarnings("unchecked")
+    public static <T> T bind(T original,long authenticatedSteamId,UUID uuid) {
+        if(authenticatedSteamId==0L||original==null)return original;
         String name = SteamMinecraftIdentity.profileName(original);
         Class<?> type = original.getClass();
         try {
@@ -49,6 +53,12 @@ public final class SteamMinecraftProfile {
         }
     }
 
+    public static UUID profileId(Object profile) {
+        for(String name:new String[]{"id","getId"})try {Object id=profile.getClass().getMethod(name).invoke(profile);if(id instanceof UUID)return (UUID)id;}
+        catch(ReflectiveOperationException absent){}
+        throw new IllegalStateException("Verified Minecraft profile has no UUID");
+    }
+    public static <T> T verified(T profile,long steamId) {SteamMinecraftIdentity.verified(steamId,profileId(profile));return profile;}
     private static Object properties(Object profile) throws ReflectiveOperationException {
         for (String name : new String[]{"properties", "getProperties"}) {
             try { return profile.getClass().getMethod(name).invoke(profile); }

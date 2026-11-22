@@ -24,6 +24,11 @@ final class SteamProtocol {
     static final byte DEDICATED_OPEN_ACK = 9;
     static final byte ADDON_HELLO = 10;
     static final byte ADDON_DATA = 11;
+    static final byte WORLD_TRANSFER = 12;
+    static final byte NAMED_CHALLENGE = 13;
+    static final byte NAMED_PROOF = 14;
+    static final byte MINECRAFT_AUTH_MODE = 15;
+    static final byte UDP_ENDPOINT = 16;
     private static final short FLAG_COMPRESSED = 1;
     private static final short KNOWN_FLAGS = FLAG_COMPRESSED;
     private static final int COMPRESSED_LENGTH_SIZE = Integer.BYTES;
@@ -120,6 +125,25 @@ final class SteamProtocol {
         return encodeAddonFrame(ADDON_DATA, connectionId, payload);
     }
 
+    static byte[] encodeUdpEndpoint(int connectionId,int port) {
+        if(port<1 || port>65535)throw new IllegalArgumentException("Invalid voice endpoint");
+        return header(UDP_ENDPOINT,connectionId,3).put((byte)1).putShort((short)port).array();
+    }
+    static byte[] encodeMinecraftAuthMode(int connectionId, boolean online) {
+        return header(MINECRAFT_AUTH_MODE,connectionId,1).put((byte)(online?1:0)).array();
+    }
+    static byte[] encodeNamedChallenge(int connectionId, byte[] nonce) {
+        if(nonce==null || nonce.length!=32)throw new IllegalArgumentException("Invalid named challenge");
+        return encodeAddonFrame(NAMED_CHALLENGE,connectionId,nonce);
+    }
+    static byte[] encodeNamedProof(int connectionId, byte[] proof) {
+        if(proof==null || proof.length<98 || proof.length>194)throw new IllegalArgumentException("Invalid named proof");
+        return encodeAddonFrame(NAMED_PROOF,connectionId,proof);
+    }
+    static byte[] encodeWorldTransfer(byte[] payload) {
+        return encodeAddonFrame(WORLD_TRANSFER, 0x574F524C, payload);
+    }
+
     static DedicatedOpen decodeDedicatedOpen(byte[] payload) {
         if (payload == null || payload.length < Long.BYTES + Byte.BYTES
                 + MIN_DEDICATED_NONCE_SIZE + Short.BYTES + 1) return null;
@@ -199,10 +223,13 @@ final class SteamProtocol {
         if (type == DATAGRAM && (payloadLength == 0 || payloadLength > MAX_DATAGRAM_SIZE)) {
             return null;
         }
-        if ((type == ADDON_HELLO || type == ADDON_DATA)
+        if ((type == ADDON_HELLO || type == ADDON_DATA || type == WORLD_TRANSFER)
                 && (payloadLength == 0 || payloadLength > DATA_CHUNK_SIZE)) {
             return null;
         }
+        if(type == MINECRAFT_AUTH_MODE && payloadLength != 1)return null;
+        if(type == UDP_ENDPOINT && payloadLength != 3)return null;
+        if(type == NAMED_CHALLENGE && payloadLength != 32 || type == NAMED_PROOF && (payloadLength < 98 || payloadLength > 194)) return null;
         if ((type == FIN || type == RESET || type == BRIDGE_READY) && payloadLength != 0) {
             return null;
         }
@@ -216,7 +243,12 @@ final class SteamProtocol {
                 && type != RESET
                 && type != DATAGRAM
                 && type != ADDON_HELLO
-                && type != ADDON_DATA) {
+                && type != ADDON_DATA
+                && type != WORLD_TRANSFER
+                && type != NAMED_CHALLENGE
+                && type != NAMED_PROOF
+                && type != MINECRAFT_AUTH_MODE
+                && type != UDP_ENDPOINT) {
             return null;
         }
 
@@ -230,6 +262,8 @@ final class SteamProtocol {
             payload = new byte[payloadLength];
             source.get(payload);
         }
+        if(type == MINECRAFT_AUTH_MODE && (payload[0]<0 || payload[0]>1))return null;
+        if(type == UDP_ENDPOINT && (payload[0]!=1 || (payload[1]==0 && payload[2]==0)))return null;
         return new Frame(type, connectionId, payload);
     }
 

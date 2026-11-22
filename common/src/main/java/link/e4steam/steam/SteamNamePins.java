@@ -16,9 +16,8 @@ final class SteamNamePins {
     private SteamNamePins() { }
     private static Path path() { return Agnos.configDir().resolve("e4steam/named-worlds.properties"); }
 
-    private static Properties load() throws IOException {
+    private static Properties load(Path file) throws IOException {
         Properties values = new Properties();
-        Path file = path();
         if (Files.exists(file)) {
             if (Files.size(file) > 256 * 1024) throw new IOException("Файл сохранённых адресов слишком большой.");
             try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) { values.load(reader); }
@@ -27,7 +26,10 @@ final class SteamNamePins {
     }
 
     static synchronized SteamNamedAddress.Identity get(String name) throws IOException {
-        String value = load().getProperty(name);
+        return get(path(),name);
+    }
+    static synchronized SteamNamedAddress.Identity get(Path file,String name) throws IOException {
+        String value = load(file).getProperty(name);
         if (value == null) return null;
         try {
             String[] parts = value.split("/", -1);
@@ -39,13 +41,16 @@ final class SteamNamePins {
     }
 
     static synchronized void remember(String name, SteamNamedAddress.Identity identity) throws IOException {
-        SteamNamedAddress.Identity previous = get(name);
-        if (previous != null && !previous.equals(identity)) throw new IOException("Владелец адреса изменился.");
-        if (previous != null) return;
-        Properties values = load();
-        if (values.size() >= 1024) throw new IOException("Достигнут лимит сохранённых адресов.");
+        remember(path(),name,identity);
+    }
+    /** Called only after a Steam-authenticated lobby join, never directly from search advertisements. */
+    static synchronized void remember(Path file,String name, SteamNamedAddress.Identity identity) throws IOException {
+        SteamNamedAddress.Identity previous = get(file,name);
+        if (previous != null && previous.owner()!=identity.owner()) throw new IOException("Владелец адреса изменился.");
+        if (identity.equals(previous)) return;
+        Properties values = load(file);
+        if (previous==null && values.size() >= 1024) throw new IOException("Достигнут лимит сохранённых адресов.");
         values.setProperty(name, Long.toUnsignedString(identity.owner()) + "/" + identity.world());
-        Path file = path();
         Files.createDirectories(file.getParent());
         Path temporary = Files.createTempFile(file.getParent(), "names-", ".tmp");
         try {

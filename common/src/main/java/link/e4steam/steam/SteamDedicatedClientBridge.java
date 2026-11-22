@@ -21,7 +21,9 @@ public final class SteamDedicatedClientBridge {
     private SteamDedicatedClientBridge() {
     }
 
-    public static InetSocketAddress open(SteamDedicatedAddress address) throws IOException {
+    public static InetSocketAddress open(SteamDedicatedAddress address) throws IOException {return open(address,null);}
+    public static InetSocketAddress openNamed(SteamDedicatedNameProtocol.Target named) throws IOException {return open(named.endpoint,named);}
+    private static InetSocketAddress open(SteamDedicatedAddress address,SteamDedicatedNameProtocol.Target named) throws IOException {
         SteamRuntime runtime = SteamRuntime.get();
         SteamRuntime.Activity activity = runtime.acquireActivity();
         boolean handedOff = false;
@@ -32,7 +34,7 @@ public final class SteamDedicatedClientBridge {
             listener.setReuseAddress(false);
             listener.bind(new InetSocketAddress(loopback, 0), 1);
             listener.setSoTimeout(ACCEPT_TIMEOUT_MILLIS);
-            Pending pending = new Pending(listener, activity);
+            Pending pending = new Pending(listener, activity, named);
             PENDING.add(pending);
             Thread thread = new Thread(
                     () -> accept(runtime, address, pending),
@@ -69,6 +71,7 @@ public final class SteamDedicatedClientBridge {
             ClientLease lease = new ClientLease(activity, authentication);
             bridge = runtime.registerClientBridge(address.steamId(), connectionId, socket, lease);
             bridge.dedicatedSessionGeneration(address.generation());
+            if(pending.named!=null)runtime.prepareNamedDedicated(bridge,pending.named);
             activity = null;
             // Hold local Minecraft bytes until the server has validated the auth proof.
             bridge.waitForPeerReadyUntil(Long.MAX_VALUE);
@@ -103,7 +106,9 @@ public final class SteamDedicatedClientBridge {
         private SteamRuntime.Activity activity;
         private volatile boolean closed;
 
-        private Pending(ServerSocket listener, SteamRuntime.Activity activity) {
+        private final SteamDedicatedNameProtocol.Target named;
+        private Pending(ServerSocket listener, SteamRuntime.Activity activity,SteamDedicatedNameProtocol.Target named) {
+            this.named=named;
             this.listener = listener;
             this.activity = activity;
         }

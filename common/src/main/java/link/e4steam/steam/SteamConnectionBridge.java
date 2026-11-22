@@ -43,6 +43,9 @@ public final class SteamConnectionBridge {
     private final BlockingQueue<InboundFrame> inbound = new ArrayBlockingQueue<>(MAX_QUEUED_INBOUND_CHUNKS + 1);
     private final Semaphore inboundDataSlots = new Semaphore(MAX_QUEUED_INBOUND_CHUNKS);
     private final AtomicBoolean started = new AtomicBoolean();
+    private volatile boolean minecraftBytesReceived, minecraftOnline;
+    private volatile long pendingOpenDeadlineMillis=Long.MAX_VALUE;
+    void awaitOpenAcknowledgement(long deadline){pendingOpenDeadlineMillis=deadline;}
     private final AtomicBoolean closed = new AtomicBoolean();
     private final AtomicBoolean outboundFinQueued = new AtomicBoolean();
     private final AtomicBoolean outboundFinSubmitted = new AtomicBoolean();
@@ -235,7 +238,14 @@ public final class SteamConnectionBridge {
         readerThread.start();
     }
 
+    boolean minecraftAuthMode(boolean online) {
+        if(minecraftBytesReceived)return minecraftOnline==online;
+        minecraftOnline=online;
+        if(hostSide)SteamMinecraftAuthModeRegistry.record(localPort(),remoteSteamId,online);
+        return true;
+    }
     void acceptSteamData(byte[] payload) {
+        if(hostSide)minecraftBytesReceived=true;
         if (closed.get()) {
             return;
         }
@@ -451,6 +461,7 @@ public final class SteamConnectionBridge {
     }
 
     void closeIfGracefulCloseTimedOut(long nowMillis) {
+        if(!started.get() && nowMillis>=pendingOpenDeadlineMillis){close(true);return;}
         long deadline = gracefulCloseDeadlineMillis.get();
         if (!closed.get() && isGracefulCloseExpired(deadline, nowMillis)) {
             LOGGER.debug(

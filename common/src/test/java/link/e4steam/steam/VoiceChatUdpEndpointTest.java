@@ -4,6 +4,16 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class VoiceChatUdpEndpointTest {
+    @Test void discoveryFallsBackWhenWorkerContextCannotSeeMods() throws Exception {
+        ClassLoader original=Thread.currentThread().getContextClassLoader();
+        try {
+            Thread.currentThread().setContextClassLoader(new ClassLoader(null){});
+            var method=VoiceChatUdpEndpoint.class.getDeclaredMethod("classExists",String.class);
+            method.setAccessible(true);
+            assertEquals(true,method.invoke(null,VoiceChatUdpEndpoint.class.getName()));
+            assertEquals(false,method.invoke(null,"nonexistent.voicechat.Plugin"));
+        } finally {Thread.currentThread().setContextClassLoader(original);}
+    }
     public static final class Events {
         Server server;
         public Server getServer() { return server; }

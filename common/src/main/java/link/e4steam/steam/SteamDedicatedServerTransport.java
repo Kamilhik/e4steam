@@ -40,7 +40,8 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
     private final DedicatedAdmissionGate admission;
     private final SteamBridgeRegistry<SteamConnectionBridge, AutoCloseable> bridges;
     private final SteamOutboundQueue<SteamConnectionBridge> outbound =
-            new SteamOutboundQueue<>(2048, 1536, 0, 128, 256, 64);
+            new SteamOutboundQueue<>(2048, 1536, 128, 128, 256, 64);
+    private final ConcurrentHashMap<SteamConnectionBridge, SteamUdpBridge> voiceTunnels=new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Long> pendingPeers = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Long> peersAwaitingClose = new ConcurrentHashMap<>();
     private final Set<Long> activePeers = ConcurrentHashMap.newKeySet();
@@ -219,6 +220,27 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
                 }
                 return;
             }
+            case SteamProtocol.MINECRAFT_AUTH_MODE: {
+                SteamConnectionBridge bridge=bridges.get(key);byte[] mode=frame.payload();
+                if(bridge!=null&&(mode.length!=1||mode[0]<0||mode[0]>1||!bridge.minecraftAuthMode(mode[0]==1)))bridge.close(true);
+                return;
+            }
+            case SteamProtocol.NAMED_CHALLENGE: {
+                final SteamConnectionBridge bridge=bridges.get(key);
+                if(bridge==null || bridge.isClosed() || !backend.isAuthenticated(remoteSteamId,controller.generation()))return;
+                controller.namedProof(frame.payload()).whenComplete((proof,failure)-> {
+                    if(bridge.isClosed())return;
+                    if(failure!=null || proof==null){bridge.close(true);return;}
+                    if(!offerControl(bridge,SteamProtocol.encodeNamedProof(bridge.connectionId(),proof),SteamOutboundQueue.Kind.OPEN_ACK))bridge.close(true);
+                });return;
+            }
+            case SteamProtocol.DATAGRAM: {
+                SteamConnectionBridge owner=bridges.get(key);
+                SteamUdpBridge tunnel=owner==null?null:voiceTunnels.get(owner);
+                if(tunnel!=null && !owner.isClosed() && backend.isAuthenticated(remoteSteamId,controller.generation()))
+                    tunnel.acceptSteamDatagram(frame.payload());
+                return;
+            }
             case SteamProtocol.DATA: {
                 SteamConnectionBridge bridge = bridges.get(key);
                 if (bridge != null) bridge.acceptSteamData(frame.payload());
@@ -342,6 +364,7 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
                     SteamOutboundQueue.Kind.DEDICATED_OPEN_ACK)) {
                 throw new IOException("Dedicated acknowledgement queue is full");
             }
+            startVoiceTunnel(bridge);
             bridge.start();
             handedOff = true;
             controller.players(activePeers.size());
@@ -387,7 +410,8 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
             }
             ByteBuffer direct = ByteBuffer.allocateDirect(packet.payload().length);
             direct.put(packet.payload()).flip();
-            boolean unreliable = packet.kind() == SteamOutboundQueue.Kind.ADDON_DATAGRAM;
+            boolean unreliable = packet.kind() == SteamOutboundQueue.Kind.ADDON_DATAGRAM
+                    || packet.kind() == SteamOutboundQueue.Kind.DATAGRAM;
             int resultCode = backend.sendResult(packet.remoteSteamId(), direct, unreliable, CHANNEL);
             if (resultCode != 1) {
                 if (unreliable) continue;
@@ -424,6 +448,31 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
         sendRetryNotBeforeMillis = 0L;
     }
 
+    private void startVoiceTunnel(SteamConnectionBridge owner) {
+        int port=SimpleVoicechatPort.bound();if(port==0)return;
+        SteamUdpBridge tunnel=null;
+        try {
+            tunnel=SteamUdpBridge.host(this,owner,port);
+            SteamUdpBridge prior=voiceTunnels.putIfAbsent(owner,tunnel);
+            if(prior!=null){tunnel.close();return;}
+            if(!running.get() || owner.isClosed() || !offerControl(owner,
+                    SteamProtocol.encodeUdpEndpoint(owner.connectionId(),port),SteamOutboundQueue.Kind.OPEN_ACK)) {
+                voiceTunnels.remove(owner,tunnel);tunnel.close();return;
+            }
+            tunnel.start();
+            LOGGER.info("Opened dedicated Steam voice tunnel to local UDP port {}",port);
+        } catch(IOException unavailable) {
+            if(tunnel!=null){voiceTunnels.remove(owner,tunnel);tunnel.close();}
+            LOGGER.warn("Dedicated voice tunnel unavailable; Minecraft connection remains active");
+        }
+    }
+
+    @Override public void sendDatagram(SteamUdpBridge tunnel,byte[] payload) {
+        SteamConnectionBridge owner=tunnel.owner();
+        if(!running.get() || tunnel.isClosed() || owner.isClosed() || voiceTunnels.get(owner)!=tunnel)return;
+        outbound.offerDatagram(owner.remoteSteamId(),owner.connectionId(),SteamProtocol.encodeDatagram(owner.connectionId(),payload),owner);
+    }
+
     @Override public boolean sendData(SteamConnectionBridge bridge, byte[] payload) {
         return running.get() && !bridge.isClosed() && outbound.offerData(
                 bridge.remoteSteamId(), bridge.connectionId(),
@@ -441,7 +490,8 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
     }
 
     @Override public void closeUdpBridge(SteamConnectionBridge bridge) {
-        // Dedicated virtual UDP is negotiated by the separate provider API; no implicit port forwarding.
+        SteamMinecraftAuthModeRegistry.forget(bridge.localPort(),bridge.remoteSteamId());
+        SteamUdpBridge tunnel=voiceTunnels.remove(bridge);if(tunnel!=null)tunnel.close();
     }
 
     @Override public void unregister(SteamConnectionBridge bridge) {
@@ -529,6 +579,8 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
         for (SteamConnectionBridge bridge : new ArrayList<>(bridges.snapshot())) {
             bridge.close(false);
         }
+        for(SteamUdpBridge tunnel:voiceTunnels.values())tunnel.close();
+        voiceTunnels.clear();
         deferredPacket = null;
         for (AutoCloseable handle : ingress.values()) close(handle);
         ingress.clear();

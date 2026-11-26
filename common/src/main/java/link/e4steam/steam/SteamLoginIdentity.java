@@ -14,7 +14,11 @@ public final class SteamLoginIdentity {
   CompletableFuture<GameProfile> result=new CompletableFuture<>();long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(10);
   Runnable action=()-> {
    if(result.isCancelled()||System.nanoTime()>deadline)return;
-   try {result.complete(resolveOnServer(server,profile,peer,mojangVerified));}catch(Exception failure){result.completeExceptionally(failure);}
+   try {result.complete(resolveOnServer(server,profile,peer,mojangVerified));}
+   catch(Exception|LinkageError failure){
+    org.apache.logging.log4j.LogManager.getLogger("e4steam").warn("Steam player identity verification failed for peer {}",Long.toUnsignedString(peer),failure);
+    result.completeExceptionally(failure);
+   }
   };
   if(server.isSameThread())action.run();else server.execute(action);
   try{return result.get(10,TimeUnit.SECONDS);}
@@ -28,12 +32,15 @@ public final class SteamLoginIdentity {
   boolean vanillaOnline=server.usesAuthentication();
   UUID id=verified&&vanillaOnline?SteamMinecraftProfile.profileId(profile):UUID.nameUUIDFromBytes(("OfflinePlayer:"+name).getBytes(java.nio.charset.StandardCharsets.UTF_8));
   GameProfile selected=verified&&vanillaOnline?profile:SteamMinecraftProfile.bind(profile,peer,id);
-  if(server.isSingleplayer()&&link.e4steam.Mirror.isSingleplayerOwnerObj(server,selected))throw new IOException("Use a different Minecraft account or name than the world host");
+  if(server.isSingleplayer()&&MinecraftOwnerCheck.isOwner(server,selected))throw new IOException("Use a different Minecraft account or name than the world host");
   UUID legacy=SteamMinecraftIdentity.legacyUuid(peer);
   if(!legacy.equals(id)&&server.getPlayerList().getPlayer(legacy)!=null)throw new IOException("This Steam player is already connected; disconnect the previous client first");
   Path world=server.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize();
   if(!verified || !vanillaOnline)SteamPlayerDataMigration.offlineIdentity(world,peer,name,verified);
-  if(server.getPlayerList().getPlayer(id)==null)SteamPlayerDataMigration.migrate(world,peer,id);
+  if(server.getPlayerList().getPlayer(id)==null) {
+   if(verified&&vanillaOnline)SteamPlayerDataMigration.migrateVerifiedOfflineIdentity(world,peer,name,id);
+   SteamPlayerDataMigration.migrate(world,peer,id);
+  }
   SteamPlayerDataMigration.recordIdentity(world,peer,id);
   SteamMinecraftIdentity.verified(peer,id);
   return selected;

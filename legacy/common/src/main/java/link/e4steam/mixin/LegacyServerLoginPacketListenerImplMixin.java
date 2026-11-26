@@ -80,7 +80,8 @@ public abstract class LegacyServerLoginPacketListenerImplMixin {
         return authenticatedSteamId == 0 ? vanillaTimeout : E4STEAM_LOGIN_TIMEOUT_TICKS;
     }
     private boolean e4steam$verifiedSession() {
-        return SteamMinecraftAuthentication.usesMinecraftSession(connection.getRemoteAddress()) && connection.isEncrypted();
+        return SteamMinecraftAuthentication.usesMinecraftSession(connection.getRemoteAddress())
+                && link.e4steam.steam.MinecraftConnectionEncryption.isEncrypted(connection);
     }
 
 }

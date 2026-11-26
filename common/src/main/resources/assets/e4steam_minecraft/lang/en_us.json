@@ -94,6 +94,7 @@
   "text.e4steam_minecraft.transfer.worlds": "Singleplayer",
   "text.e4steam_minecraft.transfer.checking": "Checking the game and mod files…",
   "text.e4steam_minecraft.transfer.checkFailed": "Could not check the mod files. Reopen this window to try again.",
+  "text.e4steam_minecraft.transfer.playerIdentityUnavailable": "Could not read your player identity. Rejoin the world before accepting the transfer.",
   "text.e4steam_minecraft.transfer.sendHelp": "Choose a player in this world. After they accept, the world will be saved and transferred.",
   "text.e4steam_minecraft.transfer.listenHelp": "Choose the friend sending you a world. Receiving is free; no Premium key is needed.",
   "text.e4steam_minecraft.transfer.receiveHelp": "After you accept, the world will be saved, transferred and opened here for Steam friends automatically.",

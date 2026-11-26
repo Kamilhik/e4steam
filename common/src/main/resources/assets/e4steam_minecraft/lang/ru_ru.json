@@ -94,6 +94,7 @@
   "text.e4steam_minecraft.transfer.worlds": "Одиночная игра",
   "text.e4steam_minecraft.transfer.checking": "Проверяем версию игры и файлы модов…",
   "text.e4steam_minecraft.transfer.checkFailed": "Не удалось проверить моды. Открой это окно ещё раз.",
+  "text.e4steam_minecraft.transfer.playerIdentityUnavailable": "Не удалось определить твоего персонажа. Перезайди в мир перед приёмом передачи.",
   "text.e4steam_minecraft.transfer.sendHelp": "Выбери игрока из этого мира. После его согласия мир сохранится и передастся ему.",
   "text.e4steam_minecraft.transfer.listenHelp": "Выбери друга, от которого ждёшь мир. Получать миры можно бесплатно, без ключа Premium.",
   "text.e4steam_minecraft.transfer.receiveHelp": "После подтверждения мир сохранится, передастся и автоматически откроется у тебя для друзей Steam.",

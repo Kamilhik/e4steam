@@ -103,7 +103,8 @@ final class SteamNamedWorldDirectory implements AutoCloseable {
     }
 
     CompletableFuture<List<SteamNamedAddress.Target>> search(String selectedName) throws IOException {
-        if (searching != null) throw new IOException("Поиск адреса уже выполняется. Повторите подключение.");
+        CompletableFuture<List<SteamNamedAddress.Target>> shared=SteamLookupSubscriptions.existing(selectedName,searchedName,searching);
+        if(shared!=null)return shared;
         searchedName = selectedName;
         searching = new CompletableFuture<>();
         searchDeadline = System.currentTimeMillis() + 20_000;
@@ -116,9 +117,9 @@ final class SteamNamedWorldDirectory implements AutoCloseable {
             searching.completeExceptionally(new IOException("Steam отклонил поиск адреса."));
             CompletableFuture<List<SteamNamedAddress.Target>> result = searching;
             searching = null;
-            return result;
+            return SteamLookupSubscriptions.detached(result);
         }
-        return searching;
+        return SteamLookupSubscriptions.detached(searching);
     }
 
     private void found(int count) {
@@ -148,7 +149,7 @@ final class SteamNamedWorldDirectory implements AutoCloseable {
                         UUID.fromString(matchmaking.getLobbyData(lobby, WORLD))), matchmaking.getLobbyData(lobby, "minecraft")));
             } catch (RuntimeException malformed) { /* Ignore malformed foreign advertisements. */ }
         }
-        result.complete(targets);
+        result.complete(java.util.Collections.unmodifiableList(targets));
     }
 
     void stop(SteamSession owner) {
@@ -175,8 +176,11 @@ final class SteamNamedWorldDirectory implements AutoCloseable {
         if (host != null && host.state != SteamSession.State.STARTED) stop(host);
         if (creating != null && now >= createDeadline && !creating.isDone())
             creating.completeExceptionally(new IOException("Steam не ответил на публикацию адреса."));
-        if (searching != null && now >= searchDeadline && !searching.isDone())
-            searching.completeExceptionally(new IOException("Steam не ответил на поиск адреса."));
+        if (searching != null && now >= searchDeadline) {
+            CompletableFuture<List<SteamNamedAddress.Target>> expired=searching;
+            searching=null;
+            expired.completeExceptionally(new IOException("Steam не ответил на поиск адреса."));
+        }
         if (advertisement != null && now >= heartbeatAt && !writeAdvertisement()) clear();
     }
 

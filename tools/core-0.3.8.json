@@ -1,0 +1,202 @@
+[
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-fabric-quilt-mc1.17-1.18.2-v0.3.8.jar",
+    "sha256": "4ad3cc61efb7802fa7a0cbd27cb4c4cf76b9c6c27910af7b8efea70c916fee87",
+    "metadata": {
+      "changelog": "## English\n\n- Fix intermittent dedicated-server login rejection: admitted Steam identity remains valid throughout the connection and is revoked when its socket closes.\n- Restore an authenticated player's owned offline-identity save when returning to their verified Minecraft UUID. Backups are kept; newer vanilla progress is preserved.\n- Fix player-identity verification when newer Minecraft versions use a separate owner-profile type.\n- Fix authenticated logins on Minecraft 26.2+ after vanilla removed the connection encryption getter.\n- Serialize local connection read-mode changes to prevent an older vanilla login race from leaving the client waiting for server data.\n- Fix Forge 1.18.2 crashes in the login hook and player UUID tracking after joining. The actual Minecraft player UUID is preserved.\n- Keep background server-list pings and concurrent personal-address lookups from interrupting real Steam connections.\n- Bundle the Linux x86_64 dedicated Steam SDK and extract verified libraries automatically; no manual `.so` installation is needed.\n- Use the Minecraft UDP port for personal-address discovery when no explicit query port is configured. Hosting firewalls must permit that UDP port.\n- Do not start a player-world handoff listener for an anonymous dedicated server.\n\nSix JARs for Minecraft 1.17–26.3: Fabric/Quilt, Forge and NeoForge. Install one matching e4steam JAR. Fabric/Quilt also require Fabric API. No retro JARs or usage-statistics sender are included.\n\n## Русский\n\n- Исправлены случайные отказы при входе на выделенный сервер: подтверждённая личность Steam сохраняется на время соединения и удаляется при его закрытии.\n- При возвращении к подтверждённому UUID Minecraft переносится прогресс из прежнего офлайн-сохранения этого же владельца. Создаётся резервная копия; более свежий ванильный прогресс не заменяется.\n- Исправлена проверка личности игрока на новых Minecraft с отдельным типом профиля владельца.\n- Исправлен вход с подтверждением Minecraft на 26.2+, где удалён прежний метод проверки шифрования соединения.\n- Изменения режима чтения локального соединения выполняются последовательно, чтобы старый сетевой код Minecraft не оставлял клиент в ожидании ответа сервера.\n- Исправлены вылеты Forge 1.18.2 при подключении и чтении UUID после входа. Используется настоящий UUID персонажа Minecraft.\n- Фоновые пинги списка серверов и одновременные поиски персонального адреса больше не вмешиваются в подключение через Steam.\n- Linux-библиотеки выделенного Steam-сервера встроены в JAR и распаковываются с проверкой контрольных сумм. Вручную устанавливать `.so` не нужно; поддерживается Linux x86_64.\n- При стандартной настройке для поиска персонального адреса используется UDP на игровом порту. Хостинг должен разрешать этот UDP-порт.\n- Клиент не пытается принимать передачу мира от анонимного выделенного сервера.\n\nШесть JAR для Minecraft 1.17–26.3: Fabric/Quilt, Forge и NeoForge. Установите один подходящий e4steam JAR; Fabric/Quilt также требуют Fabric API. Ретро-сборки и отправка статистики использования в этот выпуск не входят.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.8 — fabric-quilt 1.17–1.18.2",
+      "gameVersionNames": [
+        "1.17",
+        "1.17.1",
+        "1.18",
+        "1.18.1",
+        "1.18.2",
+        "Fabric",
+        "Quilt",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "fabric-api",
+            "projectID": 306612,
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-fabric-quilt-mc1.19-1.21.11-v0.3.8.jar",
+    "sha256": "eb9439082c1afd851dc3650220d95b051f6e2438fad49d87b696265086667723",
+    "metadata": {
+      "changelog": "## English\n\n- Fix intermittent dedicated-server login rejection: admitted Steam identity remains valid throughout the connection and is revoked when its socket closes.\n- Restore an authenticated player's owned offline-identity save when returning to their verified Minecraft UUID. Backups are kept; newer vanilla progress is preserved.\n- Fix player-identity verification when newer Minecraft versions use a separate owner-profile type.\n- Fix authenticated logins on Minecraft 26.2+ after vanilla removed the connection encryption getter.\n- Serialize local connection read-mode changes to prevent an older vanilla login race from leaving the client waiting for server data.\n- Fix Forge 1.18.2 crashes in the login hook and player UUID tracking after joining. The actual Minecraft player UUID is preserved.\n- Keep background server-list pings and concurrent personal-address lookups from interrupting real Steam connections.\n- Bundle the Linux x86_64 dedicated Steam SDK and extract verified libraries automatically; no manual `.so` installation is needed.\n- Use the Minecraft UDP port for personal-address discovery when no explicit query port is configured. Hosting firewalls must permit that UDP port.\n- Do not start a player-world handoff listener for an anonymous dedicated server.\n\nSix JARs for Minecraft 1.17–26.3: Fabric/Quilt, Forge and NeoForge. Install one matching e4steam JAR. Fabric/Quilt also require Fabric API. No retro JARs or usage-statistics sender are included.\n\n## Русский\n\n- Исправлены случайные отказы при входе на выделенный сервер: подтверждённая личность Steam сохраняется на время соединения и удаляется при его закрытии.\n- При возвращении к подтверждённому UUID Minecraft переносится прогресс из прежнего офлайн-сохранения этого же владельца. Создаётся резервная копия; более свежий ванильный прогресс не заменяется.\n- Исправлена проверка личности игрока на новых Minecraft с отдельным типом профиля владельца.\n- Исправлен вход с подтверждением Minecraft на 26.2+, где удалён прежний метод проверки шифрования соединения.\n- Изменения режима чтения локального соединения выполняются последовательно, чтобы старый сетевой код Minecraft не оставлял клиент в ожидании ответа сервера.\n- Исправлены вылеты Forge 1.18.2 при подключении и чтении UUID после входа. Используется настоящий UUID персонажа Minecraft.\n- Фоновые пинги списка серверов и одновременные поиски персонального адреса больше не вмешиваются в подключение через Steam.\n- Linux-библиотеки выделенного Steam-сервера встроены в JAR и распаковываются с проверкой контрольных сумм. Вручную устанавливать `.so` не нужно; поддерживается Linux x86_64.\n- При стандартной настройке для поиска персонального адреса используется UDP на игровом порту. Хостинг должен разрешать этот UDP-порт.\n- Клиент не пытается принимать передачу мира от анонимного выделенного сервера.\n\nШесть JAR для Minecraft 1.17–26.3: Fabric/Quilt, Forge и NeoForge. Установите один подходящий e4steam JAR; Fabric/Quilt также требуют Fabric API. Ретро-сборки и отправка статистики использования в этот выпуск не входят.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.8 — fabric-quilt 1.19–1.21.11",
+      "gameVersionNames": [
+        "1.19",
+        "1.19.1",
+        "1.19.2",
+        "1.19.3",
+        "1.19.4",
+        "1.20",
+        "1.20.1",
+        "1.20.2",
+        "1.20.3",
+        "1.20.4",
+        "1.20.5",
+        "1.20.6",
+        "1.21",
+        "1.21.1",
+        "1.21.2",
+        "1.21.3",
+        "1.21.4",
+        "1.21.5",
+        "1.21.6",
+        "1.21.7",
+        "1.21.8",
+        "1.21.9",
+        "1.21.10",
+        "1.21.11",
+        "Fabric",
+        "Quilt",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "fabric-api",
+            "projectID": 306612,
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-fabric-quilt-mc26.1-26.3-v0.3.8.jar",
+    "sha256": "56413a25bfe7e8ab92af7d502ea8cd37228ca8952932f6a1bb07b216cf3c7dba",
+    "metadata": {
+      "changelog": "## English\n\n- Fix intermittent dedicated-server login rejection: admitted Steam identity remains valid throughout the connection and is revoked when its socket closes.\n- Restore an authenticated player's owned offline-identity save when returning to their verified Minecraft UUID. Backups are kept; newer vanilla progress is preserved.\n- Fix player-identity verification when newer Minecraft versions use a separate owner-profile type.\n- Fix authenticated logins on Minecraft 26.2+ after vanilla removed the connection encryption getter.\n- Serialize local connection read-mode changes to prevent an older vanilla login race from leaving the client waiting for server data.\n- Fix Forge 1.18.2 crashes in the login hook and player UUID tracking after joining. The actual Minecraft player UUID is preserved.\n- Keep background server-list pings and concurrent personal-address lookups from interrupting real Steam connections.\n- Bundle the Linux x86_64 dedicated Steam SDK and extract verified libraries automatically; no manual `.so` installation is needed.\n- Use the Minecraft UDP port for personal-address discovery when no explicit query port is configured. Hosting firewalls must permit that UDP port.\n- Do not start a player-world handoff listener for an anonymous dedicated server.\n\nSix JARs for Minecraft 1.17–26.3: Fabric/Quilt, Forge and NeoForge. Install one matching e4steam JAR. Fabric/Quilt also require Fabric API. No retro JARs or usage-statistics sender are included.\n\n## Русский\n\n- Исправлены случайные отказы при входе на выделенный сервер: подтверждённая личность Steam сохраняется на время соединения и удаляется при его закрытии.\n- При возвращении к подтверждённому UUID Minecraft переносится прогресс из прежнего офлайн-сохранения этого же владельца. Создаётся резервная копия; более свежий ванильный прогресс не заменяется.\n- Исправлена проверка личности игрока на новых Minecraft с отдельным типом профиля владельца.\n- Исправлен вход с подтверждением Minecraft на 26.2+, где удалён прежний метод проверки шифрования соединения.\n- Изменения режима чтения локального соединения выполняются последовательно, чтобы старый сетевой код Minecraft не оставлял клиент в ожидании ответа сервера.\n- Исправлены вылеты Forge 1.18.2 при подключении и чтении UUID после входа. Используется настоящий UUID персонажа Minecraft.\n- Фоновые пинги списка серверов и одновременные поиски персонального адреса больше не вмешиваются в подключение через Steam.\n- Linux-библиотеки выделенного Steam-сервера встроены в JAR и распаковываются с проверкой контрольных сумм. Вручную устанавливать `.so` не нужно; поддерживается Linux x86_64.\n- При стандартной настройке для поиска персонального адреса используется UDP на игровом порту. Хостинг должен разрешать этот UDP-порт.\n- Клиент не пытается принимать передачу мира от анонимного выделенного сервера.\n\nШесть JAR для Minecraft 1.17–26.3: Fabric/Quilt, Forge и NeoForge. Установите один подходящий e4steam JAR; Fabric/Quilt также требуют Fabric API. Ретро-сборки и отправка статистики использования в этот выпуск не входят.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.8 — fabric-quilt 26.1–26.3",
+      "gameVersionNames": [
+        "26.1",
+        "26.1.1",
+        "26.1.2",
+        "26.2",
+        "26.3",
+        "Fabric",
+        "Quilt",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false,
+      "relations": {
+        "projects": [
+          {
+            "slug": "fabric-api",
+            "projectID": 306612,
+            "type": "requiredDependency"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-forge-mc1.17.1-1.18.1-v0.3.8.jar",
+    "sha256": "e7c81a0fc075ba8e7f3a97f399d28193c0f6050b748a3ebd8882884320a4744b",
+    "metadata": {
+      "changelog": "## English\n\n- Fix intermittent dedicated-server login rejection: admitted Steam identity remains valid throughout the connection and is revoked when its socket closes.\n- Restore an authenticated player's owned offline-identity save when returning to their verified Minecraft UUID. Backups are kept; newer vanilla progress is preserved.\n- Fix player-identity verification when newer Minecraft versions use a separate owner-profile type.\n- Fix authenticated logins on Minecraft 26.2+ after vanilla removed the connection encryption getter.\n- Serialize local connection read-mode changes to prevent an older vanilla login race from leaving the client waiting for server data.\n- Fix Forge 1.18.2 crashes in the login hook and player UUID tracking after joining. The actual Minecraft player UUID is preserved.\n- Keep background server-list pings and concurrent personal-address lookups from interrupting real Steam connections.\n- Bundle the Linux x86_64 dedicated Steam SDK and extract verified libraries automatically; no manual `.so` installation is needed.\n- Use the Minecraft UDP port for personal-address discovery when no explicit query port is configured. Hosting firewalls must permit that UDP port.\n- Do not start a player-world handoff listener for an anonymous dedicated server.\n\nSix JARs for Minecraft 1.17–26.3: Fabric/Quilt, Forge and NeoForge. Install one matching e4steam JAR. Fabric/Quilt also require Fabric API. No retro JARs or usage-statistics sender are included.\n\n## Русский\n\n- Исправлены случайные отказы при входе на выделенный сервер: подтверждённая личность Steam сохраняется на время соединения и удаляется при его закрытии.\n- При возвращении к подтверждённому UUID Minecraft переносится прогресс из прежнего офлайн-сохранения этого же владельца. Создаётся резервная копия; более свежий ванильный прогресс не заменяется.\n- Исправлена проверка личности игрока на новых Minecraft с отдельным типом профиля владельца.\n- Исправлен вход с подтверждением Minecraft на 26.2+, где удалён прежний метод проверки шифрования соединения.\n- Изменения режима чтения локального соединения выполняются последовательно, чтобы старый сетевой код Minecraft не оставлял клиент в ожидании ответа сервера.\n- Исправлены вылеты Forge 1.18.2 при подключении и чтении UUID после входа. Используется настоящий UUID персонажа Minecraft.\n- Фоновые пинги списка серверов и одновременные поиски персонального адреса больше не вмешиваются в подключение через Steam.\n- Linux-библиотеки выделенного Steam-сервера встроены в JAR и распаковываются с проверкой контрольных сумм. Вручную устанавливать `.so` не нужно; поддерживается Linux x86_64.\n- При стандартной настройке для поиска персонального адреса используется UDP на игровом порту. Хостинг должен разрешать этот UDP-порт.\n- Клиент не пытается принимать передачу мира от анонимного выделенного сервера.\n\nШесть JAR для Minecraft 1.17–26.3: Fabric/Quilt, Forge и NeoForge. Установите один подходящий e4steam JAR; Fabric/Quilt также требуют Fabric API. Ретро-сборки и отправка статистики использования в этот выпуск не входят.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.8 — forge 1.17.1–1.18.1",
+      "gameVersionNames": [
+        "1.17.1",
+        "1.18",
+        "1.18.1",
+        "Forge",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-forge-mc1.18.2-1.20.2-v0.3.8.jar",
+    "sha256": "1a4981dbc2f3382f9a3d969e43ebded729edca59dfae3854d6258ae1e5913a45",
+    "metadata": {
+      "changelog": "## English\n\n- Fix intermittent dedicated-server login rejection: admitted Steam identity remains valid throughout the connection and is revoked when its socket closes.\n- Restore an authenticated player's owned offline-identity save when returning to their verified Minecraft UUID. Backups are kept; newer vanilla progress is preserved.\n- Fix player-identity verification when newer Minecraft versions use a separate owner-profile type.\n- Fix authenticated logins on Minecraft 26.2+ after vanilla removed the connection encryption getter.\n- Serialize local connection read-mode changes to prevent an older vanilla login race from leaving the client waiting for server data.\n- Fix Forge 1.18.2 crashes in the login hook and player UUID tracking after joining. The actual Minecraft player UUID is preserved.\n- Keep background server-list pings and concurrent personal-address lookups from interrupting real Steam connections.\n- Bundle the Linux x86_64 dedicated Steam SDK and extract verified libraries automatically; no manual `.so` installation is needed.\n- Use the Minecraft UDP port for personal-address discovery when no explicit query port is configured. Hosting firewalls must permit that UDP port.\n- Do not start a player-world handoff listener for an anonymous dedicated server.\n\nSix JARs for Minecraft 1.17–26.3: Fabric/Quilt, Forge and NeoForge. Install one matching e4steam JAR. Fabric/Quilt also require Fabric API. No retro JARs or usage-statistics sender are included.\n\n## Русский\n\n- Исправлены случайные отказы при входе на выделенный сервер: подтверждённая личность Steam сохраняется на время соединения и удаляется при его закрытии.\n- При возвращении к подтверждённому UUID Minecraft переносится прогресс из прежнего офлайн-сохранения этого же владельца. Создаётся резервная копия; более свежий ванильный прогресс не заменяется.\n- Исправлена проверка личности игрока на новых Minecraft с отдельным типом профиля владельца.\n- Исправлен вход с подтверждением Minecraft на 26.2+, где удалён прежний метод проверки шифрования соединения.\n- Изменения режима чтения локального соединения выполняются последовательно, чтобы старый сетевой код Minecraft не оставлял клиент в ожидании ответа сервера.\n- Исправлены вылеты Forge 1.18.2 при подключении и чтении UUID после входа. Используется настоящий UUID персонажа Minecraft.\n- Фоновые пинги списка серверов и одновременные поиски персонального адреса больше не вмешиваются в подключение через Steam.\n- Linux-библиотеки выделенного Steam-сервера встроены в JAR и распаковываются с проверкой контрольных сумм. Вручную устанавливать `.so` не нужно; поддерживается Linux x86_64.\n- При стандартной настройке для поиска персонального адреса используется UDP на игровом порту. Хостинг должен разрешать этот UDP-порт.\n- Клиент не пытается принимать передачу мира от анонимного выделенного сервера.\n\nШесть JAR для Minecraft 1.17–26.3: Fabric/Quilt, Forge и NeoForge. Установите один подходящий e4steam JAR; Fabric/Quilt также требуют Fabric API. Ретро-сборки и отправка статистики использования в этот выпуск не входят.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.8 — forge 1.18.2–1.20.2",
+      "gameVersionNames": [
+        "1.18.2",
+        "1.19",
+        "1.19.1",
+        "1.19.2",
+        "1.19.3",
+        "1.19.4",
+        "1.20",
+        "1.20.1",
+        "1.20.2",
+        "Forge",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false
+    }
+  },
+  {
+    "projectID": 1633302,
+    "filename": "e4steam-neoforge-mc1.20.2-26.3-v0.3.8.jar",
+    "sha256": "74d22467d6dfa34fc78835563c2517b2447bba591fb13fa993a384fe74299580",
+    "metadata": {
+      "changelog": "## English\n\n- Fix intermittent dedicated-server login rejection: admitted Steam identity remains valid throughout the connection and is revoked when its socket closes.\n- Restore an authenticated player's owned offline-identity save when returning to their verified Minecraft UUID. Backups are kept; newer vanilla progress is preserved.\n- Fix player-identity verification when newer Minecraft versions use a separate owner-profile type.\n- Fix authenticated logins on Minecraft 26.2+ after vanilla removed the connection encryption getter.\n- Serialize local connection read-mode changes to prevent an older vanilla login race from leaving the client waiting for server data.\n- Fix Forge 1.18.2 crashes in the login hook and player UUID tracking after joining. The actual Minecraft player UUID is preserved.\n- Keep background server-list pings and concurrent personal-address lookups from interrupting real Steam connections.\n- Bundle the Linux x86_64 dedicated Steam SDK and extract verified libraries automatically; no manual `.so` installation is needed.\n- Use the Minecraft UDP port for personal-address discovery when no explicit query port is configured. Hosting firewalls must permit that UDP port.\n- Do not start a player-world handoff listener for an anonymous dedicated server.\n\nSix JARs for Minecraft 1.17–26.3: Fabric/Quilt, Forge and NeoForge. Install one matching e4steam JAR. Fabric/Quilt also require Fabric API. No retro JARs or usage-statistics sender are included.\n\n## Русский\n\n- Исправлены случайные отказы при входе на выделенный сервер: подтверждённая личность Steam сохраняется на время соединения и удаляется при его закрытии.\n- При возвращении к подтверждённому UUID Minecraft переносится прогресс из прежнего офлайн-сохранения этого же владельца. Создаётся резервная копия; более свежий ванильный прогресс не заменяется.\n- Исправлена проверка личности игрока на новых Minecraft с отдельным типом профиля владельца.\n- Исправлен вход с подтверждением Minecraft на 26.2+, где удалён прежний метод проверки шифрования соединения.\n- Изменения режима чтения локального соединения выполняются последовательно, чтобы старый сетевой код Minecraft не оставлял клиент в ожидании ответа сервера.\n- Исправлены вылеты Forge 1.18.2 при подключении и чтении UUID после входа. Используется настоящий UUID персонажа Minecraft.\n- Фоновые пинги списка серверов и одновременные поиски персонального адреса больше не вмешиваются в подключение через Steam.\n- Linux-библиотеки выделенного Steam-сервера встроены в JAR и распаковываются с проверкой контрольных сумм. Вручную устанавливать `.so` не нужно; поддерживается Linux x86_64.\n- При стандартной настройке для поиска персонального адреса используется UDP на игровом порту. Хостинг должен разрешать этот UDP-порт.\n- Клиент не пытается принимать передачу мира от анонимного выделенного сервера.\n\nШесть JAR для Minecraft 1.17–26.3: Fabric/Quilt, Forge и NeoForge. Установите один подходящий e4steam JAR; Fabric/Quilt также требуют Fabric API. Ретро-сборки и отправка статистики использования в этот выпуск не входят.\n",
+      "changelogType": "markdown",
+      "displayName": "e4steam 0.3.8 — neoforge 1.20.2–26.3",
+      "gameVersionNames": [
+        "1.20.2",
+        "1.20.3",
+        "1.20.4",
+        "1.20.5",
+        "1.20.6",
+        "1.21",
+        "1.21.1",
+        "1.21.2",
+        "1.21.3",
+        "1.21.4",
+        "1.21.5",
+        "1.21.6",
+        "1.21.7",
+        "1.21.8",
+        "1.21.9",
+        "1.21.10",
+        "1.21.11",
+        "26.1",
+        "26.1.1",
+        "26.1.2",
+        "26.2",
+        "26.3",
+        "NeoForge",
+        "Client",
+        "Server"
+      ],
+      "releaseType": "release",
+      "isMarkedForManualRelease": false
+    }
+  }
+]

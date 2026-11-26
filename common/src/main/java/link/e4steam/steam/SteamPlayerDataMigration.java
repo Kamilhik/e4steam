@@ -27,9 +27,20 @@ public final class SteamPlayerDataMigration {
         return id;
     }
     public static synchronized void migrate(Path world,long steam,UUID canonical) throws IOException {
-        UUID legacy=SteamMinecraftIdentity.legacyUuid(steam);if(legacy.equals(canonical))return;
+        migrateFrom(world,steam,SteamMinecraftIdentity.legacyUuid(steam),canonical,Long.toUnsignedString(steam)+"."+canonical);
+    }
+    /** Only completed Mojang verification may restore this owned offline-name save. */
+    public static synchronized void migrateVerifiedOfflineIdentity(Path world,long steam,String name,UUID canonical) throws IOException {
+        if(name==null||name.isEmpty()||name.length()>16)throw new IOException("Invalid Minecraft name");
+        UUID offline=UUID.nameUUIDFromBytes(("OfflinePlayer:"+name).getBytes(StandardCharsets.UTF_8));
+        if(offline.equals(canonical)||!offline.equals(savedIdentity(world,steam)))return;
+        Properties owners=read(world.resolve("e4steam-offline-identities.properties"));
+        if(!Long.toUnsignedString(steam).equals(owners.getProperty(offline.toString())))return;
+        migrateFrom(world,steam,offline,canonical,Long.toUnsignedString(steam)+"."+offline+"."+canonical);
+    }
+    private static void migrateFrom(Path world,long steam,UUID legacy,UUID canonical,String key) throws IOException {
+        if(legacy.equals(canonical))return;
         Path marker=world.resolve("e4steam-identity-migrations.properties");Properties values=read(marker);
-        String key=Long.toUnsignedString(steam)+"."+canonical;
         if("1".equals(values.getProperty(key)))return;
         Path players=world.resolve("playerdata"),source=players.resolve(legacy+".dat"),target=players.resolve(canonical+".dat");
         if(!Files.isRegularFile(source,LinkOption.NOFOLLOW_LINKS))return;
@@ -42,6 +53,9 @@ public final class SteamPlayerDataMigration {
             if(Files.exists(target)&&!Files.exists(backup.resolve(canonical+".dat")))Files.copy(target,backup.resolve(canonical+".dat"));
             if(!Files.exists(backup.resolve(legacy+".dat")))Files.copy(source,backup.resolve(legacy+".dat"));
             WorldPlayerData.copyPlayerIdentity(source,target,legacy,canonical);
+            // A migration is not new gameplay. Preserve snapshot chronology so
+            // another compatible old identity cannot overwrite newer progress.
+            Files.setLastModifiedTime(target,Files.getLastModifiedTime(source));
             for(String folder:new String[]{"stats","advancements"}) {
                 Path from=world.resolve(folder).resolve(legacy+".json"),to=world.resolve(folder).resolve(canonical+".json");
                 if(!Files.isRegularFile(from,LinkOption.NOFOLLOW_LINKS))continue;

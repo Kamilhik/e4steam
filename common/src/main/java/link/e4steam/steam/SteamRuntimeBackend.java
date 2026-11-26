@@ -62,6 +62,7 @@ public interface SteamRuntimeBackend extends AutoCloseable {
         public int appId() { return appId; }
         public int gamePort() { return gamePort; }
         public int queryPort() { return queryPort; }
+        int personalQueryPort(boolean personalAddress) {return personalAddress&&queryPort==0?gamePort:queryPort;}
         public int maxPeers() { return maxPeers; }
         public String serverName() { return serverName; }
         public boolean anonymousLogin() { return loginToken.length == 0; }

@@ -4,7 +4,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Single-use loopback-port bindings created only after dedicated Steam admission. */
+/** Connection-lifetime loopback bindings created only after dedicated Steam admission. */
 final class DedicatedIngressRegistry {
     private final ConcurrentHashMap<Integer, Entry> entries = new ConcurrentHashMap<>();
 
@@ -24,8 +24,14 @@ final class DedicatedIngressRegistry {
         InetSocketAddress address = (InetSocketAddress) remoteAddress;
         if (address.isUnresolved() || address.getAddress() == null
                 || !address.getAddress().isLoopbackAddress()) return 0L;
-        Entry entry = entries.remove(address.getPort());
-        if (entry == null || entry.generation != activeGeneration) {
+        // Login policy, session-mode checks and Forge's login state machine all
+        // inspect the same admitted socket. Reading its identity must not revoke
+        // it. The transport's lease removes this exact entry when the bridge
+        // closes, preventing a later socket from inheriting the authenticated ID.
+        Entry entry = entries.get(address.getPort());
+        if (entry == null) return 0L;
+        if (entry.generation != activeGeneration) {
+            entries.remove(address.getPort(), entry);
             return 0L;
         }
         return entry.steamId;

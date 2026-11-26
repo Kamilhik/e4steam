@@ -352,6 +352,11 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
             }
             ingress.put(bridge, ingressLease);
             ingressLease = null;
+            if (bridge.isClosed() || !running.get()) {
+                // Closure may race admission before its lease enters the map.
+                close(ingress.remove(bridge));
+                throw new IOException("Dedicated bridge closed during admission");
+            }
             SessionId addonSession = new SessionId(
                     SteamPeerPrivacy.dedicatedSessionId(admitted.generation()),
                     admitted.generation());
@@ -490,6 +495,9 @@ public final class SteamDedicatedServerTransport implements SteamBridgeRuntime, 
     }
 
     @Override public void closeUdpBridge(SteamConnectionBridge bridge) {
+        // Revoke TCP identity at closure, before the socket can be reused.
+        // Unregister may be delayed while a terminal RESET is being submitted.
+        close(ingress.remove(bridge));
         SteamMinecraftAuthModeRegistry.forget(bridge.localPort(),bridge.remoteSteamId());
         SteamUdpBridge tunnel=voiceTunnels.remove(bridge);if(tunnel!=null)tunnel.close();
     }

@@ -46,6 +46,7 @@ public abstract class PlayerListMixin {
     @Inject(method = "/^(canPlayerLogin|method_14586|checkCanJoin|m_6418_)$/", at = @At("HEAD"), cancellable = true)
     public void allowOwnerLogin(SocketAddress socketAddress, @Coerce Object gameProfile, CallbackInfoReturnable<Component> cir) {
         long authenticatedSteamId = SteamRuntime.get().authenticatedMinecraftPeer(socketAddress);
+        if (authenticatedSteamId != 0L) return; // Steam guests never receive the local owner's bypass.
         boolean vanillaOwnerMatch = Mirror.isSingleplayerOwnerObj(getServer(), gameProfile);
         if (SteamMinecraftIdentity.allowSingleplayerOwnerBypass(
                 authenticatedSteamId,

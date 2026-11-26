@@ -82,7 +82,8 @@ public final class WorldTransferClient {
         server.execute(()-> {
             Map<Long,String> result=new LinkedHashMap<>();
             for (long peer:peers) for (var player:server.getPlayerList().getPlayers()) {
-                if (player.getUUID().equals(link.e4steam.steam.SteamMinecraftIdentity.uuid(peer)) || player.getUUID().equals(link.e4steam.steam.SteamMinecraftIdentity.legacyUuid(peer)))
+                UUID actual=MinecraftPlayerUuid.read(player);
+                if (actual!=null && (actual.equals(link.e4steam.steam.SteamMinecraftIdentity.uuid(peer)) || actual.equals(link.e4steam.steam.SteamMinecraftIdentity.legacyUuid(peer))))
                     result.put(peer,safePersona(player.getName().getString()));
             }
             Minecraft.getInstance().execute(()-> {
@@ -287,8 +288,8 @@ public final class WorldTransferClient {
             nextParticipantRefresh=now+1000;refreshParticipants(server);
         }
         long[] remote=SteamRuntime.get().worldTransferConnectedPeers(false);
-        if (server==null && client.getConnection()!=null && remote.length==1) {
-            if(client.player!=null){joinedPlayerUuid=client.player.getUUID();joinedPlayerHost=remote[0];}
+        if (server==null && client.getConnection()!=null && remote.length==1 && TransferProtocol.validSteam(remote[0])) {
+            if(client.player!=null){joinedPlayerUuid=MinecraftPlayerUuid.read(client.player);joinedPlayerHost=joinedPlayerUuid==null?0L:remote[0];}
             if (receiveHost!=remote[0]) {receiveHost=remote[0];nextListenRefresh=0;}
             prepare();
             TransferEngine current=engine;
@@ -372,7 +373,8 @@ public final class WorldTransferClient {
     public static void acceptIncoming() {
         TransferEngine current=engine;if(current==null || current.view().state!=TransferEngine.State.OFFERED)return;
         Minecraft client=Minecraft.getInstance();
-        acceptedPlayerUuid=client.player!=null?client.player.getUUID():(joinedPlayerHost==current.view().peer?joinedPlayerUuid:null);
+        acceptedPlayerUuid=client.player!=null?MinecraftPlayerUuid.read(client.player):(joinedPlayerHost==current.view().peer?joinedPlayerUuid:null);
+        if(acceptedPlayerUuid==null){preparationError="PLAYER_IDENTITY_UNAVAILABLE";revision++;return;}
         current.accept();
         try {MinecraftUiCompat.disconnect(client,new WorldTransferScreen(new TitleScreen(),null,0));}
         catch (ReflectiveOperationException failure) {current.cancel();preparationError="WORLD_CLOSE_FAILED";revision++;}

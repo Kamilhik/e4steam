@@ -26,6 +26,7 @@ configurations {
 }
 
 dependencies {
+    shadowCommon("org.tukaani:xz:1.10") { transitive = false }
     forge "net.minecraftforge:forge:${rootProject.forge_version}"
 
     common(project(path: ":common", configuration: "namedElements")) { transitive false }
@@ -50,6 +51,8 @@ processResources {
 }
 
 shadowJar {
+    relocate "org.tukaani.xz", "link.e4steam.internal.xz"
+    exclude "META-INF/versions/**"
     relocate "folk.sisby.kaleido", "link.e4steam.internal.kaleido"
 
     exclude("fabric.mod.json")

@@ -12,6 +12,19 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SteamConnectionBridgeTest {
+    @Test
+    void runtimeLeaseIsRevokedBeforeSocketReuseEvenWhileResetIsPending() {
+        FakeRuntime runtime=new FakeRuntime();
+        Socket socket=new Socket();
+        boolean[] leaseOpen={true};
+        runtime.queuedReset=true;
+        runtime.onClose=()->{assertFalse(socket.isClosed());leaseOpen[0]=false;};
+        SteamConnectionBridge bridge=new SteamConnectionBridge(runtime,77L,45,socket,true,null);
+        bridge.close(true);
+        assertFalse(leaseOpen[0]);
+        assertTrue(socket.isClosed());
+        assertFalse(runtime.unregistered);
+    }
     @Test void pendingOpenExpiresAndCannotReleaseMinecraftBeforeAcknowledgement() {
         SteamConnectionBridge bridge=new SteamConnectionBridge(new FakeRuntime(),77L,43,new Socket(),false,null);
         bridge.awaitOpenAcknowledgement(200L);
@@ -150,12 +163,14 @@ class SteamConnectionBridgeTest {
     private static final class FakeRuntime implements SteamBridgeRuntime {
         private SteamConnectionBridge bridge;
         private volatile boolean unregistered;
+        private boolean queuedReset;
+        private Runnable onClose=()->{};
         @Override public boolean sendData(SteamConnectionBridge bridge, byte[] payload) {
             return true;
         }
         @Override public boolean sendFin(SteamConnectionBridge bridge) { return true; }
-        @Override public boolean sendReset(SteamConnectionBridge bridge) { return false; }
-        @Override public void closeUdpBridge(SteamConnectionBridge bridge) { }
+        @Override public boolean sendReset(SteamConnectionBridge bridge) { return queuedReset; }
+        @Override public void closeUdpBridge(SteamConnectionBridge bridge) { onClose.run(); }
         @Override public void unregister(SteamConnectionBridge candidate) {
             if (bridge == null || bridge == candidate) unregistered = true;
         }

@@ -279,3 +279,17 @@ relicense or resolve the reference project's differing license declarations.
 ## Skin restoration
 
 The automatic Mojang skin fallback is inspired by [Suiranoil/SkinRestorer](https://github.com/Suiranoil/SkinRestorer), licensed under MIT. The license is included at `META-INF/licenses/SkinRestorer-MIT.txt`. e4steam supplies its own bounded, optional lookup; it does not include the upstream commands or alternative skin services. An installed SkinRestorer takes precedence.
+
+## Bundled Linux dedicated-server runtime
+
+The mod includes pinned Linux x86_64 steamclient.so, libtier0_s.so and libvstdlib_s.so, stored in compressed form and extracted only for the headless Steam GameServer backend. These are Valve redistributables, not Apache-licensed project code. The same Valve/Steamworks terms above apply. Original SHA-256 digests are recorded in e4steam/native/linux-x86_64/manifest.json.
+
+## XZ for Java 1.10
+
+XZ for Java, by Lasse Collin and contributors, is distributed under the BSD Zero Clause License (0BSD), and relocated to link.e4steam.internal.xz. Upstream: https://tukaani.org/xz/java.html
+
+Copyright (C) The XZ for Java authors and contributors.
+
+Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.

@@ -1,5 +1,10 @@
 # Dedicated servers
 
+## 0.3.8 Linux SDK
+
+Linux x86_64 Steam SDK libraries are bundled in the mod and extracted automatically. A desktop Steam client or Steam QR login is not required on the server. For Premium personal names, see the [one-file setup guide](PREMIUM_DEDICATED_ADDRESS_RU.md).
+
+
 [Русская версия](DEDICATED_SERVER_RU.md)
 
 ## 0.3.6 automatic setup

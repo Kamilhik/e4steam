@@ -60,6 +60,7 @@ public final class WorldTransferScreen extends Screen {
             if (displayed==TransferEngine.State.OFFERED) labels.add(Long.toUnsignedString(view.peer));
             labels.add(text("state."+displayed.name().toLowerCase(Locale.ROOT)).getString());
             if ("SOURCE_BACKUP_FAILED".equals(WorldTransferClient.preparationError())) labels.add(text("cleanupFailed").getString());
+            if ("PLAYER_IDENTITY_UNAVAILABLE".equals(WorldTransferClient.preparationError())) labels.add(text("playerIdentityUnavailable").getString());
             if (!view.error.isEmpty()) labels.add(text(errorKey(view.error)).getString());
             if (displayed==TransferEngine.State.OFFERED) {
                 labels.add(text("receiveHelp").getString());

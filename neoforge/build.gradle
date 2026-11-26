@@ -16,6 +16,7 @@ configurations {
 }
 
 dependencies {
+    shadowCommon("org.tukaani:xz:1.10") { transitive = false }
     compileOnly project(":api")
     neoForge "net.neoforged:neoforge:${rootProject.neoforge_version}"
 
@@ -44,6 +45,8 @@ processResources {
 }
 
 shadowJar {
+    relocate "org.tukaani.xz", "link.e4steam.internal.xz"
+    exclude "META-INF/versions/**"
     // Keep e4steam's private Kaleido copy isolated from other mods that bundle
     // the same library. Duplicate packages are fatal on Forge's module layer.
     relocate "folk.sisby.kaleido", "link.e4steam.internal.kaleido"

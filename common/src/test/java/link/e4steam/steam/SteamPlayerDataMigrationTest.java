@@ -76,4 +76,48 @@ class SteamPlayerDataMigrationTest {
         Files.writeString(world.resolve("e4steam-offline-identities.properties"),id+"="+STEAM+"\n");
         assertEquals(id,SteamPlayerDataMigration.offlineIdentity(world,STEAM,"Steve"));
     }
+    @Test void verifiedOnlineLoginRestoresOwnedOfflineProgressAndKeepsBackups() throws Exception {
+        UUID offline=SteamPlayerDataMigration.offlineIdentity(world,STEAM,"Steve"),online=UUID.randomUUID();
+        SteamPlayerDataMigration.recordIdentity(world,STEAM,offline);
+        Path source=world.resolve("playerdata/"+offline+".dat"),target=world.resolve("playerdata/"+online+".dat");
+        player(target,online,20);Files.setLastModifiedTime(target,FileTime.fromMillis(1));player(source,offline,7);
+        Files.createDirectories(world.resolve("stats"));Files.writeString(world.resolve("stats/"+offline+".json"),"{\"progress\":42}");
+        SteamPlayerDataMigration.migrateVerifiedOfflineIdentity(world,STEAM,"Steve",online);
+        assertEquals(7,health(target,online));assertEquals(7,health(source,offline));
+        assertEquals(20,health(world.resolve("e4steam-player-backups/"+offline+"-"+online+"/"+online+".dat"),online));
+        assertEquals("{\"progress\":42}",Files.readString(world.resolve("stats/"+online+".json")));
+        SteamPlayerDataMigration.recordIdentity(world,STEAM,online);player(target,online,15);
+        SteamPlayerDataMigration.migrateVerifiedOfflineIdentity(world,STEAM,"Steve",online);
+        assertEquals(15,health(target,online));
+    }
+    @Test void anotherSteamOwnersOfflineSaveCannotBeImported() throws Exception {
+        UUID offline=SteamPlayerDataMigration.offlineIdentity(world,STEAM+1,"Steve"),online=UUID.randomUUID();
+        SteamPlayerDataMigration.recordIdentity(world,STEAM,offline);
+        player(world.resolve("playerdata/"+offline+".dat"),offline,7);Path target=world.resolve("playerdata/"+online+".dat");player(target,online,20);
+        SteamPlayerDataMigration.migrateVerifiedOfflineIdentity(world,STEAM,"Steve",online);
+        assertEquals(20,health(target,online));assertFalse(Files.exists(world.resolve("e4steam-player-backups")));
+    }
+    @Test void switchingVerifiedMinecraftAccountsDoesNotCopyTheirInventories() throws Exception {
+        UUID offline=SteamPlayerDataMigration.offlineIdentity(world,STEAM,"Steve"),online=UUID.randomUUID();
+        SteamPlayerDataMigration.recordIdentity(world,STEAM,UUID.randomUUID());
+        player(world.resolve("playerdata/"+offline+".dat"),offline,7);Path target=world.resolve("playerdata/"+online+".dat");player(target,online,20);
+        SteamPlayerDataMigration.migrateVerifiedOfflineIdentity(world,STEAM,"Steve",online);
+        assertEquals(20,health(target,online));
+    }
+    @Test void newerVanillaSaveWinsOverAnOwnedOfflineAlias() throws Exception {
+        UUID offline=SteamPlayerDataMigration.offlineIdentity(world,STEAM,"Steve"),online=UUID.randomUUID();
+        SteamPlayerDataMigration.recordIdentity(world,STEAM,offline);
+        Path source=world.resolve("playerdata/"+offline+".dat"),target=world.resolve("playerdata/"+online+".dat");
+        player(source,offline,7);Files.setLastModifiedTime(source,FileTime.fromMillis(1));player(target,online,20);
+        SteamPlayerDataMigration.migrateVerifiedOfflineIdentity(world,STEAM,"Steve",online);
+        assertEquals(20,health(target,online));
+    }
+    @Test void migratingAliasesPreservesTheNewestSnapshotInsteadOfTheMigrationTime() throws Exception {
+        UUID offline=SteamPlayerDataMigration.offlineIdentity(world,STEAM,"Steve"),online=UUID.randomUUID(),legacy=SteamMinecraftIdentity.legacyUuid(STEAM);
+        SteamPlayerDataMigration.recordIdentity(world,STEAM,offline);
+        Path old=world.resolve("playerdata/"+legacy+".dat"),source=world.resolve("playerdata/"+offline+".dat"),target=world.resolve("playerdata/"+online+".dat");
+        player(old,legacy,3);Files.setLastModifiedTime(old,FileTime.fromMillis(100));player(source,offline,7);Files.setLastModifiedTime(source,FileTime.fromMillis(200));
+        SteamPlayerDataMigration.migrateVerifiedOfflineIdentity(world,STEAM,"Steve",online);SteamPlayerDataMigration.migrate(world,STEAM,online);
+        assertEquals(7,health(target,online));assertEquals(200,Files.getLastModifiedTime(target).toMillis());
+    }
 }

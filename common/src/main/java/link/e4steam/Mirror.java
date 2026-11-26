@@ -241,25 +241,11 @@ public class Mirror {
                 profile = method.invoke(player);
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {}
         }
-        Class<MinecraftServer> clazz2 = MinecraftServer.class;
-        for (String methodName : IS_SINGLEPLAYER_OWNER_METHOD_NAMES) {
-            try {
-                Method method = clazz2.getMethod(methodName, profile.getClass());
-                return (boolean) method.invoke(server, profile);
-            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {}
-        }
-        throw new RuntimeException("Could not locate any way to call isSingleplayerOwner!");
+        return link.e4steam.steam.MinecraftOwnerCheck.isOwner(server, profile);
     }
 
     public static boolean isSingleplayerOwnerObj(MinecraftServer server, Object maybeProfile) {
-        Class<MinecraftServer> clazz2 = MinecraftServer.class;
-        for (String methodName : IS_SINGLEPLAYER_OWNER_METHOD_NAMES) {
-            try {
-                Method method = clazz2.getMethod(methodName, maybeProfile.getClass());
-                return (boolean) method.invoke(server, maybeProfile);
-            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {}
-        }
-        throw new RuntimeException("Could not locate any way to call isSingleplayerOwner!");
+        return link.e4steam.steam.MinecraftOwnerCheck.isOwner(server, maybeProfile);
     }
 
     public static void setUsingWhitelist(MinecraftServer server, PlayerList playerList, boolean enabled) {

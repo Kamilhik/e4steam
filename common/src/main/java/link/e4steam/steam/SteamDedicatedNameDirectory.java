@@ -15,8 +15,10 @@ final class SteamDedicatedNameDirectory implements AutoCloseable {
     private long deadline;
     private boolean complete,overflow;
     CompletableFuture<List<SteamDedicatedNameProtocol.Target>> search(String name) throws IOException {
-        if(pending!=null)throw new IOException("Поиск выделенного адреса уже выполняется.");
-        this.name=SteamNamedAddress.normalize(name);found.clear();complete=overflow=false;
+        String normalized=SteamNamedAddress.normalize(name);
+        CompletableFuture<List<SteamDedicatedNameProtocol.Target>> shared=SteamLookupSubscriptions.existing(normalized,this.name,pending);
+        if(shared!=null)return shared;
+        this.name=normalized;found.clear();complete=overflow=false;
         pending=new CompletableFuture<>();deadline=System.currentTimeMillis()+20_000;
         CompletableFuture<List<SteamDedicatedNameProtocol.Target>> result=pending;
         response=new SteamMatchmakingServerListResponse() {
@@ -30,7 +32,7 @@ final class SteamDedicatedNameDirectory implements AutoCloseable {
                     new SteamMatchmakingKeyValuePair("gametagsand",SteamDedicatedNameProtocol.MARKER+","+this.name)},response);
             if(request==null)throw new IllegalStateException("Named directory unavailable");
         } catch(RuntimeException unavailable){pending=null;cleanup();result.completeExceptionally(new IOException("Steam не выполнил поиск выделенного адреса.",unavailable));}
-        return result;
+        return SteamLookupSubscriptions.detached(result);
     }
     private void read(SteamServerListRequest handle,int index) {
         if(pending==null||complete)return;

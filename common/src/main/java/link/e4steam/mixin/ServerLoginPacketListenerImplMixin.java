@@ -110,7 +110,9 @@ public abstract class ServerLoginPacketListenerImplMixin {
     }
 
     /** Forge can send a large registry snapshot before accepting the player. */
-    @ModifyConstant(method = "tick", constant = @Constant(intValue = 600), require = 0)
+    // Forge renamed this tick between 1.18.2 and 1.19; use both runtime aliases.
+    @ModifyConstant(method = "/^(tick|method_18784|m_10050_|m_9933_)$/", remap = false,
+            constant = @Constant(intValue = 600), require = 0)
     private int e4steam$extendAuthenticatedSteamLoginTimeout(int vanillaTimeout) {
         long authenticatedSteamId = e4steam$authenticatedSteamId();
         return authenticatedSteamId == 0 ? vanillaTimeout : E4STEAM_LOGIN_TIMEOUT_TICKS;
@@ -119,10 +121,12 @@ public abstract class ServerLoginPacketListenerImplMixin {
     private void e4steam$stopRejectedIdentity(GameProfile profile,CallbackInfo ci) {if(e4steam$identityRejected || !connection.isConnected())ci.cancel();}
     @Inject(method="verifyLoginAndFinishConnectionSetup",at=@At("HEAD"),cancellable=true,require=0)
     private void e4steam$rejectFailedVerification(GameProfile profile,CallbackInfo ci) {if(e4steam$identityRejected)ci.cancel();}
-    @Inject(method="tick",at=@At("HEAD"),cancellable=true)
+    @Inject(method="/^(tick|method_18784|m_10050_|m_9933_)$/",remap=false,
+            at=@At("HEAD"),cancellable=true,require=1)
     private void e4steam$stopFailedLogin(CallbackInfo ci) {if(e4steam$identityRejected)ci.cancel();}
     private boolean e4steam$verifiedSession() {
-        return SteamMinecraftAuthentication.usesMinecraftSession(connection.getRemoteAddress()) && connection.isEncrypted();
+        return SteamMinecraftAuthentication.usesMinecraftSession(connection.getRemoteAddress())
+                && link.e4steam.steam.MinecraftConnectionEncryption.isEncrypted(connection);
     }
 
 }

@@ -293,8 +293,10 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
     private void startInternal() {
         try {
             try {namedIdentity=SteamDedicatedNameIdentity.load(java.nio.file.Paths.get(System.getProperty("user.dir",".")));}
-            catch(Exception invalidName){LOGGER.warn("Dedicated personal address unavailable; check the Premium licence and dedicated-address.properties ({})",invalidName.getClass().getSimpleName());}
+            catch(Exception invalidName){LOGGER.warn("Dedicated personal address unavailable; check name/key in config/e4steam-premium/dedicated-address.properties ({})",invalidName.getClass().getSimpleName());}
             Config requested = config;
+            int queryPort=requested.personalQueryPort(namedIdentity!=null);
+            if(namedIdentity!=null)LOGGER.info("Personal Steam address: {}.steam; discovery uses UDP port {}",namedIdentity.name,queryPort);
             if (!requested.anonymousLogin()) {
                 throw new IOException("GSLT is not enabled for the App ID 480 backend");
             }
@@ -310,7 +312,7 @@ public final class SteamGameServerRuntimeBackend implements SteamRuntimeBackend 
             if (!SteamGameServerAPI.init(
                     0,
                     (short) requested.gamePort(),
-                    (short) requested.queryPort(),
+                    (short) queryPort,
                     SteamGameServerAPI.ServerMode.Authentication,
                     "1.0.0.0" // Steam App ID 480 query-protocol version; separate from the mod version.
             )) {

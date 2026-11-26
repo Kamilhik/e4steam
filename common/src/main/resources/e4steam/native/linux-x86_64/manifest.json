@@ -1,0 +1,17 @@
+{
+  "steamclient.so": {
+    "bytes": 47709360,
+    "sha256": "3e32119f473cb9c2615e1b282da8498b9986378e8b71537a4aed9f77e7b797e0",
+    "packed_sha256": "613ea61a78975073b0dc65921b8f401032b15e24a16ea3a9f2cad4ca5ca51e6d"
+  },
+  "libtier0_s.so": {
+    "bytes": 416568,
+    "sha256": "8d0622e0ecd9a7c853e0dba0fcc707df34d4876f5ae7a2296ced596e4269931e",
+    "packed_sha256": "b274eb765d7412d16a1d4fd0db9b8a0f109acb8a97a4f46bfa95f04e4003c65c"
+  },
+  "libvstdlib_s.so": {
+    "bytes": 1394272,
+    "sha256": "642875157a7aa15dafafdf10031c5252bc70a758a90665ad72c69197c0caff47",
+    "packed_sha256": "752a25b66270a9ed4f0195d17d43bf11d5d8779ff684705864cf48f1e702c489"
+  }
+}

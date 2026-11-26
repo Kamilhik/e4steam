@@ -21,6 +21,8 @@ content of the mod JAR. Gradle can generate the full dependency trees through
 | steamworks4j-server | 1.10.0 | Java classes and selected 64-bit natives are shaded | MIT for the binding; text retained in `THIRD_PARTY_NOTICES.md` |
 | Valve `steam_api` redistributables | supplied by the declared steamworks4j artifacts | Windows x64, Linux x64 and universal macOS dylib | Valve/Steamworks SDK terms; not relicensed under Apache 2.0 |
 | Kaleido Config | 0.3.3+1.3.2 | Shaded and relocated under `link.e4steam.internal.kaleido` | Apache License 2.0; full text retained in `THIRD_PARTY_NOTICES.md` |
+| XZ for Java | 1.10 | Relocated streaming decoder for bundled SDK | 0BSD; notice retained |
+| Valve dedicated Linux runtime | pinned SHA-256 manifest | Three XZ-compressed Linux x86_64 libraries | Valve/Steamworks terms, not Apache-2.0 |
 | Fabric API | loader/version-specific | Required beside Fabric/Quilt builds; not shaded | Apache License 2.0 |
 | JNA | 5.10.0 in retro JARs; provided by modern Minecraft runtimes | Shaded only into Java 8 retro JARs | LGPL-2.1-or-later / Apache-2.0 dual licensing according to JNA upstream |
 

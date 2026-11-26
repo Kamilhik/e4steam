@@ -6,7 +6,8 @@
   "mixins": [
     "LegacyServerLoginPacketListenerImplMixin",
     "LegacyServerGamePacketListenerImplMixin",
-    "ServerConnectionListenerMixin"
+    "ServerConnectionListenerMixin",
+    "ConnectionReadModeMixin"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -28,6 +29,7 @@
     "IntegratedServerLanMixin",
     "LanSettingsRenderMixin",
     "WorldTransferExitMixin",
-    "SimpleVoicechatAddressMixin"
+    "SimpleVoicechatAddressMixin",
+    "ServerStatusPingerMixin"
   ]
 }

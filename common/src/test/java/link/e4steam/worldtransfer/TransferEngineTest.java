@@ -15,6 +15,11 @@ class TransferEngineTest {
     @TempDir Path root;
     static final long HOST=76561199469700509L,GUEST=76561199194856222L;
     static final String MODS="a".repeat(64);
+    @Test void onlyIndividualSteamAccountsCanOfferWorldHandoffs() {
+        assertTrue(TransferProtocol.validSteam(HOST));
+        assertTrue(TransferProtocol.validSteam(GUEST));
+        assertFalse(TransferProtocol.validSteam(90298148977151003L));
+    }
     static void await(BooleanSupplier condition) throws Exception {
         long end=System.nanoTime()+Duration.ofSeconds(15).toNanos();
         while (!condition.getAsBoolean()) { if (System.nanoTime()>end) fail("Transfer did not reach expected state");Thread.sleep(10); }
